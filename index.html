@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Portál TSO Bolech</title>
@@ -94,7 +93,7 @@
 
   <script>
     // =========================================================================
-    // DŮLEŽITÉ: SEM VLOŽTE URL ADRESU WEBOVÉ APLIKACE Z GOOGLE APPS SCRIPTU
+    // VAŠE URL ADRESA Z GOOGLE APPS SCRIPTU
     // =========================================================================
     const API_URL = "https://script.google.com/macros/s/AKfycbzson2D9uc0UMIPADyVLqLkCKjEDp1d9ECUqAJghqWKIGXMM3jV7-M0T4wliBAncFMjTQ/exec";
 
@@ -219,6 +218,8 @@
               <p style="font-size:17px; margin-bottom:4px;">🕒 Začátek: <strong>${akce.casOd}</strong></p>
               ${akce.casSrazu ? `<p style="font-size:17px; margin-bottom:4px;">⏰ Sraz: <strong>${akce.casSrazu}</strong></p>` : ''}
               ${akce.zacatekGeneralky ? `<p style="font-size:17px; margin-bottom:4px;">🎻 Generálka: <strong>${akce.zacatekGeneralky}</strong></p>` : ''}
+              ${akce.damy ? `<p style="font-size:17px; margin-bottom:4px;">👗 Dámy: ${akce.damy}</p>` : ''}
+              ${akce.pani ? `<p style="font-size:17px; margin-bottom:4px;">🤵 Páni: ${akce.pani}</p>` : ''}
               ${akce.poznamka ? `<p style="font-size:16px; margin:8px 0;"><strong>Pozn.:</strong> ${akce.poznamka}</p>` : ''}
               ${akce.uzavierka ? `<div class="deadline-box">⏳ Uzávěrka: ${akce.uzavierka}</div>` : ''}
 
@@ -285,7 +286,6 @@
           btn.parentElement.querySelectorAll('.btn-att').forEach(b => b.className = 'btn-att');
           btn.classList.add(stav === 'Ano' ? 'selected-ano' : 'selected-ne');
 
-          // Update local data array silently so roster updates
           let exist = appData.ucast.find(u => u.akceId === id && u.jmeno === user.name);
           if(exist) exist.stav = stav; else appData.ucast.push({akceId:id, jmeno:user.name, sekce:user.section, stav:stav});
           document.getElementById('roster-container-'+id).innerHTML = generateRosterHtml(id);
@@ -303,7 +303,7 @@
       });
     }
 
-// --- MODAL PRO ADMINY ---
+    // --- MODAL PRO ADMINY S CHYTRÝM SKRÝVÁNÍM ---
     function openAkceForm(akce = null) {
       const isEdit = akce !== null;
       const html = `
@@ -313,10 +313,10 @@
             <form id="editAkceForm" onsubmit="submitAkceForm(event, '${isEdit ? escapeHtml(akce.id) : ''}')">
 
               <label>Typ akce:</label>
-              <select id="f_typ" class="modal-input">
+              <select id="f_typ" class="modal-input" onchange="toggleAkceFields()">
                 <option value="Zkouška" ${akce?.typ==='Zkouška'?'selected':''}>Zkouška</option>
-                <option value="Koncert" ${akce?.typ==='Koncert'?'selected':''}>Koncert</option>
                 <option value="Generálka" ${akce?.typ==='Generálka'?'selected':''}>Generálka</option>
+                <option value="Koncert" ${akce?.typ==='Koncert'?'selected':''}>Koncert</option>
               </select>
 
               <label>Název:</label>
@@ -331,14 +331,27 @@
               <label>Čas od (např. 18:00):</label>
               <input type="text" id="f_casOd" value="${escapeHtml(akce?.casOd||'')}" class="modal-input">
 
-              <div style="display:flex; gap:10px;">
+              <!-- Řádek pro SRAZ a GENERÁLKU -->
+              <div id="row_casy" style="display:flex; gap:10px;">
                 <div style="flex:1;">
                   <label>Čas srazu:</label>
                   <input type="text" id="f_casSrazu" value="${escapeHtml(akce?.casSrazu||'')}" placeholder="např. 17:30" class="modal-input">
                 </div>
-                <div style="flex:1;">
-                  <label>Generálka:</label>
+                <div id="col_generalka" style="flex:1;">
+                  <label>Čas generálky:</label>
                   <input type="text" id="f_zacatekGeneralky" value="${escapeHtml(akce?.zacatekGeneralky||'')}" placeholder="např. 18:00" class="modal-input">
+                </div>
+              </div>
+
+              <!-- Řádek pro OBLEČENÍ -->
+              <div id="row_obleceni" style="display:flex; gap:10px;">
+                <div style="flex:1;">
+                  <label>Oblečení Dámy:</label>
+                  <input type="text" id="f_damy" value="${escapeHtml(akce?.damy||'')}" placeholder="např. černé dlouhé" class="modal-input">
+                </div>
+                <div style="flex:1;">
+                  <label>Oblečení Páni:</label>
+                  <input type="text" id="f_pani" value="${escapeHtml(akce?.pani||'')}" placeholder="např. frak" class="modal-input">
                 </div>
               </div>
 
@@ -354,28 +367,59 @@
         </div>
       `;
       document.body.insertAdjacentHTML('beforeend', html);
+
+      toggleAkceFields(); // Zavoláme pro skrytí prvků ihned po otevření
+    }
+
+    // Funkce, která řeší skrývání podle typu akce
+    function toggleAkceFields() {
+      const typ = document.getElementById('f_typ').value;
+      const rowCasy = document.getElementById('row_casy');
+      const colGeneralka = document.getElementById('col_generalka');
+      const rowObleceni = document.getElementById('row_obleceni');
+
+      if (typ === 'Zkouška') {
+        rowCasy.style.display = 'none';
+        rowObleceni.style.display = 'none';
+      } else if (typ === 'Generálka') {
+        rowCasy.style.display = 'flex';
+        colGeneralka.style.display = 'none';
+        rowObleceni.style.display = 'none';
+      } else { // Koncert
+        rowCasy.style.display = 'flex';
+        colGeneralka.style.display = 'block';
+        rowObleceni.style.display = 'flex';
+      }
     }
 
     function submitAkceForm(e, akceId) {
       e.preventDefault();
       document.getElementById('btnSaveModal').innerText = "Ukládám...";
 
+      const typ = document.getElementById('f_typ').value;
+      const isZkouska = (typ === 'Zkouška');
+      const isGeneralka = (typ === 'Generálka');
+
       const payload = {
         id: akceId || null,
-        typ: document.getElementById('f_typ').value,
+        typ: typ,
         nazev: document.getElementById('f_nazev').value,
         misto: document.getElementById('f_misto').value,
         datum: document.getElementById('f_datum').value,
         casOd: document.getElementById('f_casOd').value,
-        casSrazu: document.getElementById('f_casSrazu').value,
-        zacatekGeneralky: document.getElementById('f_zacatekGeneralky').value,
+
+        casSrazu: isZkouska ? "" : document.getElementById('f_casSrazu').value,
+        zacatekGeneralky: (isZkouska || isGeneralka) ? "" : document.getElementById('f_zacatekGeneralky').value,
+        damy: (isZkouska || isGeneralka) ? "" : document.getElementById('f_damy').value,
+        pani: (isZkouska || isGeneralka) ? "" : document.getElementById('f_pani').value,
+
         poznamka: document.getElementById('f_poznamka').value
       };
 
       runGoogleScript("saveAkce", payload).then(res => {
         if (res.success) {
           document.getElementById('akceModal').remove();
-          initApp(); // Znovunačte data po uložení
+          initApp();
         } else {
           alert('Chyba: ' + res.error);
           document.getElementById('btnSaveModal').innerText = "Uložit";
@@ -383,7 +427,7 @@
       });
     }
 
-    // Pomocné funkce
+    // Pomocné funkce pro záložky
     function switchTab(t, b) {
       document.getElementById('tab-events').style.display = t==='events'?'block':'none';
       document.getElementById('tab-sheets').style.display = t==='sheets'?'block':'none';
