@@ -1,7 +1,7 @@
 // =========================================================================
 // VAŠE URL ADRESA Z GOOGLE APPS SCRIPTU
 // =========================================================================
-const API_URL = "https://script.google.com/macros/s/AKfycbzson2D9uc0UMIPADyVLqLkCKjEDp1d9ECUqAJghqWKIGXMM3jV7-M0T4wliBAncFMjTQ/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzOyg33uJeMrqRhR1FesMvmYB-APu_8qD4QJT0dZpl9x0H6yjN_cNZNlGyntRkn2JV9cg/exec";
 
 let user = null;
 let appData = { akce: [], noty: [], ucast: [] };
