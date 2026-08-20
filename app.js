@@ -62,23 +62,32 @@ document.addEventListener("DOMContentLoaded", () => {
   else { document.getElementById("loginScreen").style.display = "block"; }
 });
 
-function handleLoginSubmit(e) {
-  e.preventDefault();
+function handleLoginSubmit(e) { 
+  e.preventDefault(); 
   const btn = document.getElementById('loginBtn');
   btn.innerText = "Ověřuji...";
   btn.disabled = true;
 
-  runGoogleScript("authenticateMember", {query: document.getElementById('loginQuery').value})
-  .then(res => {
+  // Načteme hodnoty z obou políček
+  const queryValue = document.getElementById('loginQuery').value;
+  const pinValue = document.getElementById('loginPin').value;
+
+  // Odešleme je do backendu
+  runGoogleScript("authenticateMember", { query: queryValue, pin: pinValue })
+  .then(res => { 
     btn.innerText = "Vstoupit";
     btn.disabled = false;
-    if(res.success) {
-      user = res.member;
-      localStorage.setItem('bolech_auth_member', JSON.stringify(user));
-      document.getElementById('loginScreen').style.display = 'none';
-      initApp();
-    } else alert(res.error);
-  });
+    if(res.success) { 
+      user = res.member; 
+      localStorage.setItem('bolech_auth_member', JSON.stringify(user)); 
+      document.getElementById('loginScreen').style.display = 'none'; 
+      // Vyčistíme políčko s PINem pro případ odhlášení
+      document.getElementById('loginPin').value = '';
+      initApp(); 
+    } else {
+      alert(res.error); // Vyhodí hlášku "Nesprávný PIN kód."
+    }
+  }); 
 }
 
 function initApp() {
