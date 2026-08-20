@@ -56,10 +56,18 @@
 
     /* Záhlaví s logem */
     header { background: var(--primary); position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
-    .logo-banner-wrap { width: 100%; padding: 12px 16px; display: flex; justify-content: center; align-items: center; position: relative; min-height: 60px; }
-
-    /* STYL PRO LOGO */
-    .brand-logo { max-height: 50px; max-width: 80%; object-fit: contain; }
+    .logo-banner-wrap {
+      width: 100%;
+      min-height: 120px; /* Zde můžete upravit výšku záhlaví (např. 100px nebo 140px) */
+      background-image: url('zahlavi.png'); /* Odkaz na váš soubor */
+      background-size: cover; /* Zajistí pokrytí celé plochy a ořez po stranách na mobilu */
+      background-position: center; /* Drží střed obrázku uprostřed obrazovky */
+      background-repeat: no-repeat;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
 
     .theme-toggle { position: absolute; right: 16px; background: rgba(255,255,255,0.15); border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; transition: background 0.2s; }
     .theme-toggle:hover { background: rgba(255,255,255,0.25); }
@@ -134,11 +142,6 @@
   <div id="mainApp" style="display:none;">
     <header>
       <div class="logo-banner-wrap">
-
-        <!-- ========================================== -->
-        <!-- ZDE VLOŽTE ODKAZ NA VAŠE OFICIÁLNÍ LOGO    -->
-        <!-- ========================================== -->
-        <img src="logo.png" alt="TSO Bolech" class="brand-logo" id="mainLogo">
 
         <!-- Tlačítko pro přepínání režimů -->
         <button class="theme-toggle" onclick="toggleTheme()">
