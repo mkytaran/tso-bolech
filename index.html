@@ -5,19 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TSO Bolech</title>
 
+  <!-- Nastavení pro samostatnou aplikaci (bez pruhů prohlížeče) -->
+  <meta name="theme-color" content="#052634">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Bolech">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <!-- Miniaturní manifest pro Android přímo v kódu -->
+  <link rel="manifest" href='data:application/manifest+json,{"name":"TSO Bolech","short_name":"Bolech","display":"standalone","background_color":"%23052634","theme_color":"%23052634"}'>
+
   <link rel="apple-touch-icon" sizes="180x180" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Ccircle cx='60' cy='60' r='60' fill='%231565c0'/%3E%3Cpath d='M78 24v50a14 14 0 1 1-10-13.4V42L46 48v44a14 14 0 1 1-10-13.4V34a4 4 0 0 1 3-4l35-8a4 4 0 0 1 4 4z' fill='%23fff'/%3E%3C/svg%3E">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Ccircle cx='60' cy='60' r='60' fill='%231565c0'/%3E%3Cpath d='M78 24v50a14 14 0 1 1-10-13.4V42L46 48v44a14 14 0 1 1-10-13.4V34a4 4 0 0 1 3-4l35-8a4 4 0 0 1 4 4z' fill='%23fff'/%3E%3C/svg%3E">
 
   <style>
-    /* CSS PROMĚNNÉ PRO MODERNÍ SVĚTLÝ REŽIM */
+    /* CSS PROMĚNNÉ PRO SVĚTLÝ REŽIM (inspirováno oponou) */
     :root {
-      --bg: #f3f4f6;
+      --bg: #f0f4f6;
       --surface: #ffffff;
-      --text: #1f2937;
-      --text-muted: #6b7280;
-      --border: #e5e7eb;
-      --primary: #1e3a8a; /* Oficiální tmavší modrá */
-      --primary-light: #3b82f6;
+      --text: #031720;
+      --text-muted: #4a6773;
+      --border: #cbd5e1;
+      --primary: #052634;
+      --primary-light: #0a4b66;
       --success: #16a34a;
       --success-bg: #dcfce7;
       --danger: #dc2626;
@@ -25,41 +35,38 @@
       --warning-bg: #fef3c7;
       --warning-text: #92400e;
       --radius: 16px;
-      --shadow: 0 4px 12px rgba(0,0,0,0.06);
+      --shadow: 0 4px 12px rgba(5, 38, 52, 0.08);
     }
 
     /* CSS PROMĚNNÉ PRO TMAVÝ REŽIM */
     .dark-mode {
-      --bg: #0f172a;
-      --surface: #1e293b;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --border: #334155;
-      --primary: #1e3a8a; /* Záhlaví zůstává tmavé */
-      --primary-light: #60a5fa;
+      --bg: #010c11;
+      --surface: #031a24;
+      --text: #e2e8f0;
+      --text-muted: #84a1ae;
+      --border: #0a3a4f;
+      --primary: #052634;
+      --primary-light: #38a0c2;
       --success: #22c55e;
-      --success-bg: #14532d;
+      --success-bg: #0d3b1f;
       --danger: #ef4444;
-      --danger-bg: #7f1d1d;
-      --warning-bg: #78350f;
+      --danger-bg: #5c1111;
+      --warning-bg: #522406;
       --warning-text: #fde68a;
-      --shadow: 0 4px 12px rgba(0,0,0,0.3);
+      --shadow: 0 4px 12px rgba(0,0,0,0.5);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
 
-    /* Vylepšená čitelnost a typografie */
     body { background: var(--bg); color: var(--text); padding-bottom: 100px; font-size: 17px; line-height: 1.6; -webkit-tap-highlight-color: transparent; transition: background-color 0.3s, color 0.3s; }
-
     input, select, textarea { background: var(--surface); color: var(--text); border: 1px solid var(--border); font-size: 17px; padding: 12px; border-radius: 8px; width: 100%; outline: none; transition: border-color 0.2s; }
     input:focus, select:focus, textarea:focus { border-color: var(--primary-light); }
 
-    /* Záhlaví s barvou vytaženou z opony (tmavá petrolejová) */
+    /* ZÁHLAVÍ S OPONOU (odroluje s obsahem) */
     header { background: #052634; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
 
     .logo-banner-wrap {
       width: 100%;
-      /* Dynamická výška: na mobilu min. 120px, na PC roste podle šířky okna (až 250px) */
       min-height: clamp(120px, 18vw, 250px);
       background-image: url('zahlavi.png');
       background-size: cover;
@@ -71,50 +78,43 @@
       position: relative;
     }
 
-    .theme-toggle { position: absolute; right: 16px; background: rgba(255,255,255,0.15); border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; transition: background 0.2s; }
-    .theme-toggle:hover { background: rgba(255,255,255,0.25); }
+    .theme-toggle { position: absolute; right: 16px; top: 16px; background: rgba(0,0,0,0.3); border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; transition: background 0.2s; }
+    .theme-toggle:hover { background: rgba(0,0,0,0.5); }
 
-    .header-subbar {
-      background: #052634; /* Stejná barva jako opona */
-      padding: 10px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-top: 1px solid rgba(255,255,255,0.08);
-    }
+    .header-subbar { background: #052634; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.08); }
     .header-subbar span { color: rgba(255,255,255,0.9); font-size: 14px; font-weight: 600; letter-spacing: 0.5px; }
     .user-pill { font-size: 14px; background: rgba(255,255,255,0.2); color: #ffffff; padding: 6px 14px; border-radius: 20px; font-weight: 600; cursor: pointer; }
 
     .container { padding: 16px; max-width: 640px; margin: 0 auto; }
 
-    /* Moderní karty */
+    /* KARTY A BARVY AKCÍ */
     .card { background: var(--surface); border-radius: var(--radius); margin-bottom: 16px; box-shadow: var(--shadow); border: 1px solid var(--border); overflow: hidden; transition: background-color 0.3s, border-color 0.3s; }
     .card-top-bar { padding: 12px 20px; font-size: 15px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
 
-    .bar-koncert { background: var(--primary); color: #ffffff; }
-    .bar-generalka { background: #5b21b6; color: #ffffff; }
-    .bar-zkouska { background: #bae6fd; color: #0369a1; }
-    .dark-mode .bar-zkouska { background: #075985; color: #e0f2fe; }
+    .bar-koncert { background: var(--primary); color: #ffffff; border-bottom: 3px solid #021118; }
+    .dark-mode .bar-koncert { background: #0a4b66; color: #ffffff; border-bottom: 3px solid #052634; }
+
+    .bar-generalka { background: #581c87; color: #ffffff; border-bottom: 3px solid #3b0764; }
+    .dark-mode .bar-generalka { background: #4c1d95; color: #ffffff; border-bottom: 3px solid #2e1065; }
+
+    .bar-zkouska { background: #e0f2fe; color: #0369a1; border-bottom: 3px solid #bae6fd; }
+    .dark-mode .bar-zkouska { background: #164e63; color: #cffafe; border-bottom: 3px solid #083344; }
 
     .card-body { padding: 20px; }
     .card-title-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
     .card-title { font-size: 22px; font-weight: 800; line-height: 1.3; color: var(--text); }
-
-    /* Vektorová tužka (guma vpravo nahoře, špička vlevo dole) */
     .edit-btn { background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px; display: flex; align-items: center; justify-content: center; border-radius: 6px; transition: color 0.2s, background 0.2s; }
     .edit-btn:hover { background: var(--border); color: var(--text); }
     .edit-btn svg { width: 22px; height: 22px; }
 
     .btn { display: inline-flex; justify-content: center; align-items: center; width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 10px; font-size: 17px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
     .btn:active { opacity: 0.8; }
-
     .deadline-box { margin: 16px 0; padding: 12px 16px; background: var(--warning-bg); color: var(--warning-text); border-left: 4px solid var(--warning-text); border-radius: 6px; font-size: 16px; font-weight: 600; }
 
     .att-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
     .btn-att { padding: 14px 10px; border: 2px solid var(--border); border-radius: 10px; background: transparent; color: var(--text); font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
     .btn-att.selected-ano { background: var(--success-bg); color: var(--success); border-color: var(--success); }
     .btn-att.selected-ne { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
-
     .duvod-box { margin-top: 12px; padding: 16px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; }
 
     .roster-toggle { margin-top: 16px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px; cursor: pointer; width: 100%; font-weight: 600; display: flex; justify-content: space-between; color: var(--text); font-size: 16px; }
@@ -123,12 +123,10 @@
     .roster-section-title { font-size: 14px; font-weight: 700; color: var(--primary-light); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;}
     .roster-members { font-size: 17px; margin-bottom: 4px; color: var(--text); padding-left: 8px; border-left: 2px solid var(--border); }
 
-    /* Navigace */
     nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); display: flex; justify-content: space-around; border-top: 1px solid var(--border); padding: 12px 0 24px 0; z-index: 100; }
     .nav-btn { background: none; border: none; font-size: 16px; color: var(--text-muted); cursor: pointer; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 4px; }
     .nav-btn.active { color: var(--primary-light); }
 
-    /* Modální okno */
     .modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.75); display:flex; justify-content:center; align-items:center; z-index:1000; padding:16px; backdrop-filter: blur(4px); }
     .modal-box { background:var(--surface); padding:24px; border-radius:var(--radius); width:100%; max-width:500px; max-height:90vh; overflow-y:auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); }
     .modal-box label { display: block; font-size: 15px; font-weight: 600; margin-bottom: 6px; color: var(--text-muted); margin-top: 12px; }
