@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <!-- Pozadí v barvě opony -->
+  <rect width="120" height="120" rx="24" fill="#052634"/>
+  
+  <!-- Ikona dvojité noty -->
+  <path d="M78 24v50a14 14 0 1 1-10-13.4V42L46 48v44a14 14 0 1 1-10-13.4V34a4 4 0 0 1 3-4l35-8a4 4 0 0 1 4 4z" fill="#ffffff"/>
+</svg>
