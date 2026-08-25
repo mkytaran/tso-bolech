@@ -99,7 +99,7 @@ header { background: #052634; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
 .dark-mode .bar-oznameni { background: rgba(217, 119, 6, 0.2); color: #fde68a; border-bottom: 2px solid #92400e; }
 .card-oznameni { border-left: 4px solid #d97706; background: rgba(254, 243, 199, 0.3); }
 .dark-mode .card-oznameni { background: transparent; }
-.oznameni-text { font-size: 17px; margin-top: 8px; line-height: 1.5; white-space: pre-wrap;}
+.oznameni-text { font-size: 17px; margin-top: 8px; line-height: 1.5; white-space: pre-wrap;} 
 
 /* OBSAH KARET A TLAČÍTKA */
 .card-body { padding: 20px; }
