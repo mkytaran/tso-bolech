@@ -90,32 +90,16 @@ header { background: #052634; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
 .bar-zkouska-dechy { background: #c99318; color: #ffffff; border-bottom: 3px solid #a16207; }
 .dark-mode .bar-zkouska-dechy { background: #a16207; color: #fef08a; border-bottom: 3px solid #713f12; }
 
-/* 5. Tutti zkouška (Širší pruhy: Smyčce + Dechy) */
-.bar-tutti { 
-  background: repeating-linear-gradient(
-    -45deg, 
-    #a15217, 
-    #a15217 30px, 
-    #c99318 30px, 
-    #c99318 60px
-  ); 
-  color: #ffffff; 
-  border-bottom: 3px solid #78350f; 
-  text-shadow: 0px 1px 4px rgba(0,0,0,0.6);
-}
+/* 5. Tutti zkouška (Jednolitá rubínová barva) */
+.bar-tutti { background: #881337; color: #ffffff; border-bottom: 3px solid #4c0519; }
+.dark-mode .bar-tutti { background: #4c0519; color: #fecdd3; border-bottom: 3px solid #22030b; }
 
-.dark-mode .bar-tutti { 
-  background: repeating-linear-gradient(
-    -45deg, 
-    #78350f, 
-    #78350f 30px, 
-    #a16207 30px, 
-    #a16207 60px
-  ); 
-  color: #ffffff; 
-  border-bottom: 3px solid #451a03; 
-  text-shadow: 0px 1px 4px rgba(0,0,0,0.9);
-}
+/* 6. Oznámení (Informační panel nahoře) */
+.bar-oznameni { background: var(--warning-bg); color: var(--warning-text); border-bottom: 2px solid #d97706; }
+.dark-mode .bar-oznameni { background: rgba(217, 119, 6, 0.2); color: #fde68a; border-bottom: 2px solid #92400e; }
+.card-oznameni { border-left: 4px solid #d97706; background: rgba(254, 243, 199, 0.3); }
+.dark-mode .card-oznameni { background: transparent; }
+.oznameni-text { font-size: 17px; margin-top: 8px; line-height: 1.5; white-space: pre-wrap;}
 
 /* OBSAH KARET A TLAČÍTKA */
 .card-body { padding: 20px; }
