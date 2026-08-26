@@ -128,7 +128,7 @@ function renderEvents() {
   const isVedení = userRole !== "" && userRole !== "-";
   
   if (isVedení) {
-    cont.innerHTML += `<button class="btn" style="background:var(--success); margin-bottom:16px;" onclick="openAkceForm()">➕ Přidat novou akci / oznámení</button>`;
+    cont.innerHTML += `<button class="btn" style="background:var(--success); margin-bottom:16px;" onclick="openAkceForm()">➕ Přidat novou akci / informaci</button>`;
   }
 
   // Rozdělení dat
@@ -168,7 +168,7 @@ function generateAkceHtml(akce, isVedení) {
 
   return `
     <div class="card">
-      <div class="card-top-bar ${barClass}"><span>${akce.typ}</span><span>📅 ${akce.datum}</span></div>
+      <div class="card-top-bar ${barClass}"><span>${akce.typ}</span><span>🗓️ ${akce.datum}</span></div>
       <div class="card-body">
         <div class="card-title-row"><div class="card-title">${akce.nazev}</div>${editBtn}</div>
         ${akce.misto ? `<p style="margin-bottom:6px;">📍 ${akce.misto}</p>` : ''}
@@ -194,15 +194,24 @@ function generateAkceHtml(akce, isVedení) {
 // Generování HTML pro oznámení (žádná účast, jiný vzhled)
 function generateOznameniHtml(akce, isVedení, isArchiv = false) {
   let editBtn = isVedení ? `<button class="edit-btn" onclick='openAkceForm(${JSON.stringify(akce).replace(/'/g, "&#39;")})'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>` : "";
-  let archivovatBtn = (isVedení && !isArchiv) ? `<button class="btn" style="background:transparent; color:var(--text-muted); border:1px solid var(--border); padding:8px; margin-top:16px; font-size:14px;" onclick="archivovatOznameni('${akce.id}')">🗃️ Přesunout do infoarchivu</button>` : "";
+  
+  // Rozhodování o zobrazeném tlačítku (Archivovat vs. Obnovit)
+  let akceBtn = "";
+  if (isVedení) {
+    if (!isArchiv) {
+      akceBtn = `<button class="btn" style="background:transparent; color:var(--text-muted); border:1px solid var(--border); padding:8px; margin-top:16px; font-size:14px;" onclick="archivovatOznameni('${akce.id}')">🗃️ Přesunout do infoarchivu</button>`;
+    } else {
+      akceBtn = `<button class="btn" style="background:transparent; color:var(--primary-light); border:1px solid var(--primary-light); padding:8px; margin-top:16px; font-size:14px;" onclick="obnovitOznameni('${akce.id}')">↩️ Vrátit zpět na hlavní stránku</button>`;
+    }
+  }
   
   return `
     <div class="card card-oznameni">
-      <div class="card-top-bar bar-oznameni"><span>ℹ️ Informace</span><span>📅 ${akce.datum}</span></div>
+      <div class="card-top-bar bar-oznameni"><span>💡 Informace</span><span>🗓️ ${akce.datum}</span></div>
       <div class="card-body" style="padding-top:12px;">
         <div class="card-title-row" style="margin-bottom:4px;"><div class="card-title" style="font-size:20px;">${akce.nazev}</div>${editBtn}</div>
         <div class="oznameni-text">${akce.poznamka}</div>
-        ${archivovatBtn}
+        ${akceBtn}
       </div>
     </div>`;
 }
@@ -217,6 +226,16 @@ function archivovatOznameni(akceId) {
       if(res.success) { localStorage.setItem("bolech_data_cache", JSON.stringify(appData)); renderEvents(); }
     });
   }
+}
+
+// NOVÉ: Skript pro vrácení z archivu zpět
+function obnovitOznameni(akceId) {
+  const akce = appData.akce.find(a => String(a.id) === String(akceId));
+  if(!akce) return;
+  akce.typ = 'Oznámení'; // Změní typ zpět na aktivní
+  runGoogleScript("saveAkce", akce).then(res => {
+    if(res.success) { localStorage.setItem("bolech_data_cache", JSON.stringify(appData)); renderEvents(); }
+  });
 }
 
 // --- Následují existující funkce beze změny ---
@@ -269,14 +288,41 @@ function saveDuvod(id, datum, btn) {
   });
 }
 
+// --- POMOCNÉ FUNKCE PRO DATUM ---
+function formatDateForInput(dateStr) {
+  if (!dateStr) return "";
+  const parts = String(dateStr).trim().split('.');
+  if (parts.length === 3) {
+    const d = parts[0].trim().padStart(2, '0');
+    const m = parts[1].trim().padStart(2, '0');
+    const y = parts[2].trim();
+    return `${y}-${m}-${d}`;
+  }
+  return dateStr;
+}
+
+function formatDateForSave(isoDate) {
+  if (!isoDate) return "";
+  const parts = String(isoDate).split('-');
+  if (parts.length === 3) {
+    return `${parseInt(parts[2], 10)}. ${parseInt(parts[1], 10)}. ${parts[0]}`;
+  }
+  return isoDate;
+}
+
+// --- ÚPRAVA FORMULÁŘE ---
+// --- ÚPRAVA FORMULÁŘE ---
 function openAkceForm(akce = null) {
   const isEdit = akce !== null;
   const selectDisabledAttr = isEdit ? 'disabled style="background: var(--bg); opacity: 0.8;"' : '';
+  
+  // Převedeme datum z tabulky do formátu pro HTML kalendář
+  const formDateValue = formatDateForInput(akce?.datum || '');
+
   const html = `
     <div id="akceModal" class="modal-overlay">
       <div class="modal-box">
-        <h3 style="margin-bottom:8px; font-size:24px;">${isEdit ? 'Úprava položky' : 'Nová položka'}</h3>
-        <p style="color:var(--text-muted); margin-bottom:20px; font-size:15px;">Vyplňte údaje, nepotřebná pole nechte prázdná.</p>
+        <h3 style="margin-bottom:16px; font-size:24px;">${isEdit ? 'Úprava položky' : 'Nová položka'}</h3>
         <form id="editAkceForm" onsubmit="submitAkceForm(event, '${isEdit ? escapeHtml(akce.id) : ''}')">
           
           <label>Typ:</label>
@@ -295,12 +341,12 @@ function openAkceForm(akce = null) {
 
           <div style="display:flex; gap:12px;">
             <div style="flex:1;">
-              <label>Datum (Zobrazí se v hlavičce):</label>
-              <input type="text" id="f_datum" value="${escapeHtml(akce?.datum||'')}" required class="modal-input">
+              <label>Datum:</label>
+              <input type="date" id="f_datum" value="${escapeHtml(formDateValue)}" required class="modal-input">
             </div>
             <div id="col_casOd" style="flex:1;">
               <label>Čas od:</label>
-              <input type="text" id="f_casOd" value="${escapeHtml(akce?.casOd||'')}" class="modal-input">
+              <input type="time" id="f_casOd" value="${escapeHtml(akce?.casOd||'')}" class="modal-input">
             </div>
           </div>
 
@@ -312,11 +358,11 @@ function openAkceForm(akce = null) {
           <div id="row_casy" style="display:flex; gap:12px;">
             <div style="flex:1;">
               <label>Čas srazu:</label>
-              <input type="text" id="f_casSrazu" value="${escapeHtml(akce?.casSrazu||'')}" class="modal-input">
+              <input type="time" id="f_casSrazu" value="${escapeHtml(akce?.casSrazu||'')}" class="modal-input">
             </div>
             <div id="col_generalka" style="flex:1;">
               <label>Čas generálky:</label>
-              <input type="text" id="f_zacatekGeneralky" value="${escapeHtml(akce?.zacatekGeneralky||'')}" class="modal-input">
+              <input type="time" id="f_zacatekGeneralky" value="${escapeHtml(akce?.zacatekGeneralky||'')}" class="modal-input">
             </div>
           </div>
 
@@ -371,7 +417,8 @@ function submitAkceForm(e, akceId) {
 
   const payload = {
     id: finalId, typ: typ, nazev: document.getElementById('f_nazev').value, 
-    datum: document.getElementById('f_datum').value, 
+    // Tady proběhne převod zpět na hezký český formát:
+    datum: formatDateForSave(document.getElementById('f_datum').value), 
     misto: jeOznameni ? "" : document.getElementById('f_misto').value,
     casOd: jeOznameni ? "" : document.getElementById('f_casOd').value,
     casSrazu: (jeZkouska || jeOznameni) ? "" : document.getElementById('f_casSrazu').value,
