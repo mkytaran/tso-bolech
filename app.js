@@ -65,14 +65,9 @@ function initApp() {
   document.getElementById("mainApp").style.display = "block";
   document.getElementById("userBadge").innerText = user.name;
   
-  // ZRYCHLENÍ: Okamžité načtení dat z mezipaměti (Cache)
   const cachedData = localStorage.getItem("bolech_data_cache");
-  if (cachedData) {
-    appData = JSON.parse(cachedData);
-    renderEvents();
-  }
+  if (cachedData) { appData = JSON.parse(cachedData); renderEvents(); }
 
-  // Následné tiché stažení čerstvých dat na pozadí
   runGoogleScript("getInitialData").then(d => { 
     if(d.akce) {
       appData = d; 
@@ -91,14 +86,15 @@ function parseDate(dateStr) {
 
 function escapeHtml(str) { return String(str||'').replace(/[&<>'"]/g, tag => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[tag])); }
 
+// --- NOVÝ GENERÁTOR ID (Sjednocené zk_ pro všechny zkoušky a info_ pro informace) ---
 function generovatIdAkce(typ) {
   let prefix = 'akce_';
-  if (typ === 'Koncert') prefix = 'kon_';
-  else if (typ.includes('Generálka')) prefix = 'gen_';
-  else if (typ === 'Tutti zkouška') prefix = 'tutti_';
-  else if (typ === 'Zkouška smyčců') prefix = 'zk_sm_';
-  else if (typ === 'Zkouška dechů') prefix = 'zk_dech_';
-  else if (typ.includes('Oznámení')) prefix = 'info_';
+  const t = String(typ).toLowerCase();
+  
+  if (t.includes('koncert')) prefix = 'kon_';
+  else if (t.includes('generálka')) prefix = 'gen_';
+  else if (t.includes('zkouška') || t.includes('zkouska')) prefix = 'zk_'; 
+  else if (t.includes('informace') || t.includes('oznámení')) prefix = 'info_';
 
   let max = 0;
   appData.akce.forEach(a => {
@@ -114,7 +110,9 @@ function isEventVisibleForUser(akce) {
   const typ = String(akce.typ || "").trim();
   const userSecL = String(user.section || "").toLowerCase();
   const userRole = String(user.role || "").trim().toLowerCase();
-  if (typ.includes("Oznámení")) return true; // Oznámení vidí všichni
+  
+  // Vidí oznámení/informace všichni
+  if (typ.includes("Oznámení") || typ.includes("Informace")) return true; 
   if (userRole !== "" && userRole !== "-") return true; 
   if (typ === "Zkouška smyčců") return SMYCKE_SECTIONS.some(s => userSecL.includes(s));
   if (typ === "Zkouška dechů") return DECHOVE_SECTIONS.some(s => userSecL.includes(s));
@@ -131,17 +129,13 @@ function renderEvents() {
     cont.innerHTML += `<button class="btn" style="background:var(--success); margin-bottom:16px;" onclick="openAkceForm()">➕ Přidat novou akci / informaci</button>`;
   }
 
-  // Rozdělení dat
   const vsechnyViditelne = appData.akce.filter(a => isEventVisibleForUser(a));
   
-  // 1. Oznámení (Aktivní) - nahoře
-  const aktivniOznameni = vsechnyViditelne.filter(a => a.typ === 'Oznámení').sort((a,b) => parseDate(b.datum) - parseDate(a.datum));
-  // 2. Akce (Koncerty, zkoušky)
-  const akceNorm = vsechnyViditelne.filter(a => a.typ !== 'Oznámení' && a.typ !== 'Oznámení (Archiv)').sort((a,b) => parseDate(b.datum) - parseDate(a.datum));
-  // 3. Archiv
-  const archiv = vsechnyViditelne.filter(a => a.typ === 'Oznámení (Archiv)').sort((a,b) => parseDate(b.datum) - parseDate(a.datum));
+  // Filtrování s podporou nového slova Informace i starého Oznámení
+  const aktivniOznameni = vsechnyViditelne.filter(a => a.typ === 'Oznámení' || a.typ === 'Informace').sort((a,b) => parseDate(b.datum) - parseDate(a.datum));
+  const akceNorm = vsechnyViditelne.filter(a => !a.typ.includes('Oznámení') && !a.typ.includes('Informace')).sort((a,b) => parseDate(b.datum) - parseDate(a.datum));
+  const archiv = vsechnyViditelne.filter(a => a.typ === 'Oznámení (Archiv)' || a.typ === 'Informace (Infoarchiv)').sort((a,b) => parseDate(b.datum) - parseDate(a.datum));
 
-  // Vykreslení Oznámení
   aktivniOznameni.forEach(a => cont.innerHTML += generateOznameniHtml(a, isVedení));
   
   if(akceNorm.length === 0 && aktivniOznameni.length === 0) {
@@ -150,12 +144,10 @@ function renderEvents() {
     akceNorm.forEach(a => cont.innerHTML += generateAkceHtml(a, isVedení));
   }
 
-  // Vykreslení archivu
   if(archiv.length === 0) archCont.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted);">Infoarchiv je prázdný.</div>`;
   else archiv.forEach(a => archCont.innerHTML += generateOznameniHtml(a, isVedení, true));
 }
 
-// Generování HTML pro zkoušky a koncerty
 function generateAkceHtml(akce, isVedení) {
   const myVote = (appData.ucast||[]).find(u => String(u.akceId) === String(akce.id) && u.jmeno === user.name);
   let barClass = 'bar-tutti';
@@ -191,11 +183,9 @@ function generateAkceHtml(akce, isVedení) {
     </div>`;
 }
 
-// Generování HTML pro oznámení (žádná účast, jiný vzhled)
 function generateOznameniHtml(akce, isVedení, isArchiv = false) {
   let editBtn = isVedení ? `<button class="edit-btn" onclick='openAkceForm(${JSON.stringify(akce).replace(/'/g, "&#39;")})'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>` : "";
   
-  // Rozhodování o zobrazeném tlačítku (Archivovat vs. Obnovit)
   let akceBtn = "";
   if (isVedení) {
     if (!isArchiv) {
@@ -216,29 +206,26 @@ function generateOznameniHtml(akce, isVedení, isArchiv = false) {
     </div>`;
 }
 
-// Skript pro odeslání do archivu (pouze změní typ)
 function archivovatOznameni(akceId) {
   if(confirm("Přesunout tuto informaci do infoarchivu? Zmizí z hlavní stránky.")) {
     const akce = appData.akce.find(a => String(a.id) === String(akceId));
     if(!akce) return;
-    akce.typ = 'Oznámení (Archiv)';
+    akce.typ = 'Informace (Infoarchiv)';
     runGoogleScript("saveAkce", akce).then(res => {
       if(res.success) { localStorage.setItem("bolech_data_cache", JSON.stringify(appData)); renderEvents(); }
     });
   }
 }
 
-// NOVÉ: Skript pro vrácení z archivu zpět
 function obnovitOznameni(akceId) {
   const akce = appData.akce.find(a => String(a.id) === String(akceId));
   if(!akce) return;
-  akce.typ = 'Oznámení'; // Změní typ zpět na aktivní
+  akce.typ = 'Informace';
   runGoogleScript("saveAkce", akce).then(res => {
     if(res.success) { localStorage.setItem("bolech_data_cache", JSON.stringify(appData)); renderEvents(); }
   });
 }
 
-// --- Následují existující funkce beze změny ---
 function generateRosterHtml(akceId) {
   const potvrdili = (appData.ucast || []).filter(u => String(u.akceId) === String(akceId) && u.stav === 'Ano');
   const grouped = {};
@@ -288,7 +275,6 @@ function saveDuvod(id, datum, btn) {
   });
 }
 
-// --- POMOCNÉ FUNKCE PRO DATUM ---
 function formatDateForInput(dateStr) {
   if (!dateStr) return "";
   const parts = String(dateStr).trim().split('.');
@@ -310,13 +296,9 @@ function formatDateForSave(isoDate) {
   return isoDate;
 }
 
-// --- ÚPRAVA FORMULÁŘE ---
-// --- ÚPRAVA FORMULÁŘE ---
 function openAkceForm(akce = null) {
   const isEdit = akce !== null;
   const selectDisabledAttr = isEdit ? 'disabled style="background: var(--bg); opacity: 0.8;"' : '';
-  
-  // Převedeme datum z tabulky do formátu pro HTML kalendář
   const formDateValue = formatDateForInput(akce?.datum || '');
 
   const html = `
@@ -332,8 +314,8 @@ function openAkceForm(akce = null) {
             <option value="Zkouška dechů" ${akce?.typ==='Zkouška dechů'?'selected':''}>Zkouška dechů</option>
             <option value="Generálka" ${akce?.typ==='Generálka'?'selected':''}>Generálka</option>
             <option value="Koncert" ${akce?.typ==='Koncert'?'selected':''}>Koncert</option>
-            <option value="Oznámení" ${akce?.typ==='Oznámení'?'selected':''}>Informace</option>
-            <option value="Oznámení (Archiv)" ${akce?.typ==='Oznámení (Archiv)'?'selected':''}>Informace (Infoarchiv)</option>
+            <option value="Informace" ${(akce?.typ==='Informace' || akce?.typ==='Oznámení') ? 'selected' : ''}>Informace</option>
+            <option value="Informace (Infoarchiv)" ${(akce?.typ==='Informace (Infoarchiv)' || akce?.typ==='Oznámení (Archiv)') ? 'selected' : ''}>Informace (Infoarchiv)</option>
           </select>
 
           <label>Název / Nadpis oznámení:</label>
@@ -395,10 +377,9 @@ function openAkceForm(akce = null) {
 
 function toggleAkceFields() {
   const typ = document.getElementById('f_typ').value;
-  const jeOznameni = typ.includes('Oznámení');
+  const jeOznameni = typ.includes('Oznámení') || typ.includes('Informace');
   const jeZkouska = typ.includes('zkouška') || typ.includes('Zkouška');
   
-  // Pokud je to oznámení, skryjeme úplně všechno kromě data, názvu a textu
   document.getElementById('row_misto').style.display = jeOznameni ? 'none' : 'block';
   document.getElementById('col_casOd').style.display = jeOznameni ? 'none' : 'block';
   document.getElementById('row_casy').style.display = (jeZkouska || jeOznameni) ? 'none' : 'flex';
@@ -411,13 +392,12 @@ function submitAkceForm(e, akceId) {
   document.getElementById('btnSaveModal').innerText = "Ukládám...";
   
   const typ = document.getElementById('f_typ').value;
-  const jeOznameni = typ.includes('Oznámení');
+  const jeOznameni = typ.includes('Oznámení') || typ.includes('Informace');
   const jeZkouska = typ.includes('zkouška') || typ.includes('Zkouška');
   const finalId = akceId || generovatIdAkce(typ);
 
   const payload = {
     id: finalId, typ: typ, nazev: document.getElementById('f_nazev').value, 
-    // Tady proběhne převod zpět na hezký český formát:
     datum: formatDateForSave(document.getElementById('f_datum').value), 
     misto: jeOznameni ? "" : document.getElementById('f_misto').value,
     casOd: jeOznameni ? "" : document.getElementById('f_casOd').value,
@@ -430,7 +410,6 @@ function submitAkceForm(e, akceId) {
   runGoogleScript("saveAkce", payload).then(res => {
     if (res.success) { 
       document.getElementById('akceModal').remove(); 
-      // Smazání cache donutí aplikaci stáhnout čerstvá data při restartu initApp
       localStorage.removeItem("bolech_data_cache");
       initApp(); 
     } 
@@ -454,16 +433,10 @@ function deleteAkcePrompt(akceId) {
 function switchTab(t, b) { 
   document.getElementById('tab-events').style.display = t==='events'?'block':'none'; 
   document.getElementById('tab-archive').style.display = t==='archive'?'block':'none'; 
-  
   document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active')); 
   b.classList.add('active'); 
-  
-  // Přidá nebo odebere třídu pro jemné podbarvení Infoarchivu
-  if (t === 'archive') {
-    document.body.classList.add('archive-open');
-  } else {
-    document.body.classList.remove('archive-open');
-  }
+  if (t === 'archive') document.body.classList.add('archive-open');
+  else document.body.classList.remove('archive-open');
 }
 
 function confirmLogout() { 
