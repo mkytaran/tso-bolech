@@ -454,8 +454,16 @@ function deleteAkcePrompt(akceId) {
 function switchTab(t, b) { 
   document.getElementById('tab-events').style.display = t==='events'?'block':'none'; 
   document.getElementById('tab-archive').style.display = t==='archive'?'block':'none'; 
+  
   document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active')); 
   b.classList.add('active'); 
+  
+  // Přidá nebo odebere třídu pro jemné podbarvení Infoarchivu
+  if (t === 'archive') {
+    document.body.classList.add('archive-open');
+  } else {
+    document.body.classList.remove('archive-open');
+  }
 }
 
 function confirmLogout() { 

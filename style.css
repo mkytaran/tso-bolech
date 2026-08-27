@@ -138,3 +138,21 @@ nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface);
 .modal-box { background:var(--surface); padding:24px; border-radius:var(--radius); width:100%; max-width:500px; max-height:90vh; overflow-y:auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); }
 .modal-box label { display: block; font-size: 15px; font-weight: 600; margin-bottom: 6px; color: var(--text-muted); margin-top: 12px; }
 .modal-input { margin-bottom: 0; }
+
+/* ===================================================== */
+/* JEMNÉ BAREVNÉ ODLIŠENÍ INFOARCHIVU                    */
+/* ===================================================== */
+body.archive-open {
+  background-color: #fdf8f4; /* Lehký teplý papírový nádech */
+}
+body.dark-mode.archive-open {
+  background-color: #120d0a; /* Velmi tmavá, hřejivější barva místo modré */
+}
+
+/* Změna barvy aktivního tlačítka v dolní navigaci na barvu oznámení */
+body.archive-open .nav-btn.active {
+  color: #d97706; 
+}
+body.dark-mode.archive-open .nav-btn.active {
+  color: #fde68a;
+}
