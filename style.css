@@ -161,22 +161,20 @@ body.dark-mode.archive-open .nav-btn.active {
 /* MAXIMALIZACE MÍSTA NA MOBILU (Kompaktní karty)        */
 /* ===================================================== */
 
-/* Zmenšení "neviditelných" okrajů celé aplikace */
-#mainApp {
-  padding: 10px 4px !important; 
-}
-
 .card {
-  margin: 12px 0; /* Nulový horizontální okraj, karta se plně roztáhne */
+  /* Záporný okraj natáhne kartu o 12 pixelů do stran, čímž vyruší původní neviditelnou mezeru */
+  margin: 12px -12px; 
+  border-radius: 6px; /* U krajů displeje vypadají lépe méně kulaté rohy */
 }
 
 .card-body {
-  padding: 12px 10px; /* Zlatá střední cesta pro pohodlné čtení textu u kraje */
+  padding: 12px 14px; /* Zlatá střední cesta pro čitelnost u okraje */
 }
 
 .card-top-bar {
-  padding: 6px 10px; /* Kompromis: text dýchá, ale pruh nekrade zbytečné místo */
+  padding: 6px 14px; /* Kompromis výšky pruhu s dostatkem místa pro text */
 }
+
 
 
  
