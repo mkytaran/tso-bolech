@@ -132,26 +132,26 @@ function formatPoznamkaHtml(rawNote) {
   if(mainNote) html += `<div class="oznameni-text" style="margin-top:12px;">${mainNote}</div>`;
   
   if (sData) {
-    html += `<div style="margin-top:12px; background:var(--bg); border-radius:8px; padding:8px; border: 1px solid var(--border);">
-        <h4 style="margin-top:0; margin-bottom:8px; font-size:14px; color:var(--text);">⏱️ Časový plán</h4>
-        <table style="width:100%; border-collapse: collapse; font-size:14px;">`;
+    html += `<div style="margin-top:12px; background:var(--bg); border-radius:8px; padding:10px; border: 1px solid var(--border);">
+        <h4 style="margin-top:0; margin-bottom:8px; font-size:16px; color:var(--text);">⏱️ Časový plán</h4>
+        <table style="width:100%; border-collapse: collapse; font-size:15px;">`;
     sData.split('\n').forEach((line, index, arr) => {
         let p = line.split('|');
         let time = escapeHtml(p[0]||'').trim();
-        // Zpětný převod odřádkování pro HTML
         let desc = escapeHtml(p[1]||'').trim().replace(/\[BR\]/g, '<br>');
         let borderObj = (index === arr.length - 1) ? 'none' : '1px solid var(--border)';
         
-        // Přidáno vertical-align: top a menší padding
+        // Zarovnání času doprava (text-align: right) a optické doladění mezer
         html += `<tr>
-            <td style="padding:4px 8px 4px 0; vertical-align:top; border-bottom:${borderObj}; white-space:nowrap; font-weight:bold; width:1%; color:var(--text);">${time}</td>
-            <td style="padding:4px 0; vertical-align:top; border-bottom:${borderObj}; color:var(--text);">${desc}</td>
+            <td style="padding:6px 12px 6px 0; vertical-align:top; text-align:right; border-bottom:${borderObj}; white-space:nowrap; font-weight:bold; width:1%; color:var(--text);">${time}</td>
+            <td style="padding:6px 0; vertical-align:top; border-bottom:${borderObj}; color:var(--text);">${desc}</td>
         </tr>`;
     });
     html += `</table></div>`;
   }
   return html;
 }
+
 
 function renderEvents() {
   const cont = document.getElementById("eventsContainer"); cont.innerHTML = "";
