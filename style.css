@@ -158,21 +158,20 @@ body.dark-mode.archive-open .nav-btn.active {
 }
 
 /* ===================================================== */
-/* MAXIMALIZACE MÍSTA NA MOBILU (Kompaktní karty)        */
+/* MAXIMALIZACE MÍSTA NA MOBILU (Vyladěný kompromis)     */
 /* ===================================================== */
 
 .card {
-  /* Záporný okraj natáhne kartu o 12 pixelů do stran, čímž vyruší původní neviditelnou mezeru */
-  margin: 12px -12px; 
-  border-radius: 6px; /* U krajů displeje vypadají lépe méně kulaté rohy */
+  margin: 12px -4px; /* Karta je o něco širší než v základu, ale nelepí se na hrany telefonu */
+  border-radius: 12px; /* Vrácení hezkých, výraznějších kulatých rohů */
 }
 
 .card-body {
-  padding: 12px 14px; /* Zlatá střední cesta pro čitelnost u okraje */
+  padding: 14px 16px; /* Příjemný prostor pro text, aby nebyl nalepený na kraji karty */
 }
 
 .card-top-bar {
-  padding: 6px 14px; /* Kompromis výšky pruhu s dostatkem místa pro text */
+  padding: 8px 16px; /* Ideální kompromis – pruh není ani zbytečně tlustý, ani příliš úzký */
 }
 
 
