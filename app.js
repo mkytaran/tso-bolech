@@ -2,7 +2,8 @@
 // VAŠE URL ADRESA Z GOOGLE APPS SCRIPTU
 // =========================================================================
 const API_URL = "https://script.google.com/macros/s/AKfycbxna8cDlco_UY1LI80oTv1FGVdHXi2_aHZcLR0zf9jY2UKDPJU6P__YufBFXTtd5WPHCw/exec";
- 
+
+
 let user = null; 
 let appData = { akce: [], noty: [], ucast: [] };
 
@@ -86,7 +87,6 @@ function parseDate(dateStr) {
 
 function escapeHtml(str) { return String(str||'').replace(/[&<>'"]/g, tag => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[tag])); }
 
-// --- NOVÝ GENERÁTOR ID (Sjednocené zk_ pro všechny zkoušky a info_ pro informace) ---
 function generovatIdAkce(typ) {
   let prefix = 'akce_';
   const t = String(typ).toLowerCase();
@@ -111,12 +111,44 @@ function isEventVisibleForUser(akce) {
   const userSecL = String(user.section || "").toLowerCase();
   const userRole = String(user.role || "").trim().toLowerCase();
   
-  // Vidí oznámení/informace všichni
   if (typ.includes("Oznámení") || typ.includes("Informace")) return true; 
   if (userRole !== "" && userRole !== "-") return true; 
   if (typ === "Zkouška smyčců") return SMYCKE_SECTIONS.some(s => userSecL.includes(s));
   if (typ === "Zkouška dechů") return DECHOVE_SECTIONS.some(s => userSecL.includes(s));
   return true; 
+}
+
+// --- VYKRESLOVÁNÍ POZNÁMKY S HARMONOGRAMEM ---
+function formatPoznamkaHtml(rawNote) {
+  if (!rawNote) return '';
+  if (!rawNote.includes('===HARMONOGRAM===')) {
+    return `<div class="oznameni-text" style="margin-top:12px;">${escapeHtml(rawNote)}</div>`;
+  }
+  
+  let parts = rawNote.split('===HARMONOGRAM===');
+  let mainNote = escapeHtml(parts[0].trim());
+  let sData = parts[1].trim();
+  let html = '';
+  
+  if(mainNote) html += `<div class="oznameni-text" style="margin-top:12px;">${mainNote}</div>`;
+  
+  if (sData) {
+    html += `<div style="margin-top:16px; background:var(--bg); border-radius:8px; padding:12px; border: 1px solid var(--border);">
+        <h4 style="margin-top:0; margin-bottom:12px; font-size:15px; color:var(--text);">⏱️ Časový plán</h4>
+        <table style="width:100%; border-collapse: collapse; font-size:15px;">`;
+    sData.split('\n').forEach((line, index, arr) => {
+        let p = line.split('|');
+        let time = escapeHtml(p[0]||'').trim();
+        let desc = escapeHtml(p[1]||'').trim();
+        let borderObj = (index === arr.length - 1) ? 'none' : '1px solid var(--border)';
+        html += `<tr>
+            <td style="padding:8px 12px 8px 0; border-bottom:${borderObj}; white-space:nowrap; font-weight:bold; width:1%; color:var(--text);">${time}</td>
+            <td style="padding:8px 0; border-bottom:${borderObj}; color:var(--text);">${desc}</td>
+        </tr>`;
+    });
+    html += `</table></div>`;
+  }
+  return html;
 }
 
 function renderEvents() {
@@ -131,7 +163,6 @@ function renderEvents() {
 
   const vsechnyViditelne = appData.akce.filter(a => isEventVisibleForUser(a));
   
-  // Filtrování s podporou nového slova Informace i starého Oznámení
   const aktivniOznameni = vsechnyViditelne.filter(a => a.typ === 'Oznámení' || a.typ === 'Informace').sort((a,b) => parseDate(b.datum) - parseDate(a.datum));
   const akceNorm = vsechnyViditelne.filter(a => !a.typ.includes('Oznámení') && !a.typ.includes('Informace')).sort((a,b) => parseDate(b.datum) - parseDate(a.datum));
   const archiv = vsechnyViditelne.filter(a => a.typ === 'Oznámení (Archiv)' || a.typ === 'Informace (Infoarchiv)').sort((a,b) => parseDate(b.datum) - parseDate(a.datum));
@@ -169,8 +200,8 @@ function generateAkceHtml(akce, isVedení) {
         ${akce.zacatekGeneralky ? `<p style="margin-bottom:6px;">🎻 Generálka: <strong>${akce.zacatekGeneralky}</strong></p>` : ''}
         ${akce.damy ? `<p style="margin-bottom:6px;">👗 Dámy: ${akce.damy}</p>` : ''}
         ${akce.pani ? `<p style="margin-bottom:6px;">🤵 Páni: ${akce.pani}</p>` : ''}
-        ${akce.poznamka ? `<p style="margin-top:12px; color:var(--text-muted);"><strong>Pozn.:</strong> ${akce.poznamka}</p>` : ''}
-        <div class="att-buttons">
+        ${formatPoznamkaHtml(akce.poznamka)}
+        <div class="att-buttons" style="margin-top:16px;">
           <button class="btn-att ${myVote?.stav==='Ano'?'selected-ano':''}" onclick="submitUcast('${akce.id}','${akce.datum}','Ano',this)">✓ Účastním se</button>
           <button class="btn-att ${myVote?.stav==='Ne'?'selected-ne':''}" onclick="submitUcast('${akce.id}','${akce.datum}','Ne',this)">✕ Neúčastním</button>
         </div>
@@ -200,7 +231,7 @@ function generateOznameniHtml(akce, isVedení, isArchiv = false) {
       <div class="card-top-bar bar-oznameni"><span>💡 Informace</span><span>🗓️ ${akce.datum}</span></div>
       <div class="card-body" style="padding-top:12px;">
         <div class="card-title-row" style="margin-bottom:4px;"><div class="card-title" style="font-size:20px;">${akce.nazev}</div>${editBtn}</div>
-        <div class="oznameni-text">${akce.poznamka}</div>
+        ${formatPoznamkaHtml(akce.poznamka)}
         ${akceBtn}
       </div>
     </div>`;
@@ -296,14 +327,45 @@ function formatDateForSave(isoDate) {
   return isoDate;
 }
 
+// --- PŘIDÁVÁNÍ ŘÁDKŮ HARMONOGRAMU ---
+function addScheduleRow(time = '', desc = '') {
+  const cont = document.getElementById('schedule-rows');
+  if (!cont) return;
+  const div = document.createElement('div');
+  div.style = 'display:flex; gap:8px; margin-bottom:12px; align-items:center;';
+  div.innerHTML = `
+    <input type="text" class="modal-input sched-time" placeholder="např. 10:00 - 12:30" style="flex:1;" value="${escapeHtml(time)}">
+    <input type="text" class="modal-input sched-desc" placeholder="Popis programu (např. Zkouška)" style="flex:2;" value="${escapeHtml(desc)}">
+    <button type="button" class="btn" style="background:transparent; color:var(--danger); border:1px solid var(--danger); padding:10px 14px;" onclick="this.parentElement.remove()">✕</button>
+  `;
+  cont.appendChild(div);
+}
+
 function openAkceForm(akce = null) {
   const isEdit = akce !== null;
   const selectDisabledAttr = isEdit ? 'disabled style="background: var(--bg); opacity: 0.8;"' : '';
   const formDateValue = formatDateForInput(akce?.datum || '');
+  
+  // Rozšifrování dat pro editaci (oddělení textu a harmonogramu)
+  let rawNote = akce?.poznamka || '';
+  let mainNote = rawNote;
+  let scheduleLines = [];
+  
+  if (rawNote.includes('===HARMONOGRAM===')) {
+    let parts = rawNote.split('===HARMONOGRAM===');
+    mainNote = parts[0].trim();
+    let sData = parts[1].trim();
+    if (sData) {
+      scheduleLines = sData.split('\n').map(line => {
+        let p = line.split('|');
+        return { time: p[0]||'', desc: p[1]||'' };
+      });
+    }
+  }
 
   const html = `
     <div id="akceModal" class="modal-overlay">
-      <div class="modal-box">
+      <div class="modal-box" style="max-height: 90vh; overflow-y: auto;">
         <h3 style="margin-bottom:16px; font-size:24px;">${isEdit ? 'Úprava položky' : 'Nová položka'}</h3>
         <form id="editAkceForm" onsubmit="submitAkceForm(event, '${isEdit ? escapeHtml(akce.id) : ''}')">
           
@@ -359,8 +421,17 @@ function openAkceForm(akce = null) {
             </div>
           </div>
 
-          <label>Poznámka / Text oznámení:</label>
-          <textarea id="f_poznamka" class="modal-input" style="min-height:100px;">${escapeHtml(akce?.poznamka||'')}</textarea>
+          <label>Hlavní text (Poznámka):</label>
+          <textarea id="f_poznamka" class="modal-input" style="min-height:160px; resize:vertical;">${escapeHtml(mainNote)}</textarea>
+
+          <!-- Sekce pro harmonogram -->
+          <div style="margin-top: 16px; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+              <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                  <span style="font-weight:bold; color:var(--text);">⏱️ Připojit časový plán</span>
+                  <button type="button" class="btn" style="padding:6px 12px; font-size:13px; background:var(--primary-light);" onclick="addScheduleRow()">➕ Přidat políčko</button>
+              </label>
+              <div id="schedule-rows"></div>
+          </div>
 
           <div style="display:flex; gap:12px; margin-top:24px; flex-wrap:wrap;">
             <button type="submit" id="btnSaveModal" class="btn" style="flex:1; min-width:120px;">Uložit</button>
@@ -373,6 +444,9 @@ function openAkceForm(akce = null) {
   `;
   document.body.insertAdjacentHTML('beforeend', html);
   toggleAkceFields(); 
+  
+  // Pokud už editujeme existující harmonogram, vložíme mu jeho řádky
+  scheduleLines.forEach(s => addScheduleRow(s.time, s.desc));
 }
 
 function toggleAkceFields() {
@@ -396,6 +470,23 @@ function submitAkceForm(e, akceId) {
   const jeZkouska = typ.includes('zkouška') || typ.includes('Zkouška');
   const finalId = akceId || generovatIdAkce(typ);
 
+  // Zpracování dat z harmonogramu zpět do textu
+  let finalPoznamka = document.getElementById('f_poznamka').value.trim();
+  const schedTimes = document.querySelectorAll('.sched-time');
+  const schedDescs = document.querySelectorAll('.sched-desc');
+  let schedText = "";
+  
+  for(let i = 0; i < schedTimes.length; i++) {
+    let t = schedTimes[i].value.trim();
+    let d = schedDescs[i].value.trim();
+    if(t || d) schedText += `\n${t}|${d}`;
+  }
+  
+  // Skryté uložení obou věcí do jednoho sloupce v Googlu
+  if (schedText !== "") {
+    finalPoznamka += `\n\n===HARMONOGRAM===${schedText}`;
+  }
+
   const payload = {
     id: finalId, typ: typ, nazev: document.getElementById('f_nazev').value, 
     datum: formatDateForSave(document.getElementById('f_datum').value), 
@@ -404,7 +495,7 @@ function submitAkceForm(e, akceId) {
     casSrazu: (jeZkouska || jeOznameni) ? "" : document.getElementById('f_casSrazu').value,
     zacatekGeneralky: typ !== 'Koncert' ? "" : document.getElementById('f_zacatekGeneralky').value,
     damy: typ !== 'Koncert' ? "" : document.getElementById('f_damy').value, pani: typ !== 'Koncert' ? "" : document.getElementById('f_pani').value,
-    poznamka: document.getElementById('f_poznamka').value
+    poznamka: finalPoznamka
   };
   
   runGoogleScript("saveAkce", payload).then(res => {
