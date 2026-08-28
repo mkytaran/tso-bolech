@@ -3,7 +3,6 @@
 // =========================================================================
 const API_URL = "https://script.google.com/macros/s/AKfycbxna8cDlco_UY1LI80oTv1FGVdHXi2_aHZcLR0zf9jY2UKDPJU6P__YufBFXTtd5WPHCw/exec";
 
-
 let user = null; 
 let appData = { akce: [], noty: [], ucast: [] };
 
@@ -133,17 +132,20 @@ function formatPoznamkaHtml(rawNote) {
   if(mainNote) html += `<div class="oznameni-text" style="margin-top:12px;">${mainNote}</div>`;
   
   if (sData) {
-    html += `<div style="margin-top:16px; background:var(--bg); border-radius:8px; padding:12px; border: 1px solid var(--border);">
-        <h4 style="margin-top:0; margin-bottom:12px; font-size:15px; color:var(--text);">⏱️ Časový plán</h4>
-        <table style="width:100%; border-collapse: collapse; font-size:15px;">`;
+    html += `<div style="margin-top:12px; background:var(--bg); border-radius:8px; padding:8px; border: 1px solid var(--border);">
+        <h4 style="margin-top:0; margin-bottom:8px; font-size:14px; color:var(--text);">⏱️ Časový plán</h4>
+        <table style="width:100%; border-collapse: collapse; font-size:14px;">`;
     sData.split('\n').forEach((line, index, arr) => {
         let p = line.split('|');
         let time = escapeHtml(p[0]||'').trim();
-        let desc = escapeHtml(p[1]||'').trim();
+        // Zpětný převod odřádkování pro HTML
+        let desc = escapeHtml(p[1]||'').trim().replace(/\[BR\]/g, '<br>');
         let borderObj = (index === arr.length - 1) ? 'none' : '1px solid var(--border)';
+        
+        // Přidáno vertical-align: top a menší padding
         html += `<tr>
-            <td style="padding:8px 12px 8px 0; border-bottom:${borderObj}; white-space:nowrap; font-weight:bold; width:1%; color:var(--text);">${time}</td>
-            <td style="padding:8px 0; border-bottom:${borderObj}; color:var(--text);">${desc}</td>
+            <td style="padding:4px 8px 4px 0; vertical-align:top; border-bottom:${borderObj}; white-space:nowrap; font-weight:bold; width:1%; color:var(--text);">${time}</td>
+            <td style="padding:4px 0; vertical-align:top; border-bottom:${borderObj}; color:var(--text);">${desc}</td>
         </tr>`;
     });
     html += `</table></div>`;
@@ -332,19 +334,18 @@ function addScheduleRow(time = '', desc = '') {
   const cont = document.getElementById('schedule-rows');
   if (!cont) return;
   const div = document.createElement('div');
-  div.style = 'border: 1px dashed var(--border); padding: 12px; margin-bottom: 12px; border-radius: 6px; position: relative;';
+  div.style = 'border: 1px dashed var(--border); padding: 8px; margin-bottom: 8px; border-radius: 6px; position: relative;';
   div.innerHTML = `
-    <button type="button" style="position: absolute; top: 12px; right: 12px; background: transparent; border: 1px solid var(--danger); border-radius: 4px; color: var(--danger); font-size: 13px; padding: 4px 8px;" onclick="this.parentElement.remove()">✕ Smazat</button>
-    <div style="margin-top: 24px;">
-        <label style="font-size: 13px; display: block; margin-bottom: 4px;">Čas (od - do):</label>
-        <input type="text" class="modal-input sched-time" placeholder="např. 10:00 - 12:30" value="${escapeHtml(time)}" style="margin-bottom: 12px;">
-        <label style="font-size: 13px; display: block; margin-bottom: 4px;">Popis programu:</label>
-        <input type="text" class="modal-input sched-desc" placeholder="např. Dopolední zkouška" value="${escapeHtml(desc)}">
+    <button type="button" style="position: absolute; top: 8px; right: 8px; background: transparent; border: 1px solid var(--danger); border-radius: 4px; color: var(--danger); font-size: 12px; padding: 2px 6px;" onclick="this.parentElement.remove()">✕</button>
+    <div style="margin-top: 20px;">
+        <label style="font-size: 12px; display: block; margin-bottom: 2px;">Čas (od - do):</label>
+        <input type="text" class="modal-input sched-time" placeholder="např. 10:00 - 12:30" value="${escapeHtml(time)}" style="margin-bottom: 6px; padding: 6px 8px; font-size: 14px;">
+        <label style="font-size: 12px; display: block; margin-bottom: 2px;">Popis programu:</label>
+        <textarea class="modal-input sched-desc" placeholder="např. Dopolední zkouška" rows="2" style="padding: 6px 8px; font-size: 14px; min-height: 50px; resize: vertical;">${escapeHtml(desc).replace(/\[BR\]/g, '\n')}</textarea>
     </div>
   `;
   cont.appendChild(div);
 }
-
 
 function openAkceForm(akce = null) {
   const isEdit = akce !== null;
@@ -483,7 +484,8 @@ function submitAkceForm(e, akceId) {
   
   for(let i = 0; i < schedTimes.length; i++) {
     let t = schedTimes[i].value.trim();
-    let d = schedDescs[i].value.trim();
+    // Skryté uložení Entrů z velkého textového pole
+    let d = schedDescs[i].value.trim().replace(/\n/g, '[BR]');
     if(t || d) schedText += `\n${t}|${d}`;
   }
   
