@@ -332,14 +332,19 @@ function addScheduleRow(time = '', desc = '') {
   const cont = document.getElementById('schedule-rows');
   if (!cont) return;
   const div = document.createElement('div');
-  div.style = 'display:flex; gap:8px; margin-bottom:12px; align-items:center;';
+  div.style = 'border: 1px dashed var(--border); padding: 12px; margin-bottom: 12px; border-radius: 6px; position: relative;';
   div.innerHTML = `
-    <input type="text" class="modal-input sched-time" placeholder="např. 10:00 - 12:30" style="flex:1;" value="${escapeHtml(time)}">
-    <input type="text" class="modal-input sched-desc" placeholder="Popis programu (např. Zkouška)" style="flex:2;" value="${escapeHtml(desc)}">
-    <button type="button" class="btn" style="background:transparent; color:var(--danger); border:1px solid var(--danger); padding:10px 14px;" onclick="this.parentElement.remove()">✕</button>
+    <button type="button" style="position: absolute; top: 12px; right: 12px; background: transparent; border: 1px solid var(--danger); border-radius: 4px; color: var(--danger); font-size: 13px; padding: 4px 8px;" onclick="this.parentElement.remove()">✕ Smazat</button>
+    <div style="margin-top: 24px;">
+        <label style="font-size: 13px; display: block; margin-bottom: 4px;">Čas (od - do):</label>
+        <input type="text" class="modal-input sched-time" placeholder="např. 10:00 - 12:30" value="${escapeHtml(time)}" style="margin-bottom: 12px;">
+        <label style="font-size: 13px; display: block; margin-bottom: 4px;">Popis programu:</label>
+        <input type="text" class="modal-input sched-desc" placeholder="např. Dopolední zkouška" value="${escapeHtml(desc)}">
+    </div>
   `;
   cont.appendChild(div);
 }
+
 
 function openAkceForm(akce = null) {
   const isEdit = akce !== null;
