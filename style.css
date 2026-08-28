@@ -156,3 +156,25 @@ body.archive-open .nav-btn.active {
 body.dark-mode.archive-open .nav-btn.active {
   color: #fde68a;
 }
+
+/* ===================================================== */
+/* MAXIMALIZACE MÍSTA NA MOBILU (Kompaktní karty)        */
+/* ===================================================== */
+.card {
+  margin: 10px 6px; /* Zmenšuje vnější mezeru po stranách telefonu (z původních 16px na 6px) */
+  border-radius: 8px; /* Lehce ostřejší rohy pro lepší vyplnění rohu obrazovky */
+}
+
+.card-body {
+  padding: 12px 14px; /* O něco menší odsazení textu od krajů karty (nahoře/dole 12px, po stranách 14px) */
+}
+
+.card-top-bar {
+  padding: 6px 14px; /* Ztenčení horního barevného pruhu o polovinu */
+  font-size: 13px; /* Jemné zmenšení písma v barevném pruhu, aby nepůsobil robustně */
+}
+
+/* U oznámení/informací můžeme text nechat lehce větší */
+.oznameni-text {
+  font-size: 15px; 
+}
