@@ -204,3 +204,75 @@ body.dark-mode.archive-open .nav-btn.active {
   padding: 8px 16px; /* Ideální kompromis – pruh není ani zbytečně tlustý, ani příliš úzký */
 }
  
+/* --- STYLY PRO SEKCI NOTY --- */
+
+.program-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 24px 4px 12px 4px;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.program-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.email-btn {
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  border-radius: 16px;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s;
+}
+
+.email-btn:active {
+  background: var(--border);
+}
+
+.nota-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.nota-info h4 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.nota-info span {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.nota-open-btn {
+  background: var(--primary);
+  color: white;
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}

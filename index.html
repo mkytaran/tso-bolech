@@ -44,48 +44,64 @@
 
   <!-- HLAVNÍ APLIKACE -->
   <div id="mainApp" style="display:none;">
-  <header class="app-header">
-  <img src="logo-transparent.png" alt="TSO Bolech" class="header-logo">
-  
-  <div class="header-actions">
-    <button class="theme-toggle" onclick="toggleTheme()">
-      <svg id="theme-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-      </svg>
-    </button>
-    <div id="userBadge" class="user-pill" onclick="confirmLogout()">...</div>
-  </div>
-  </header>
+    <header class="app-header">
+      <img src="logo-transparent.png" alt="TSO Bolech" class="header-logo">
+      
+      <div class="header-actions">
+        <button class="theme-toggle" onclick="toggleTheme()">
+          <svg id="theme-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+        <div id="userBadge" class="user-pill" onclick="confirmLogout()">...</div>
+      </div>
+    </header>
     
     <div class="container">
-    <div id="tab-events">
-      <div id="eventsContainer">Načítám data...</div>
-    </div>
-    
-    <!-- Změněný nadpis na Infoarchiv -->
-    <div id="tab-archive" style="display: none;">
-      <h2 style="margin-bottom: 16px; font-size: 20px;">Infoarchiv</h2>
-      <div id="archiveContainer"></div>
-    </div>
-  </div>
+      <div id="tab-events">
+        <div id="eventsContainer">Načítám data...</div>
+      </div>
+      
+      <!-- Změněný nadpis na Infoarchiv -->
+      <div id="tab-archive" style="display: none;">
+        <h2 style="margin-bottom: 16px; font-size: 20px;">Infoarchiv</h2>
+        <div id="archiveContainer"></div>
+      </div>
 
-  <nav>
-    <button class="nav-btn active" onclick="switchTab('events', this)">
-      <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"/></svg>
-      Akce
-    </button>
-    
-    <!-- Změněný text tlačítka na Infoarchiv -->
-    <button class="nav-btn" onclick="switchTab('archive', this)">
-      <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"/></svg>
-      Infoarchiv
-    </button>
-  </nav> 
+      <!-- NOVÉ: KARTA NOTY (Výchozí stav je skrytý, ukáže se po kliknutí na menu dole) -->
+      <div id="tab-sheetmusic" style="display: none;">
+        <div style="margin-bottom: 16px;">
+          <h2 style="margin: 0 0 4px 0; font-size: 20px;">Moje noty</h2>
+          <p id="notyNastrojInfo" style="margin: 0; font-size: 14px; color: var(--text-muted);">Načítám...</p>
+        </div>
+        <div id="notyContainer"></div>
+      </div>
+
+    </div>
+
+    <nav>
+      <button class="nav-btn active" onclick="switchTab('events', this)">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"/></svg>
+        Akce
+      </button>
+      
+      <!-- Změněný text tlačítka na Infoarchiv -->
+      <button class="nav-btn" onclick="switchTab('archive', this)">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"/></svg>
+        Infoarchiv
+      </button>
+
+      <!-- NOVÉ: TLAČÍTKO NOTY -->
+      <button class="nav-btn" onclick="switchTab('sheetmusic', this)">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+        Noty
+      </button>
+    </nav> 
   </div>
 
   <!-- ============================================== -->
   <!-- ODKAZ NA EXTERNÍ JAVASCRIPT S VERZÍ            -->
   <!-- ============================================== -->
-  <script src="app.js?v=1.17"></script>
+  <script src="app.js?v=1.19"></script>
 </body>
 </html>

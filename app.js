@@ -6,9 +6,74 @@ const API_URL = "https://script.google.com/macros/s/AKfycbxna8cDlco_UY1LI80oTv1F
 let user = null; 
 let appData = { akce: [], noty: [], ucast: [] };
 
-const PARTITURA_SECTIONS = ["1. Housle", "2. Housle", "Violy", "Violoncella", "Kontrabasy", "Flétny / Pikola", "Oboje / Anglický roh", "Klarinety", "Fagoty", "Lesní rohy", "Trubky", "Pozouny", "Tuba", "Bicí nástroje", "Klávesy / Klavír", "Ostatní / Hosté"];
-const SMYCKE_SECTIONS = ["housle", "viola", "violy", "cello", "violoncello", "kontrabas"];
-const DECHOVE_SECTIONS = ["flétn", "pikol", "oboj", "klarinet", "fagot", "roh", "trubk", "pozoun", "tuba"];
+// =====================================================
+// DEFINICE NÁSTROJŮ A SKUPIN ORCHESTRU
+// =====================================================
+
+// Hierarchie a řazení nástrojových skupin TSO Bolech
+const ORCHESTR_SKUPINY = {
+  "Smyčcové nástroje": [
+    "1. Housle", 
+    "2. Housle", 
+    "Violy", 
+    "Violoncella", 
+    "Kontrabasy"
+  ],
+  "Dechové nástroje": [
+    "Flétny", 
+    "Hoboje", 
+    "Klarinety / Saxofony", 
+    "Fagoty", 
+    "Lesní rohy", 
+    "Trubky", 
+    "Trombóny a Tuba"
+  ],
+  "Ostatní nástroje a zpěv": [
+    "Bicí nástroje", 
+    "Klávesy", 
+    "Kytary", 
+    "Zpěv"
+  ],
+  "Hosté": [
+    "Hosté"
+  ]
+};
+
+// Hlavní ploché pole kategorií pro zobrazení (přesně odpovídá názvům výše)
+const PARTITURA_SECTIONS = [
+  "1. Housle", "2. Housle", "Violy", "Violoncella", "Kontrabasy", 
+  "Flétny", "Hoboje", "Klarinety / Saxofony", "Fagoty", "Lesní rohy", 
+  "Trubky", "Trombóny a Tuba", "Bicí nástroje", "Klávesy", "Kytary", "Zpěv", "Hosté"
+];
+
+// -----------------------------------------------------
+// POMOCNÁ POLE PRO DETEKCI ZADANÝCH TEXTŮ A SKLOŇOVÁNÍ
+// -----------------------------------------------------
+
+// Kořeny slov pro smyčce (zachytí: housle, houslí, houslím, viola, violy, cello, violoncello...)
+const SMYCKE_SECTIONS = [
+  "housl", "viol", "cell", "kontrabas"
+];
+
+// Kořeny slov pro dechy s ohledem na českou gramatiku
+const DECHOVE_SECTIONS = [
+  "flétn",        // flétna, flétny, flétnou
+  "hoboj",        // hoboj, hoboje, hobojem
+  "klarinet",     // klarinet, klarinety
+  "saxofon",      // saxofon, saxofony
+  "fagot",        // fagot, fagoty
+  "roh",          // roh, rohy, rohu (lesní roh)
+  "trubk",        // trubka, trubky, trubku
+  "trubc",        // trubce (3. a 6. pád)
+  "trombón",      // s čárkou
+  "trombon",      // bez čárky
+  "tuba", "tuby", "tubě", "tubou" // Tuba vypsaná podrobněji, aby nebrala nesmysly
+];
+
+// Kořeny pro zachycení hostujících hráčů (host, hosté, hostující)
+const HOSTE_SECTIONS = [
+  "host"
+];
 
 function initTheme() {
   const savedTheme = localStorage.getItem('bolech_theme');
@@ -66,13 +131,22 @@ function initApp() {
   document.getElementById("userBadge").innerText = user.name;
   
   const cachedData = localStorage.getItem("bolech_data_cache");
-  if (cachedData) { appData = JSON.parse(cachedData); renderEvents(); }
+  if (cachedData) { 
+    appData = JSON.parse(cachedData); 
+    renderEvents(); 
+    // NOVÉ: Vykreslíme noty z mezipaměti
+    const jeDirigent = String(user.role).toLowerCase() === 'dirigent';
+    vykresliNoty(appData.noty || [], user.section, jeDirigent);
+  }
 
   runGoogleScript("getInitialData").then(d => { 
     if(d.akce) {
       appData = d; 
       localStorage.setItem("bolech_data_cache", JSON.stringify(appData));
       renderEvents(); 
+      // NOVÉ: Vykreslíme noty ze stažených dat
+      const jeDirigent = String(user.role).toLowerCase() === 'dirigent';
+      vykresliNoty(appData.noty || [], user.section, jeDirigent);
     }
   });
 }
@@ -115,6 +189,98 @@ function isEventVisibleForUser(akce) {
   if (typ === "Zkouška smyčců") return SMYCKE_SECTIONS.some(s => userSecL.includes(s));
   if (typ === "Zkouška dechů") return DECHOVE_SECTIONS.some(s => userSecL.includes(s));
   return true; 
+}
+
+/**
+ * Funkce vygeneruje seznam not pro daného hráče.
+ * @param {Array} dataNoty - Získaná data z Google Tabulky (pole objektů)
+ * @param {String} nastrojUzivatele - Nástroj přihlášeného hráče (např. "1. Housle")
+ * @param {Boolean} jeDirigent - True, pokud je hráč dirigent
+ */
+function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
+  const kontejner = document.getElementById('notyContainer');
+  const infoText = document.getElementById('notyNastrojInfo');
+  
+  if (!kontejner) return;
+
+  // Zobrazení nástroje v hlavičce pro vizuální kontrolu hráče
+  if (infoText) {
+    infoText.textContent = jeDirigent ? "Režim partitury" : `Zobrazený part: ${nastrojUzivatele}`;
+  }
+
+  // 1. Filtrace podle aktivity a nástroje
+  const relevantniNoty = dataNoty.filter(nota => {
+    let aktivni = String(nota.aktivni || '').toUpperCase().trim();
+    // Pokud nota nemá ve sloupci Aktivni slovo "ANO", přeskočíme ji
+    if (aktivni !== 'TRUE' && aktivni !== 'ANO' && aktivni !== '1') return false;
+    
+    // Dirigent vidí vše, co je označeno jako Partitura
+    if (jeDirigent && nota.sekce === 'Partitura') return true;
+    
+    // Shoda nástroje z tabulky s nástrojem uživatele
+    if (nota.sekce === nastrojUzivatele) return true;
+    
+    // Společné party pro housle (pokud je v tabulce "Housle", vidí to 1. i 2. housle)
+    if (nota.sekce === 'Housle' && (nastrojUzivatele === '1. Housle' || nastrojUzivatele === '2. Housle')) {
+      return true;
+    }
+    
+    return false;
+  });
+
+  if (relevantniNoty.length === 0) {
+    kontejner.innerHTML = '<p style="color: var(--text-muted); text-align: center; margin-top: 40px; padding: 20px;">Pro váš nástroj aktuálně nejsou k dispozici žádné noty na repertoáru.</p>';
+    return;
+  }
+
+  // 2. Seskupení not podle sloupce Program (např. "Podzimní koncert")
+  const notyPodleProgramu = {};
+  relevantniNoty.forEach(nota => {
+    const program = nota.program || 'Ostatní repertoár';
+    if (!notyPodleProgramu[program]) notyPodleProgramu[program] = [];
+    notyPodleProgramu[program].push(nota);
+  });
+
+  // 3. Generování HTML obsahu
+  let html = '';
+  for (const [program, noty] of Object.entries(notyPodleProgramu)) {
+    
+    // Sestavení textu pro odeslání všech odkazů na e-mail
+    let emailPredmet = encodeURIComponent(`Noty TSO Bolech - ${program}`);
+    let emailTelo = `Dobrý den,\n\nzasílám odkazy na noty pro program: ${program} (Part: ${nastrojUzivatele}).\n\n`;
+    noty.forEach(n => {
+      emailTelo += `- ${n.skladba}:\n  ${n.odkaz}\n\n`;
+    });
+    emailTelo += `V aplikaci získáte další informace.\nPortál TSO Bolech`;
+    let mailtoOdkaz = `mailto:?subject=${emailPredmet}&body=${encodeURIComponent(emailTelo)}`;
+
+    // Hlavička programu a tlačítko na e-mail
+    html += `
+      <div class="program-header">
+        <h3 class="program-title">${program}</h3>
+        <a href="${mailtoOdkaz}" class="email-btn">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
+          Na e-mail
+        </a>
+      </div>`;
+      
+    // Seznam skladeb v daném programu
+    noty.forEach(nota => {
+      html += `
+        <div class="nota-card">
+          <div class="nota-info">
+            <h4>${nota.skladba}</h4>
+            <span>${nota.sekce}</span>
+          </div>
+          <a href="${nota.odkaz}" target="_blank" class="nota-open-btn">
+            Otevřít
+          </a>
+        </div>
+      `;
+    });
+  }
+  
+  kontejner.innerHTML = html;
 }
 
 // --- VYKRESLOVÁNÍ POZNÁMKY S HARMONOGRAMEM ---
@@ -530,10 +696,16 @@ function deleteAkcePrompt(akceId) {
 }
 
 function switchTab(t, b) { 
-  document.getElementById('tab-events').style.display = t==='events'?'block':'none'; 
-  document.getElementById('tab-archive').style.display = t==='archive'?'block':'none'; 
+  document.getElementById('tab-events').style.display = t === 'events' ? 'block' : 'none'; 
+  document.getElementById('tab-archive').style.display = t === 'archive' ? 'block' : 'none'; 
+  
+  // NOVÉ: Přepínání pro kartu not
+  const tabNoty = document.getElementById('tab-sheetmusic');
+  if (tabNoty) tabNoty.style.display = t === 'sheetmusic' ? 'block' : 'none'; 
+  
   document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active')); 
-  b.classList.add('active'); 
+  if (b) b.classList.add('active'); 
+  
   if (t === 'archive') document.body.classList.add('archive-open');
   else document.body.classList.remove('archive-open');
 }
