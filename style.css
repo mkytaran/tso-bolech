@@ -129,8 +129,8 @@ header { background: #052634; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
 .roster-members { font-size: 17px; margin-bottom: 4px; color: var(--text); padding-left: 8px; border-left: 2px solid var(--border); }
 
 /* SPODNÍ NAVIGACE */
-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); display: flex; justify-content: space-around; border-top: 1px solid var(--border); padding: 12px 0 24px 0; z-index: 100; }
-.nav-btn { background: none; border: none; font-size: 16px; color: var(--text-muted); cursor: pointer; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); display: flex; justify-content: space-around; border-top: 1px solid var(--border); padding: 6px 0 8px 0; z-index: 100; }
+.nav-btn { background: none; border: none; font-size: 14px; color: var(--text-muted); cursor: pointer; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .nav-btn.active { color: var(--primary-light); }
 
 /* MODÁLNÍ OKNO PRO FORMULÁŘ */
@@ -173,7 +173,4 @@ body.dark-mode.archive-open .nav-btn.active {
 .card-top-bar {
   padding: 8px 16px; /* Ideální kompromis – pruh není ani zbytečně tlustý, ani příliš úzký */
 }
-
-
-
  
