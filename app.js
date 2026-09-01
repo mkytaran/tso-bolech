@@ -727,10 +727,15 @@ function switchTab(t, b) {
 // Globální paměť pro bezpečné ukládání složek
 window.stromSlozek = []; 
 
-// --- GENERATOR STROMU PRO VEDENÍ (Vyladěno pro mobily) ---
+// --- GENERATOR STROMU PRO VEDENÍ (Chytré zobrazení prvků) ---
 function vykresliAdminNoty() {
   const cont = document.getElementById('adminNotyContainer');
   if (!cont) return;
+
+  // Pojistka pro plnou šířku, pokud by v HTML zůstalo odsazení
+  cont.style.padding = "0";
+  cont.style.margin = "0"; 
+  cont.style.width = "100%";
 
   try {
     const slozkyMap = {};
@@ -760,44 +765,57 @@ function vykresliAdminNoty() {
       }
     });
 
-    // 2. Uložení seřazených složek do bezpečné paměti
     window.stromSlozek = Object.values(slozkyMap).sort((a, b) => a.cesta.localeCompare(b.cesta));
 
-    // 3. Vykreslení mobilního HTML
-    let html = '';
+    // 3. Vykreslení s vloženým miniaturním stylem pro chytré skrývání
+    let html = `
+      <style>
+        /* Kouzlo: Skryje ovládací prvky, pokud složka NENÍ aktivní a zároveň NENÍ rozbalená */
+        details.folder-inactive:not([open]) .folder-controls {
+          display: none !important;
+        }
+      </style>
+    `;
+
     window.stromSlozek.forEach((s, index) => {
       const zobrazenyNazev = escapeHtml(s.cesta).replace(/\//g, '<span style="color:var(--text-muted); margin:0 4px;">❯</span>');
-      
-      // Barva pozadí checkboxu podle aktivity
       const checkBg = s.aktivni ? 'var(--success)' : 'transparent';
+      
+      // Třída, která řídí, zda se mají prvky skrývat
+      const stavTrida = s.aktivni ? 'folder-active' : 'folder-inactive';
 
       html += `
-        <details class="card" style="margin-bottom: 12px; padding: 0; overflow: hidden; border: 1px solid var(--border);">
+        <details class="card ${stavTrida}" style="margin-bottom: 16px; margin-left: 0; margin-right: 0; padding: 0; overflow: hidden; width: 100%; border: 1px solid var(--border);">
           
-          <summary style="padding: 12px 14px; cursor: pointer; list-style: none; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid var(--border);">
+          <summary style="padding: 14px 16px; cursor: pointer; list-style: none; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid var(--border);">
             
-            <!-- 1. Řádek: Dlouhý název složky a indikátor rozevření -->
+            <!-- 1. Řádek: Název složky -->
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: bold; color: var(--text);">
               <span style="word-break: break-word; line-height: 1.3;">📁 ${zobrazenyNazev} <small style="font-weight:normal; opacity:0.6;">(${s.soubory.length})</small></span>
               <span style="opacity: 0.4; font-size: 14px; padding-left: 8px;">▼</span>
             </div>
 
-            <!-- 2. Řádek: Vstupy roztažené na celou šířku -->
+            <!-- 2. Řádek: Ovládací prvky (skryjí se automaticky podle stavu) -->
             <div class="folder-controls" onclick="event.stopPropagation();" style="display: flex; gap: 8px; align-items: center; width: 100%;">
               
-              <!-- Políčko programu zabere maximum zbývajícího místa -->
               <input type="text" id="prog_${index}" class="modal-input" placeholder="Název programu..." value="${escapeHtml(s.program)}" style="flex: 1; margin: 0; padding: 10px; font-size: 14px; border-radius: 6px;">
               
-              <!-- Velké dotykové tlačítko s checkboxem -->
-              <label style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; background: ${checkBg}; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: background 0.2s;" title="Aktivní">
-                <input type="checkbox" id="chk_${index}" ${s.aktivni ? 'checked' : ''} style="transform: scale(1.4); margin: 0; cursor: pointer;" onchange="this.parentElement.style.background = this.checked ? 'var(--success)' : 'transparent';">
+              <label style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; background: ${checkBg}; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: background 0.2s;" title="Aktivní">
+                <input type="checkbox" id="chk_${index}" ${s.aktivni ? 'checked' : ''} style="transform: scale(1.4); margin: 0; cursor: pointer;" 
+                       onchange="
+                         // Dynamická změna barvy a stavu při zaškrtnutí (aby pole nezmizelo po sbalení)
+                         this.parentElement.style.background = this.checked ? 'var(--success)' : 'transparent';
+                         const det = this.closest('details');
+                         if(this.checked) { det.classList.remove('folder-inactive'); det.classList.add('folder-active'); }
+                         else { det.classList.add('folder-inactive'); det.classList.remove('folder-active'); }
+                       ">
               </label>
 
             </div>
           </summary>
           
-          <!-- Seznam skladeb (zarovnaný ke krajům pro úsporu místa) -->
-          <div class="folder-content" style="padding: 10px; display: flex; flex-direction: column; gap: 6px; background: var(--bg);">
+          <!-- Seznam skladeb -->
+          <div class="folder-content" style="padding: 12px; display: flex; flex-direction: column; gap: 6px; background: var(--bg);">
             ${s.soubory.map(soub => `
               <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card, transparent);">
                 <span style="font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 12px; color: var(--text);">📄 ${escapeHtml(soub.kratkyNazev)}</span>
