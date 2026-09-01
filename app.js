@@ -94,16 +94,11 @@ initTheme();
 
 async function runGoogleScript(action, payload = {}) {
   try {
-    const dataString = JSON.stringify({ action: action, payload: payload });
-    
-    // Zabalíme data jako soubor/formulář - toto spolehlivě zničí všechny CORS limity
-    const formData = new FormData();
-    formData.append("data", dataString);
-
     const response = await fetch(API_URL, {
       method: 'POST',
-      body: formData
-      // Záměrně zde nejsou žádné 'headers'. Prohlížeč to odešle jako multipart/form-data.
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: action, payload: payload }),
+      redirect: 'follow'
     });
     
     if (!response.ok) throw new Error('Chyba serveru: ' + response.status);
