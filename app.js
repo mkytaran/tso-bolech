@@ -94,17 +94,16 @@ initTheme();
 
 async function runGoogleScript(action, payload = {}) {
   try {
-    let dataString = JSON.stringify({ action: action, payload: payload });
+    const dataString = JSON.stringify({ action: action, payload: payload });
     
-    // PAŠERÁK 2.0: Zamaskujeme odkazy. Změníme "https://" na "SKRYTY_LINK://", 
-    // aby to bezpečnostní štíty antivirů a Googlu nevyhodnotily jako odesílání hromady URL adres.
-    dataString = dataString.replace(/https:\/\//g, "SKRYTY_LINK://");
+    // Zabalíme data jako soubor/formulář - toto spolehlivě zničí všechny CORS limity
+    const formData = new FormData();
+    formData.append("data", dataString);
 
     const response = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: dataString,
-      redirect: 'follow' // Toto zajišťuje, že nás Google správně pustí
+      body: formData
+      // Záměrně zde nejsou žádné 'headers'. Prohlížeč to odešle jako multipart/form-data.
     });
     
     if (!response.ok) throw new Error('Chyba serveru: ' + response.status);
