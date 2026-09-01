@@ -1,6 +1,6 @@
 // =========================================================================
 // VAŠE URL ADRESA Z GOOGLE APPS SCRIPTU
-// =========================================================================
+// ========================================================================= 
 const API_URL = "https://script.google.com/macros/s/AKfycbwVHLODjApvEPwE4RQo5nQxdr9Y8Ng-EoWTGGsH3l45L174huUMCh_99edIV-cbXQVHQQ/exec";
 
 let user = null; 
@@ -9,6 +9,7 @@ let appData = { akce: [], noty: [], ucast: [] };
 // =====================================================
 // DEFINICE NÁSTROJŮ A SKUPIN ORCHESTRU
 // =====================================================
+
 
 // Hierarchie a řazení nástrojových skupin TSO Bolech
 const ORCHESTR_SKUPINY = {
