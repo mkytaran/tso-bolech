@@ -818,7 +818,9 @@ function vykresliAdminNoty() {
           <div class="folder-content" style="padding: 12px; display: flex; flex-direction: column; gap: 6px; background: var(--bg);">
             ${s.soubory.map(soub => `
               <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card, transparent);">
-                <span style="font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 12px; color: var(--text);">📄 ${escapeHtml(soub.kratkyNazev)}</span>
+                <a href="${soub.odkaz}" target="_blank" style="font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 12px; color: var(--primary); text-decoration: none; font-weight: 600; cursor: pointer;">
+                  📄 <span style="text-decoration: underline;">${escapeHtml(soub.kratkyNazev)}</span>
+                </a>
                 <span style="font-size: 11px; opacity: 0.8; white-space: nowrap; background: var(--border); padding: 4px 6px; border-radius: 4px; color: var(--text);">${escapeHtml(String(soub.sekce||''))}</span>
               </div>
             `).join('')}
