@@ -94,16 +94,18 @@ initTheme();
 
 async function runGoogleScript(action, payload = {}) {
   try {
-    // 1. Spojíme data do textu
+    // 1. Zabalíme data
     const jsonString = JSON.stringify({ action: action, payload: payload });
     
-    // 2. PAŠERÁK: Převedeme text na bezpečnou změť znaků (Base64), aby Google neblokoval odkazy
-    const base64Data = btoa(unescape(encodeURIComponent(jsonString)));
+    // 2. Převlečeme data do standardního formulářového formátu
+    const bodyParams = new URLSearchParams();
+    bodyParams.append("data", jsonString);
 
+    // 3. Odešleme to pod hlavičkou běžného webového formuláře
     const response = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: base64Data, // Odesíláme zašifrovaná data
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: bodyParams.toString(),
       redirect: 'follow'
     });
     
