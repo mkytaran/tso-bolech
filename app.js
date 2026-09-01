@@ -94,25 +94,19 @@ initTheme();
 
 async function runGoogleScript(action, payload = {}) {
   try {
-    // 1. Zabalíme data
-    const jsonString = JSON.stringify({ action: action, payload: payload });
-    
-    // 2. Převlečeme data do standardního formulářového formátu
-    const bodyParams = new URLSearchParams();
-    bodyParams.append("data", jsonString);
+    const dataString = JSON.stringify({ action: action, payload: payload });
+    console.log(`Odesílám akci: ${action} | Velikost: ${dataString.length} znaků`); // Tohle nám ukáže velikost v konzoli (F12)
 
-    // 3. Odešleme to pod hlavičkou běžného webového formuláře
     const response = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: bodyParams.toString(),
-      redirect: 'follow'
+      // ÚPLNĚ JSME SMAZALI 'headers'. Prohlížeč si to automaticky nastaví na nejbezpečnější text/plain bez zbytečných kontrol
+      body: dataString
     });
     
-    if (!response.ok) throw new Error('HTTP ' + response.status);
+    if (!response.ok) throw new Error('Chyba serveru: ' + response.status);
     return await response.json();
   } catch (error) {
-    console.error(error); 
+    console.error("Detail chyby sítě/CORS:", error); 
     return { success: false, error: error.toString() };
   }
 }
