@@ -282,7 +282,9 @@ function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
             <h4>${nota.skladba}</h4>
             <span>${nota.sekce}</span>
           </div>
-          <a href="${nota.odkaz}" target="_blank" class="nota-open-btn">
+          <a href="${nota.odkaz.replace(/\/view.*/, '/preview')}" target="_blank" class="nota-open-btn">
+            Otevřít
+          </a>
             Otevřít
           </a>
         </div>
@@ -818,7 +820,7 @@ function vykresliAdminNoty() {
           <div class="folder-content" style="padding: 12px; display: flex; flex-direction: column; gap: 6px; background: var(--bg);">
             ${s.soubory.map(soub => `
               <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card, transparent);">
-                <a href="${soub.odkaz}" target="_blank" style="font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 12px; color: var(--primary); text-decoration: none; font-weight: 600; cursor: pointer;">
+                <a href="${soub.odkaz.replace(/\/view.*/, '/preview')}" target="_blank" style="font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 12px; color: var(--primary); text-decoration: none; font-weight: 600; cursor: pointer;">
                   📄 <span style="text-decoration: underline;">${escapeHtml(soub.kratkyNazev)}</span>
                 </a>
                 <span style="font-size: 11px; opacity: 0.8; white-space: nowrap; background: var(--border); padding: 4px 6px; border-radius: 4px; color: var(--text);">${escapeHtml(String(soub.sekce||''))}</span>
