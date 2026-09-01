@@ -727,7 +727,7 @@ function switchTab(t, b) {
 // Globální paměť pro bezpečné ukládání složek
 window.stromSlozek = []; 
 
-// --- GENERATOR STROMU PRO VEDENÍ ---
+// --- GENERATOR STROMU PRO VEDENÍ (Vyladěno pro mobily) ---
 function vykresliAdminNoty() {
   const cont = document.getElementById('adminNotyContainer');
   if (!cont) return;
@@ -760,28 +760,52 @@ function vykresliAdminNoty() {
       }
     });
 
-    // 2. Uložení seřazených složek do bezpečné paměti s přesnými indexy
+    // 2. Uložení seřazených složek do bezpečné paměti
     window.stromSlozek = Object.values(slozkyMap).sort((a, b) => a.cesta.localeCompare(b.cesta));
 
-    // 3. Vykreslení HTML pomocí indexů (místo textových ID)
+    // 3. Vykreslení mobilního HTML
     let html = '';
     window.stromSlozek.forEach((s, index) => {
       const zobrazenyNazev = escapeHtml(s.cesta).replace(/\//g, '<span style="color:var(--text-muted); margin:0 4px;">❯</span>');
+      
+      // Barva pozadí checkboxu podle aktivity
+      const checkBg = s.aktivni ? 'var(--success)' : 'transparent';
 
       html += `
-        <details class="folder-tree">
-          <summary>
-            <span>📁 ${zobrazenyNazev} <small style="font-weight:normal; opacity:0.6;">(${s.soubory.length})</small></span>
-            <div class="folder-controls" onclick="event.stopPropagation();">
-              <input type="text" id="prog_${index}" class="folder-prog-input" placeholder="Název programu..." value="${escapeHtml(s.program)}">
-              <label style="display:flex; align-items:center; gap:4px; font-size:13px; cursor:pointer;">
-                <input type="checkbox" id="chk_${index}" ${s.aktivni ? 'checked' : ''} style="transform: scale(1.2);"> Aktivní
+        <details class="card" style="margin-bottom: 12px; padding: 0; overflow: hidden; border: 1px solid var(--border);">
+          
+          <summary style="padding: 12px 14px; cursor: pointer; list-style: none; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid var(--border);">
+            
+            <!-- 1. Řádek: Dlouhý název složky a indikátor rozevření -->
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: bold; color: var(--text);">
+              <span style="word-break: break-word; line-height: 1.3;">📁 ${zobrazenyNazev} <small style="font-weight:normal; opacity:0.6;">(${s.soubory.length})</small></span>
+              <span style="opacity: 0.4; font-size: 14px; padding-left: 8px;">▼</span>
+            </div>
+
+            <!-- 2. Řádek: Vstupy roztažené na celou šířku -->
+            <div class="folder-controls" onclick="event.stopPropagation();" style="display: flex; gap: 8px; align-items: center; width: 100%;">
+              
+              <!-- Políčko programu zabere maximum zbývajícího místa -->
+              <input type="text" id="prog_${index}" class="modal-input" placeholder="Název programu..." value="${escapeHtml(s.program)}" style="flex: 1; margin: 0; padding: 10px; font-size: 14px; border-radius: 6px;">
+              
+              <!-- Velké dotykové tlačítko s checkboxem -->
+              <label style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; background: ${checkBg}; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: background 0.2s;" title="Aktivní">
+                <input type="checkbox" id="chk_${index}" ${s.aktivni ? 'checked' : ''} style="transform: scale(1.4); margin: 0; cursor: pointer;" onchange="this.parentElement.style.background = this.checked ? 'var(--success)' : 'transparent';">
               </label>
+
             </div>
           </summary>
-          <div class="folder-content">
-            ${s.soubory.map(soub => `<div class="file-item"><span>📄 ${escapeHtml(soub.kratkyNazev)}</span> <span>${escapeHtml(String(soub.sekce||''))}</span></div>`).join('')}
+          
+          <!-- Seznam skladeb (zarovnaný ke krajům pro úsporu místa) -->
+          <div class="folder-content" style="padding: 10px; display: flex; flex-direction: column; gap: 6px; background: var(--bg);">
+            ${s.soubory.map(soub => `
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card, transparent);">
+                <span style="font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 12px; color: var(--text);">📄 ${escapeHtml(soub.kratkyNazev)}</span>
+                <span style="font-size: 11px; opacity: 0.8; white-space: nowrap; background: var(--border); padding: 4px 6px; border-radius: 4px; color: var(--text);">${escapeHtml(String(soub.sekce||''))}</span>
+              </div>
+            `).join('')}
           </div>
+
         </details>
       `;
     });
