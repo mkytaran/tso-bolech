@@ -94,16 +94,21 @@ initTheme();
 
 async function runGoogleScript(action, payload = {}) {
   try {
+    // Pro diagnostiku si vypíšeme, kolik dat se posílá
+    console.log("Odesílám akci:", action, "Velikost dat:", JSON.stringify(payload).length, "znaků");
+    
     const response = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      headers: { 'Content-Type': 'text/plain' }, // ZDE JE TA ZÁSADNÍ OPRAVA
       body: JSON.stringify({ action: action, payload: payload }),
       redirect: 'follow'
     });
-    if (!response.ok) throw new Error('Chyba sítě');
+    
+    if (!response.ok) throw new Error('HTTP ' + response.status);
     return await response.json();
   } catch (error) {
-    console.error(error); return { success: false, error: error.toString() };
+    console.error(error); 
+    return { success: false, error: error.toString() };
   }
 }
 
