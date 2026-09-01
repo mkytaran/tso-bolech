@@ -94,13 +94,16 @@ initTheme();
 
 async function runGoogleScript(action, payload = {}) {
   try {
-    // Pro diagnostiku si vypíšeme, kolik dat se posílá
-    console.log("Odesílám akci:", action, "Velikost dat:", JSON.stringify(payload).length, "znaků");
+    // 1. Spojíme data do textu
+    const jsonString = JSON.stringify({ action: action, payload: payload });
     
+    // 2. PAŠERÁK: Převedeme text na bezpečnou změť znaků (Base64), aby Google neblokoval odkazy
+    const base64Data = btoa(unescape(encodeURIComponent(jsonString)));
+
     const response = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain' }, // ZDE JE TA ZÁSADNÍ OPRAVA
-      body: JSON.stringify({ action: action, payload: payload }),
+      headers: { 'Content-Type': 'text/plain' },
+      body: base64Data, // Odesíláme zašifrovaná data
       redirect: 'follow'
     });
     
