@@ -77,9 +77,22 @@
         <div id="notyContainer"></div>
       </div>
 
+      <!-- KARTA: DISPEČINK NOT (Pouze pro vedení) -->
+      <div id="tab-admin-noty" style="display: none;">
+        <div class="header-section" style="padding: 16px; text-align: center;">
+          <h2 style="margin: 0; color: var(--primary);">Správa archivu</h2>
+          <p style="margin: 4px 0 0 0; font-size: 14px; color: var(--text-muted);">Zde můžete přiřadit noty ke koncertům</p>
+        </div>
+        <div style="padding: 0 16px 24px 16px;">
+           <button class="btn" style="background:var(--success); width:100%; margin-bottom:16px;" onclick="ulozitZmenyNot()">💾 Uložit všechny změny</button>
+           <div id="adminNotyContainer">Načítám složky...</div>
+        </div>
+      </div>
+
     </div>
 
     <nav>
+      <!-- TLAČÍTKO AKCE -->
       <button class="nav-btn active" onclick="switchTab('events', this)">
         <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"/></svg>
         Akce
@@ -96,6 +109,12 @@
         <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
         Noty
       </button>
+      <!-- TLAČÍTKO SPRÁVA NOT -->
+      <button id="btn-nav-admin" class="nav-btn" style="display:none;" onclick="switchTab('admin-noty', this)">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+        Správa
+      </button>
+
     </nav> 
   </div>
 

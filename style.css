@@ -276,3 +276,49 @@ body.dark-mode.archive-open .nav-btn.active {
   font-weight: 600;
   white-space: nowrap;
 }
+
+/* STYLY PRO STROM SLOŽEK NOT */
+details.folder-tree {
+  margin-bottom: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+details.folder-tree > summary {
+  padding: 10px 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--bg);
+  list-style: none; /* Skryje nativní šipku u některých prohlížečů */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+details.folder-tree > summary::-webkit-details-marker {
+  display: none;
+}
+.folder-content {
+  padding: 8px 8px 8px 24px;
+  border-top: 1px solid var(--border);
+}
+.file-item {
+  font-size: 14px;
+  padding: 4px 0;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+}
+/* Přepínač a input pro program */
+.folder-controls {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.folder-prog-input {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 13px;
+  width: 150px;
+}

@@ -1,7 +1,7 @@
 // =========================================================================
 // VAŠE URL ADRESA Z GOOGLE APPS SCRIPTU
 // =========================================================================
-const API_URL = "https://script.google.com/macros/s/AKfycbxna8cDlco_UY1LI80oTv1FGVdHXi2_aHZcLR0zf9jY2UKDPJU6P__YufBFXTtd5WPHCw/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbz47PmrFwjiNtUciEOZ0CBdkQXqNkKV2L5vXqBxeDC7TSMDJLceQXDWca_CfX4mEvGXPA/exec";
 
 let user = null; 
 let appData = { akce: [], noty: [], ucast: [] };
@@ -130,13 +130,21 @@ function initApp() {
   document.getElementById("mainApp").style.display = "block";
   document.getElementById("userBadge").innerText = user.name;
   
+  const userRole = String(user.role || "").trim().toLowerCase();
+  const isVedení = userRole !== "" && userRole !== "-";
+  const jeDirigent = userRole === 'dirigent';
+
+  // Zobrazíme tlačítko Správa pro vedení
+  if (isVedení) {
+    document.getElementById('btn-nav-admin').style.display = 'flex';
+  }
+
   const cachedData = localStorage.getItem("bolech_data_cache");
   if (cachedData) { 
     appData = JSON.parse(cachedData); 
     renderEvents(); 
-    // NOVÉ: Vykreslíme noty z mezipaměti
-    const jeDirigent = String(user.role).toLowerCase() === 'dirigent';
     vykresliNoty(appData.noty || [], user.section, jeDirigent);
+    if (isVedení) vykresliAdminNoty(); // Volání pro vedení
   }
 
   runGoogleScript("getInitialData").then(d => { 
@@ -144,9 +152,8 @@ function initApp() {
       appData = d; 
       localStorage.setItem("bolech_data_cache", JSON.stringify(appData));
       renderEvents(); 
-      // NOVÉ: Vykreslíme noty ze stažených dat
-      const jeDirigent = String(user.role).toLowerCase() === 'dirigent';
       vykresliNoty(appData.noty || [], user.section, jeDirigent);
+      if (isVedení) vykresliAdminNoty(); // Volání pro vedení
     }
   });
 }
@@ -698,16 +705,145 @@ function deleteAkcePrompt(akceId) {
 function switchTab(t, b) { 
   document.getElementById('tab-events').style.display = t === 'events' ? 'block' : 'none'; 
   document.getElementById('tab-archive').style.display = t === 'archive' ? 'block' : 'none'; 
-  
+  document.getElementById('tab-admin-noty').style.display = t === 'admin-noty' ? 'block' : 'none';
+
   // NOVÉ: Přepínání pro kartu not
   const tabNoty = document.getElementById('tab-sheetmusic');
   if (tabNoty) tabNoty.style.display = t === 'sheetmusic' ? 'block' : 'none'; 
+
+  const tabAdminNoty = document.getElementById('tab-admin-noty');
+  if (tabAdminNoty) tabAdminNoty.style.display = t === 'admin-noty' ? 'block' : 'none';
   
   document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active')); 
   if (b) b.classList.add('active'); 
   
   if (t === 'archive') document.body.classList.add('archive-open');
   else document.body.classList.remove('archive-open');
+}
+
+// Globální paměť pro bezpečné ukládání složek
+window.stromSlozek = []; 
+
+// --- GENERATOR STROMU PRO VEDENÍ ---
+function vykresliAdminNoty() {
+  const cont = document.getElementById('adminNotyContainer');
+  if (!cont) return;
+
+  try {
+    const slozkyMap = {};
+
+    if (!appData.noty || appData.noty.length === 0) {
+      cont.innerHTML = '<p style="text-align:center; color:var(--text-muted);">Archiv je zatím prázdný.</p>';
+      return;
+    }
+
+    // 1. Roztřídění do složek
+    appData.noty.forEach(nota => {
+      let skladbaText = String(nota.skladba || '').trim();
+      if (!skladbaText) return;
+
+      let lastDash = skladbaText.lastIndexOf(' - ');
+      let cesta = lastDash !== -1 ? skladbaText.substring(0, lastDash).trim() : 'Základní složka';
+      let soubor = lastDash !== -1 ? skladbaText.substring(lastDash + 3).trim() : skladbaText;
+
+      if (!slozkyMap[cesta]) slozkyMap[cesta] = { cesta: cesta, soubory: [], program: '', aktivni: false };
+
+      slozkyMap[cesta].soubory.push({ ...nota, kratkyNazev: soubor });
+
+      let aktivniHodnota = String(nota.aktivni || '').toUpperCase().trim();
+      if (aktivniHodnota === 'ANO' || aktivniHodnota === 'TRUE' || aktivniHodnota === '1') {
+        slozkyMap[cesta].aktivni = true;
+        if (nota.program) slozkyMap[cesta].program = nota.program;
+      }
+    });
+
+    // 2. Uložení seřazených složek do bezpečné paměti s přesnými indexy
+    window.stromSlozek = Object.values(slozkyMap).sort((a, b) => a.cesta.localeCompare(b.cesta));
+
+    // 3. Vykreslení HTML pomocí indexů (místo textových ID)
+    let html = '';
+    window.stromSlozek.forEach((s, index) => {
+      const zobrazenyNazev = escapeHtml(s.cesta).replace(/\//g, '<span style="color:var(--text-muted); margin:0 4px;">❯</span>');
+
+      html += `
+        <details class="folder-tree">
+          <summary>
+            <span>📁 ${zobrazenyNazev} <small style="font-weight:normal; opacity:0.6;">(${s.soubory.length})</small></span>
+            <div class="folder-controls" onclick="event.stopPropagation();">
+              <input type="text" id="prog_${index}" class="folder-prog-input" placeholder="Název programu..." value="${escapeHtml(s.program)}">
+              <label style="display:flex; align-items:center; gap:4px; font-size:13px; cursor:pointer;">
+                <input type="checkbox" id="chk_${index}" ${s.aktivni ? 'checked' : ''} style="transform: scale(1.2);"> Aktivní
+              </label>
+            </div>
+          </summary>
+          <div class="folder-content">
+            ${s.soubory.map(soub => `<div class="file-item"><span>📄 ${escapeHtml(soub.kratkyNazev)}</span> <span>${escapeHtml(String(soub.sekce||''))}</span></div>`).join('')}
+          </div>
+        </details>
+      `;
+    });
+
+    cont.innerHTML = html;
+
+  } catch (error) {
+    cont.innerHTML = `<p style="color:var(--danger); padding:16px;">Chyba: ${error.message}</p>`;
+  }
+}
+
+// --- ULOŽENÍ ZMĚN NA GOOGLE ---
+function ulozitZmenyNot() {
+  const button = event.target;
+  button.innerText = "⏳ Ukládám změny...";
+  button.disabled = true;
+
+  const zmeny = [];
+
+  // Projdeme pouze naši očíslovanou paměť, žádné zmatky v textech
+  window.stromSlozek.forEach((s, index) => {
+    const chk = document.getElementById('chk_' + index);
+    const inputProg = document.getElementById('prog_' + index);
+
+    if (chk && inputProg) {
+      const novaAktivni = chk.checked;
+      const novyProgram = inputProg.value.trim();
+
+      // Pokud se u složky opravdu něco změnilo oproti původnímu stavu
+      if (s.aktivni !== novaAktivni || s.program !== novyProgram) {
+        const stavText = novaAktivni ? 'ANO' : '';
+
+        s.soubory.forEach(soubor => {
+          zmeny.push({
+            odkaz: soubor.odkaz,
+            aktivni: stavText,
+            program: novyProgram
+          });
+        });
+      }
+    }
+  });
+
+  // Pokud se nic nezměnilo, ani nevoláme Google
+  if (zmeny.length === 0) {
+    alert("Nebyly provedeny žádné změny.");
+    button.disabled = false;
+    button.innerText = "💾 Uložit všechny změny";
+    return;
+  }
+
+  // Odeslání
+  runGoogleScript("updateNotyHromadne", { zmeny: zmeny }).then(res => {
+    button.disabled = false;
+    button.innerText = "💾 Uložit všechny změny";
+    if (res.success) {
+      alert("Změny v archivu byly úspěšně uloženy.");
+      // Vymažeme paměť, aby aplikace stáhla čerstvá data
+      localStorage.removeItem("bolech_data_cache");
+      // Spustíme kompletní znovunačtení
+      initApp(); 
+    } else {
+      alert("Chyba při ukládání: " + res.error);
+    }
+  });
 }
 
 function confirmLogout() { 
