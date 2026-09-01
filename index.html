@@ -84,7 +84,7 @@
           <p style="margin: 4px 0 0 0; font-size: 14px; color: var(--text-muted);">Zde můžete přiřadit noty ke koncertům</p>
         </div>
         <div style="padding: 0 16px 24px 16px;">
-           <button class="btn" style="background:var(--success); width:100%; margin-bottom:16px;" onclick="ulozitZmenyNot()">💾 Uložit notičky</button>
+           <button type="button" class="btn" style="background:var(--success); width:100%; margin-bottom:16px;" onclick="ulozitZmenyNot(event)">💾 Uložit všechny změny</button>
            <div id="adminNotyContainer">Načítám složky...</div>
         </div>
       </div>
@@ -121,6 +121,6 @@
   <!-- ============================================== -->
   <!-- ODKAZ NA EXTERNÍ JAVASCRIPT S VERZÍ            -->
   <!-- ============================================== -->
-  <script src="app.js?v=1.20"></script>
+  <script src="app.js?v=1.21"></script>
 </body>
 </html>

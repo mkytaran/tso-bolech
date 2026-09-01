@@ -792,10 +792,19 @@ function vykresliAdminNoty() {
 }
 
 // --- ULOŽENÍ ZMĚN NA GOOGLE ---
-function ulozitZmenyNot() {
-  const button = event.target;
-  button.innerText = "⏳ Ukládám změny...";
-  button.disabled = true;
+function ulozitZmenyNot(e) {
+  // 1. ZÁZRAČNÁ OPRAVA: Zabráníme prohlížeči, aby při kliknutí obnovil stránku!
+  const eventObj = e || window.event;
+  if (eventObj && eventObj.preventDefault) {
+    eventObj.preventDefault();
+  }
+
+  // 2. Bezpečné nalezení tlačítka (i kdyby uživatel klikl na ikonku uvnitř)
+  const button = eventObj ? (eventObj.currentTarget || eventObj.target) : null;
+  if (button) {
+    button.innerText = "⏳ Ukládám změny...";
+    button.disabled = true;
+  }
 
   const zmeny = [];
 
@@ -826,15 +835,19 @@ function ulozitZmenyNot() {
   // Pokud se nic nezměnilo, ani nevoláme Google
   if (zmeny.length === 0) {
     alert("Nebyly provedeny žádné změny.");
-    button.disabled = false;
-    button.innerText = "💾 Uložit všechny změny";
+    if (button) {
+      button.disabled = false;
+      button.innerText = "💾 Uložit všechny změny";
+    }
     return;
   }
 
   // Odeslání
   runGoogleScript("updateNotyHromadne", { zmeny: zmeny }).then(res => {
-    button.disabled = false;
-    button.innerText = "💾 Uložit všechny změny";
+    if (button) {
+      button.disabled = false;
+      button.innerText = "💾 Uložit všechny změny";
+    }
     if (res.success) {
       alert("Změny v archivu byly úspěšně uloženy.");
       // Vymažeme paměť, aby aplikace stáhla čerstvá data
