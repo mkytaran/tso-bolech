@@ -282,13 +282,10 @@ function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
             <h4>${nota.skladba}</h4>
             <span>${nota.sekce}</span>
           </div>
-          <a href="${nota.odkaz.replace(/\/view.*/, '/preview')}" target="_blank" class="nota-open-btn">
-            Otevřít
+          <a href="${nota.odkaz.replace(/.*\/d\/([a-zA-Z0-9_-]+).*/, 'https://drive.google.com/uc?export=download&id=$1')}" target="_blank" class="nota-open-btn">
+            Stáhnout
           </a>
-            Otevřít
-          </a>
-        </div>
-      `;
+        </div>`;
     });
   }
   
@@ -821,7 +818,7 @@ function vykresliAdminNoty() {
             ${s.soubory.map(soub => `
               <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card, transparent);">
                 <a href="${soub.odkaz.replace(/\/view.*/, '/preview')}" target="_blank" style="font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 12px; color: var(--primary); text-decoration: none; font-weight: 600; cursor: pointer;">
-                  📄 <span style="text-decoration: underline;">${escapeHtml(soub.kratkyNazev)}</span>
+  📄            <span style="text-decoration: underline;">${escapeHtml(soub.kratkyNazev)}</span>
                 </a>
                 <span style="font-size: 11px; opacity: 0.8; white-space: nowrap; background: var(--border); padding: 4px 6px; border-radius: 4px; color: var(--text);">${escapeHtml(String(soub.sekce||''))}</span>
               </div>
