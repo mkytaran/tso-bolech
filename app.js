@@ -849,7 +849,7 @@ function vykresliAdminNoty() {
                 <span style="font-size: 11px; opacity: 0.8; white-space: nowrap; background: var(--border); padding: 4px 6px; border-radius: 4px; color: var(--text);">${escapeHtml(String(soub.sekce||''))}</span>
                 
                 <!-- Tlačítko pro odeslání e-mailem hostovi -->
-                <a href="mailto:?subject=Noty%20-%20${encodeURIComponent(soub.kratkyNazev)}&body=${emailBodyHost}" style="display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; min-width: 34px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text-muted); text-decoration: none; transition: background 0.2s;" title="Odeslat noty hostovi">
+                <a href="mailto:?subject=TSO Bolech - Noty%20-%20${encodeURIComponent(soub.kratkyNazev)}&body=${emailBodyHost}" style="display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; min-width: 34px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text-muted); text-decoration: none; transition: background 0.2s;" title="Odeslat noty hostovi">
                   <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
                 </a>
                 
