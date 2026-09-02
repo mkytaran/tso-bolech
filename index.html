@@ -83,8 +83,12 @@
           <h2 style="margin: 0; color: var(--primary);">Správa archivu</h2>
           <p style="margin: 4px 0 0 0; font-size: 14px; color: var(--text-muted);">Zde můžete přiřadit noty ke koncertům</p>
         </div>
-        <div style="padding: 0 0px 24px 0px;">
-           <button type="button" class="btn" style="background:var(--success); width:100%; margin-bottom:16px;" onclick="ulozitZmenyNot(event)">💾 Uložit všechny změny</button>
+        <div style="padding: 0 0 24px 0;">
+           <!-- STICKY OBAL: Přilepí se nahoru a podbarví se barvou pozadí, aby přes něj neprosvítaly noty -->
+           <div style="position: sticky; top: 0; z-index: 90; background: var(--bg); padding: 10px 0 16px 0;">
+             <button type="button" id="btnUlozitNoty" class="btn" style="background:var(--success); width:100%; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" onclick="ulozitZmenyNot(event)">💾 Uložit všechny změny</button>
+           </div>
+           
            <div id="adminNotyContainer">Načítám složky...</div>
         </div>
       </div>
@@ -121,6 +125,6 @@
   <!-- ============================================== -->
   <!-- ODKAZ NA EXTERNÍ JAVASCRIPT S VERZÍ            -->
   <!-- ============================================== -->
-  <script src="app.js?v=1.37"></script>
+  <script src="app.js?v=1.38"></script>
 </body>
 </html>

@@ -716,17 +716,42 @@ function deleteAkcePrompt(akceId) {
   }
 }
 
+// Globální hlídač neuložených změn
+window.maNeulozeneZmeny = false;
+
+// Funkce, která tlačítko obarví na červeno
+function oznacNeulozeneZmeny() {
+  window.maNeulozeneZmeny = true;
+  const btn = document.getElementById('btnUlozitNoty');
+  if(btn) {
+    btn.style.background = 'var(--danger)';
+    btn.innerHTML = "⚠️ ULOŽIT ZMĚNY (neuloženo)";
+  }
+}
+
+// Varování při pokusu zavřít celou stránku/prohlížeč
+window.addEventListener('beforeunload', (e) => {
+  if (window.maNeulozeneZmeny) {
+    e.preventDefault();
+    e.returnValue = ''; 
+  }
+});
+
 function switchTab(t, b) { 
+  // Ochrana před opuštěním Správy not s neuloženými změnami
+  if (window.maNeulozeneZmeny && t !== 'admin-noty') {
+    if (!confirm("⚠️ Ve Správě not máte NEULOŽENÉ ZMĚNY!\n\nOpravdu chcete odejít bez uložení? Změny se nenávratně smažou.")) {
+      return; 
+    }
+    window.maNeulozeneZmeny = false; 
+  }
+
   document.getElementById('tab-events').style.display = t === 'events' ? 'block' : 'none'; 
   document.getElementById('tab-archive').style.display = t === 'archive' ? 'block' : 'none'; 
   document.getElementById('tab-admin-noty').style.display = t === 'admin-noty' ? 'block' : 'none';
 
-  // NOVÉ: Přepínání pro kartu not
   const tabNoty = document.getElementById('tab-sheetmusic');
   if (tabNoty) tabNoty.style.display = t === 'sheetmusic' ? 'block' : 'none'; 
-
-  const tabAdminNoty = document.getElementById('tab-admin-noty');
-  if (tabAdminNoty) tabAdminNoty.style.display = t === 'admin-noty' ? 'block' : 'none';
   
   document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active')); 
   if (b) b.classList.add('active'); 
@@ -816,11 +841,12 @@ function vykresliAdminNoty() {
             <!-- 2. Řádek: Ovládací prvky (skryjí se automaticky podle stavu) -->
             <div class="folder-controls" onclick="event.stopPropagation();" style="display: flex; gap: 8px; align-items: center; width: 100%;">
               
-              <input type="text" id="prog_${index}" class="modal-input" placeholder="Název programu..." value="${escapeHtml(s.program)}" style="flex: 1; margin: 0; padding: 10px; font-size: 14px; border-radius: 6px;">
-              
+              <input type="text" id="prog_${index}" class="modal-input" placeholder="Název programu..." value="${escapeHtml(s.program)}" style="flex: 1; margin: 0; padding: 10px; font-size: 14px; border-radius: 6px;" oninput="oznacNeulozeneZmeny()">  
+
               <label style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; background: ${checkBg}; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: background 0.2s;" title="Aktivní">
                 <input type="checkbox" id="chk_${index}" ${s.aktivni ? 'checked' : ''} style="transform: scale(1.4); margin: 0; cursor: pointer;" 
                        onchange="
+                         oznacNeulozeneZmeny();
                          // Dynamická změna barvy a stavu při zaškrtnutí (aby pole nezmizelo po sbalení)
                          this.parentElement.style.background = this.checked ? 'var(--success)' : 'transparent';
                          const det = this.closest('details');
@@ -924,13 +950,13 @@ function ulozitZmenyNot(e) {
   runGoogleScript("updateNotyHromadne", { zmeny: zmeny }).then(res => {
     if (button) {
       button.disabled = false;
-      button.innerText = "💾 Uložit všechny změny";
+      button.innerHTML = "💾 Uložit všechny změny";
+      button.style.background = "var(--success)"; // Zpátky na zelenou
     }
     if (res.success) {
+      window.maNeulozeneZmeny = false; // Vypneme alarm
       alert("Změny v archivu byly úspěšně uloženy.");
-      // Vymažeme paměť, aby aplikace stáhla čerstvá data
       localStorage.removeItem("bolech_data_cache");
-      // Spustíme kompletní znovunačtení
       initApp(); 
     } else {
       alert("Chyba při ukládání: " + res.error);
