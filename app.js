@@ -764,7 +764,15 @@ function vykresliAdminNoty() {
       }
     });
 
-    window.stromSlozek = Object.values(slozkyMap).sort((a, b) => a.cesta.localeCompare(b.cesta));
+   // 2. Uložení seřazených složek do bezpečné paměti (AKTIVNÍ NAHOŘE, pak abecedně)
+    window.stromSlozek = Object.values(slozkyMap).sort((a, b) => {
+      // Pokud je jedna složka aktivní a druhá ne, aktivní jde nahoru
+      if (a.aktivni && !b.aktivni) return -1;
+      if (!a.aktivni && b.aktivni) return 1;
+      
+      // Pokud mají obě stejný stav (obě aktivní, nebo obě neaktivní), seřadí se abecedně
+      return a.cesta.localeCompare(b.cesta);
+    });
 
     // 3. Vykreslení s vloženým miniaturním stylem pro chytré skrývání
     let html = `
