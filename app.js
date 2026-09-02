@@ -255,9 +255,12 @@ function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
   let html = '';
   for (const [program, noty] of Object.entries(notyPodleProgramu)) {
     
-    // Získání vlastního e-mailu hráče
-    const mujEmail = (appData.prihlasenyUzivatel && appData.prihlasenyUzivatel.email) ? appData.prihlasenyUzivatel.email : '';
-    
+    // Získání vlastního e-mailu hráče ze seznamu členů
+    let mujEmail = user.email || '';
+    if (!mujEmail && appData.clenove) {
+      const ja = appData.clenove.find(c => c.jmeno === user.name || c.name === user.name);
+      if (ja && ja.email) mujEmail = ja.email.trim();
+    }
     // Sestavení textu s odkazy pro PŘÍMÉ STAŽENÍ
     let emailPredmet = encodeURIComponent(`Noty TSO Bolech - ${program}`);
     let emailTelo = `Dobrý den,\n\nzasílám odkazy pro přímé stažení not (Program: ${program}, Part: ${nastrojUzivatele}).\n\n`;
