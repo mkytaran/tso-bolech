@@ -255,22 +255,27 @@ function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
   let html = '';
   for (const [program, noty] of Object.entries(notyPodleProgramu)) {
     
-    // Sestavení textu pro odeslání všech odkazů na e-mail
+    // Získání vlastního e-mailu hráče
+    const mujEmail = (appData.prihlasenyUzivatel && appData.prihlasenyUzivatel.email) ? appData.prihlasenyUzivatel.email : '';
+    
+    // Sestavení textu s odkazy pro PŘÍMÉ STAŽENÍ
     let emailPredmet = encodeURIComponent(`Noty TSO Bolech - ${program}`);
-    let emailTelo = `Dobrý den,\n\nzasílám odkazy na noty pro program: ${program} (Part: ${nastrojUzivatele}).\n\n`;
+    let emailTelo = `Dobrý den,\n\nzasílám odkazy pro přímé stažení not (Program: ${program}, Part: ${nastrojUzivatele}).\n\n`;
     noty.forEach(n => {
-      emailTelo += `- ${n.skladba}:\n  ${n.odkaz}\n\n`;
+      let stahovaciOdkaz = n.odkaz.replace(/.*\/d\/([a-zA-Z0-9_-]+).*/, 'https://drive.google.com/uc?export=download&id=$1');
+      emailTelo += `- ${n.skladba}:\n  ${stahovaciOdkaz}\n\n`;
     });
-    emailTelo += `V aplikaci získáte další informace.\nPortál TSO Bolech`;
-    let mailtoOdkaz = `mailto:?subject=${emailPredmet}&body=${encodeURIComponent(emailTelo)}`;
+    emailTelo += `Portál TSO Bolech`;
+    
+    let mailtoOdkaz = `mailto:${mujEmail}?subject=${emailPredmet}&body=${encodeURIComponent(emailTelo)}`;
 
     // Hlavička programu a tlačítko na e-mail
     html += `
       <div class="program-header">
         <h3 class="program-title">${program}</h3>
-        <a href="${mailtoOdkaz}" class="email-btn">
+        <a href="${mailtoOdkaz}" class="email-btn" title="Přeposlat odkazy na svůj e-mail">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
-          Na e-mail
+          Přeposlat sobě
         </a>
       </div>`;
       
@@ -826,14 +831,28 @@ function vykresliAdminNoty() {
           
           <!-- Seznam skladeb -->
           <div class="folder-content" style="padding: 12px; display: flex; flex-direction: column; gap: 6px; background: var(--bg);">
-            ${s.soubory.map(soub => `
-              <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card, transparent);">
-                <a href="${soub.odkaz.replace(/\/view.*/, '/preview')}" target="_blank" style="font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 12px; color: var(--primary); text-decoration: none; font-weight: 600; cursor: pointer;">
-  📄            <span style="text-decoration: underline;">${escapeHtml(soub.kratkyNazev)}</span>
+            ${s.soubory.map(soub => {
+              // Přímý odkaz pro rychlé stáhnutí hostem
+              let downloadOdkaz = soub.odkaz.replace(/.*\/d\/([a-zA-Z0-9_-]+).*/, 'https://drive.google.com/uc?export=download&id=$1');
+              let emailBodyHost = encodeURIComponent("Ahoj, zasílám odkaz ke stažení not (" + soub.kratkyNazev + "):\n\n" + downloadOdkaz);
+              
+              return `
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card, transparent); gap: 8px;">
+                
+                <a href="${soub.odkaz.replace(/\/view.*/, '/preview')}" target="_blank" style="font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; color: var(--primary); text-decoration: none; font-weight: 600; cursor: pointer;">
+                  📄 <span style="text-decoration: underline;">${escapeHtml(soub.kratkyNazev)}</span>
                 </a>
+                
                 <span style="font-size: 11px; opacity: 0.8; white-space: nowrap; background: var(--border); padding: 4px 6px; border-radius: 4px; color: var(--text);">${escapeHtml(String(soub.sekce||''))}</span>
+                
+                <!-- Tlačítko pro odeslání e-mailem hostovi -->
+                <a href="mailto:?subject=Noty%20-%20${encodeURIComponent(soub.kratkyNazev)}&body=${emailBodyHost}" style="display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; min-width: 34px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text-muted); text-decoration: none; transition: background 0.2s;" title="Odeslat noty hostovi">
+                  <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                </a>
+                
               </div>
-            `).join('')}
+              `;
+            }).join('')}
           </div>
 
         </details>
