@@ -148,9 +148,13 @@ function initApp() {
   document.getElementById("userBadge").innerText = user.name;
   
   const userRole = String(user.role || "").trim().toLowerCase();
-  const isVedení = userRole !== "" && userRole !== "-" && userRole !== "host";
+  
+  // BEZPEČNOSTNÍ POJISTKA: Přesný výčet rolí, které mají práva správy
+  const povoleneRole = ['admin', 'dirigent', 'vedení', 'vedeni'];
+  const isVedení = povoleneRole.includes(userRole);
+  
   const jeDirigent = userRole === 'dirigent';
-
+  
   // Zobrazíme tlačítko Správa pro vedení
   if (isVedení) {
     document.getElementById('btn-nav-admin').style.display = 'flex';
@@ -359,7 +363,10 @@ function renderEvents() {
   const cont = document.getElementById("eventsContainer"); cont.innerHTML = "";
   const archCont = document.getElementById("archiveContainer"); archCont.innerHTML = "";
   const userRole = String(user.role||"").trim().toLowerCase();
-  const isVedení = userRole !== "" && userRole !== "-" && userRole !== "host";
+  
+  // BEZPEČNOSTNÍ POJISTKA: Přesný výčet rolí, které mají práva správy
+  const povoleneRole = ['admin', 'dirigent', 'vedení', 'vedeni'];
+  const isVedení = povoleneRole.includes(userRole);
   
   if (isVedení) {
     cont.innerHTML += `
