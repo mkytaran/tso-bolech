@@ -205,7 +205,55 @@ function getInitialData() {
     }
   }
 
-  return { akce: akce, noty: noty, ucast: ucast, zadosti: zadostiHostu };
+  // --- NOVÉ: NAČTENÍ VŠECH ČLENŮ A HOSTŮ ---
+  let clenove = [];
+  const sheetClenove = ss.getSheetByName("Seznam členů");
+  if (sheetClenove) {
+    const dataClenove = sheetClenove.getDataRange().getValues();
+    const headers = dataClenove[0];
+    let jCol = -1, pCol = -1, sCol = -1, rCol = -1, platCol = -1;
+    
+    // Nalezení správných sloupců
+    for (let i = 0; i < headers.length; i++) {
+      let h = String(headers[i]).toLowerCase().trim();
+      if (h === "jméno") jCol = i;
+      if (h === "příjmení") pCol = i;
+      if (h === "nástrojová sekce") sCol = i;
+      if (h === "role") rCol = i;
+      if (h === "platnost do") platCol = i;
+    }
+    
+    // Projít všechny řádky (vyjma hlavičky)
+    for (let i = 1; i < dataClenove.length; i++) {
+      let jmeno = jCol > -1 ? String(dataClenove[i][jCol]).trim() : "";
+      let prijmeni = pCol > -1 ? String(dataClenove[i][pCol]).trim() : "";
+      let sekce = sCol > -1 ? String(dataClenove[i][sCol]).trim() : "";
+      let role = rCol > -1 ? String(dataClenove[i][rCol]).trim() : "";
+      let platnost = "";
+      
+      if (platCol > -1 && dataClenove[i][platCol]) {
+         let d = dataClenove[i][platCol];
+         if (d instanceof Date) {
+           platnost = Utilities.formatDate(d, "Europe/Prague", "d. M. yyyy");
+         } else {
+           platnost = String(d);
+         }
+      }
+      
+      // Pokud existuje jméno nebo příjmení, přidáme ho do seznamu
+      if (jmeno || prijmeni) {
+        clenove.push({
+          celeJmeno: (jmeno + " " + prijmeni).trim(),
+          sekce: sekce,
+          role: role,
+          platnost: platnost
+        });
+      }
+    }
+  }
+
+  // ZMĚNĚNÝ ZÁVĚREČNÝ ŘÁDEK: Přidáno vracení pole "clenove"
+  return { akce: akce, noty: noty, ucast: ucast, zadosti: zadostiHostu, clenove: clenove };
 
 }
 

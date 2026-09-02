@@ -1021,9 +1021,32 @@ function odeslatZadostHosta(e) {
 
 // Otevření okna pro vedení (Správa hostů)
 function openGuestManager() {
+  // Rozdělení dat na aktivní hosty a běžné členy
+  let htmlHoste = "";
+  let htmlClenove = "";
+  
+  if (appData.clenove) {
+    appData.clenove.forEach(c => {
+      if (c.role.toLowerCase() === 'host') {
+         htmlHoste += `<div style="padding: 6px 0; border-bottom: 1px dashed var(--border); font-size: 14px;">
+                        <strong>${escapeHtml(c.celeJmeno)}</strong> (${escapeHtml(c.sekce)})<br>
+                        <span style="color:var(--danger); font-size:12px;">⏳ Platí do: ${escapeHtml(c.platnost)}</span>
+                      </div>`;
+      } else {
+         htmlClenove += `<div style="padding: 6px 0; border-bottom: 1px dashed var(--border); font-size: 14px; color:var(--text-muted);">
+                        <strong>${escapeHtml(c.celeJmeno)}</strong> (${escapeHtml(c.sekce)})
+                      </div>`;
+      }
+    });
+  }
+  
+  if(!htmlHoste) htmlHoste = "<p style='color:var(--text-muted); font-size:13px;'>Žádní aktivní hosté.</p>";
+  if(!htmlClenove) htmlClenove = "<p style='color:var(--text-muted); font-size:13px;'>Žádní členové.</p>";
+
+  // Sestavení samotného okna
   let html = `
     <div id="guestModal" class="modal-overlay">
-      <div class="modal-box" style="max-height: 90vh; overflow-y: auto;">
+      <div class="modal-box" style="max-height: 90vh; overflow-y: auto; padding-bottom: 30px;">
         <div style="display:flex; justify-content:space-between; margin-bottom: 20px;">
           <h3 style="margin:0; font-size:22px;">👥 Správa hostů</h3>
           <button type="button" class="btn" style="padding:4px 8px; background:transparent; border:1px solid var(--danger); color:var(--danger);" onclick="document.getElementById('guestModal').remove()">✕</button>
@@ -1056,10 +1079,12 @@ function openGuestManager() {
   html += `
         </div>
         
-        <!-- Sekce 2: Přímé pozvání (Vedení zve hosta samo) -->
+        <!-- Sekce 2: Přímé pozvání -->
         <h4 style="margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom:4px;">Přímé pozvání hosta</h4>
         <form onsubmit="pridatHostaNaprimo(event)">
           <input type="text" id="dirGuestName" required placeholder="Jméno a Příjmení" class="modal-input" style="margin-bottom: 8px;">
+          
+          <!-- ROLETKA PRO NÁSTROJ -->
           <select id="dirGuestInst" required class="modal-input" style="margin-bottom: 8px;">
             <option value="" disabled selected>Vyberte nástrojovou sekci...</option>
             <option value="1. Housle">1. Housle</option>
@@ -1080,12 +1105,25 @@ function openGuestManager() {
             <option value="Zpěv">Zpěv</option>
             <option value="Hosté">Jiný / Ostatní</option>
           </select>
+
           <input type="email" id="dirGuestEmail" required placeholder="E-mail hosta" class="modal-input" style="margin-bottom: 8px;">
           <label style="font-size:12px; margin-top:8px; display:block;">Platnost účtu do:</label>
           <input type="date" id="dirGuestExp" required class="modal-input" style="margin-bottom: 16px;">
           
           <button type="submit" id="dirGuestBtn" class="btn" style="width:100%; background:var(--primary-light);">Vytvořit hosta a odeslat PIN</button>
         </form>
+
+        <!-- Sekce 3: Aktuální databáze (Ochrana proti duplikátům) -->
+        <h4 style="margin-top: 24px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom:4px;">Aktivní účty (kontrola)</h4>
+        
+        <div style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border); padding: 10px; border-radius: 6px; background: var(--bg);">
+          <h5 style="margin:0 0 8px 0; color:var(--text);">Otevřené účty hostů:</h5>
+          ${htmlHoste}
+          
+          <h5 style="margin:16px 0 8px 0; color:var(--text);">Stálí členové:</h5>
+          ${htmlClenove}
+        </div>
+
       </div>
     </div>`;
   
