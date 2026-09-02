@@ -1,26 +1,74 @@
-// --- 1. DISPEČER PRO EXTERNÍ APLIKACI (GITHUB / FETCH) ---
-function doPost(e) {
-  let request;
-  try {
-    request = JSON.parse(e.postData.contents);
-  } catch(err) {
-    return ContentService.createTextOutput(JSON.stringify({success: false, error: "Neplatná data ze serveru."}))
+// --- VSTUPNÍ BRÁNA PRO PROHLÍŽEČ (Otevření odkazu) ---
+function doGet(e) {
+  const action = e && e.parameter && e.parameter.action ? e.parameter.action : "";
+  if (action === "getInitialData") {
+    return ContentService.createTextOutput(JSON.stringify(getInitialData()))
       .setMimeType(ContentService.MimeType.JSON);
   }
+  return ContentService.createTextOutput("API server Táborského symfonického orchestru Bolech běží v pořádku.")
+    .setMimeType(ContentService.MimeType.TEXT);
+}
 
-  let response = {};
+// --- POMOCNÁ FUNKCE PRO ZÁPIS CHYB PŘÍMO DO TABULKY ---
+function logError(title, msg) {
   try {
-    if (request.action === "authenticateMember") response = authenticateMember(request.payload);
-    else if (request.action === "getInitialData") response = getInitialData();
-    else if (request.action === "saveUcast") response = saveUcast(request.payload);
-    else if (request.action === "saveAkce") response = saveAkce(request.payload);
-    else if (request.action === "deleteAkce") response = deleteAkce(request.payload);
-  } catch (error) {
-    response = { success: false, error: error.toString() };
-  }
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName("Debug_Log");
+    if (!sheet) { sheet = ss.insertSheet("Debug_Log"); }
+    sheet.insertRowBefore(1);
+    sheet.getRange("A1:C1").setValues([[new Date(), title, msg]]);
+  } catch (e) {} // Pokud selže i tohle, nic se neděje
+}
 
-  return ContentService.createTextOutput(JSON.stringify(response))
-    .setMimeType(ContentService.MimeType.JSON);
+// --- 1. DISPEČER PRO EXTERNÍ APLIKACI (Čistý příjem JSON) ---
+function doPost(e) {
+  try {
+    // Bezpečnostní pojistka
+    if (!e || !e.postData || !e.postData.contents) {
+      return ContentService.createTextOutput(JSON.stringify({success: false, error: "Chybí data (postData)."}))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    let request;
+    try {
+      request = JSON.parse(e.postData.contents);
+    } catch(err) {
+      logError("JSON Chyba", err.toString());
+      return ContentService.createTextOutput(JSON.stringify({success: false, error: "Neplatná data ze serveru (nelze zpracovat JSON)."}))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    let response = {};
+    try {
+      if (request.action === "authenticateMember") response = authenticateMember(request.payload);
+      else if (request.action === "getInitialData") response = getInitialData();
+      else if (request.action === "saveUcast") response = saveUcast(request.payload);
+      else if (request.action === "saveAkce") response = saveAkce(request.payload);
+      else if (request.action === "deleteAkce") response = deleteAkce(request.payload);
+      else if (request.action === "updateNotyHromadne") response = updateNotyHromadne(request.payload);
+      // NOVÉ PŘÍKAZY PRO HOSTY:
+      else if (request.action === "requestGuestAccount") response = requestGuestAccount(request.payload);
+      else if (request.action === "approveGuest") response = approveGuest(request.payload);
+      else response = { success: false, error: "Neznámá akce: " + request.action };
+    } catch (error) {
+      // Zachycení specifické chyby při zpracování
+      logError("Chyba při zpracování (" + (request.action || "neznámá") + ")", error.toString() + " | " + error.stack);
+      response = { success: false, error: error.toString() };
+    }
+
+    return ContentService.createTextOutput(JSON.stringify(response)).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (fatalError) {
+    // Kritické selhání úplně mimo kontrolu
+    logError("Kritická chyba doPost", fatalError.toString());
+    return ContentService.createTextOutput(JSON.stringify({success: false, error: fatalError.toString()})).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// --- VYJEDNAVAČ PRO PROHLÍŽEČE (Řeší zbytečné CORS blokace) ---
+function doOptions(e) {
+  return ContentService.createTextOutput("")
+    .setMimeType(ContentService.MimeType.TEXT);
 }
 
 // Pro povolení CORS (nutné pro volání z vnějšího webu)
@@ -29,55 +77,76 @@ function doOptions(e) {
     .setMimeType(ContentService.MimeType.TEXT);
 }
 
-// --- 2. FUNKCE PRO PŘIHLAŠOVÁNÍ (S KONTROLOU PINU) ---
+// --- 2. FUNKCE PRO PŘIHLAŠOVÁNÍ (S KONTROLOU PINU A EXPIRACE) ---
 function authenticateMember(payload) {
-  const query = String(payload.query || "").trim().toLowerCase();
-  const providedPin = String(payload.pin || "").trim(); // Přijatý PIN z aplikace
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Seznam členů"); 
+  if (!sheet) return { success: false, error: "List 'Seznam členů' nebyl nalezen." };
+  
+  var data = sheet.getDataRange().getValues();
+  var query = String(payload.query || "").toLowerCase().trim();
+  var pin = String(payload.pin || "").trim();
 
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("Seznam členů");
-  if (!sheet) return { success: false, error: "List 'Seznam členů' nenalezen" };
+  var headers = data[0];
+  var nameCol = -1, surnameCol = -1, emailCol = -1, pinCol = -1, sectionCol = -1, roleCol = -1, platnostCol = -1;
+  
+  for (var i = 0; i < headers.length; i++) {
+    var h = String(headers[i]).toLowerCase().trim();
+    if (h === "jméno") nameCol = i;
+    if (h === "příjmení") surnameCol = i;
+    if (h === "e-mail") emailCol = i;
+    if (h === "pin") pinCol = i;
+    if (h === "nástrojová sekce") sectionCol = i;
+    if (h === "role") roleCol = i;
+    if (h === "platnost do") platnostCol = i; // Nový sloupec pro expiraci
+  }
 
-  const data = sheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    const row = data[i];
-    const jmeno = String(row[1] || "").trim();
-    const prijmeni = String(row[2] || "").trim();
-    const nastroj = String(row[4] || "").trim() || String(row[3] || "").trim();
-    const email = String(row[5] || "").trim().toLowerCase(); 
-    const role = String(row[6] || "").trim(); 
-    const aktivni = String(row[8] || "").trim().toLowerCase(); 
-    
-    // Načtení PINu ze sloupce J (Index 9)
-    const spravnyPin = String(row[9] || "").trim(); 
+  if (nameCol === -1 || pinCol === -1) return { success: false, error: "Sloupce Jméno a Pin nenalezeny." };
 
-    const celeJmeno = jmeno + " " + prijmeni;
-    
-    if (aktivni === "ano" || aktivni === "true" || aktivni === "1") {
-      // Nejprve zkontrolujeme, zda sedí jméno nebo e-mail
-      if (celeJmeno.toLowerCase().includes(query) || (email && email === query)) {
-        
-        // Pokud ano, zkontrolujeme PIN
-        if (providedPin === spravnyPin && spravnyPin !== "") {
-          return {
-            success: true,
-            member: { name: celeJmeno, section: nastroj, role: role }
-          };
-        } else {
-          // Jméno sedí, ale PIN je špatný
-          return { success: false, error: "Nesprávný PIN kód." };
-        }
-      }
+  for (var r = 1; r < data.length; r++) {
+    var rowName = String(data[r][nameCol]).trim();
+    var rowSurname = surnameCol > -1 ? String(data[r][surnameCol]).trim() : "";
+    var fullName = (rowName + " " + rowSurname).toLowerCase().trim();
+    var reversedName = (rowSurname + " " + rowName).toLowerCase().trim(); 
+    var rowEmail = emailCol > -1 ? String(data[r][emailCol]).toLowerCase().trim() : "";
+    var rowPin = String(data[r][pinCol]).trim();
+
+    if ((query === rowEmail || query === fullName || query === reversedName || query === rowName.toLowerCase()) && query !== "") {
+      if (pin === rowPin) {
+         
+         // ZÁCHRANA: Kontrola expirace účtu hosta
+         if (platnostCol > -1 && data[r][platnostCol]) {
+           var expDateText = data[r][platnostCol];
+           var expDate = null;
+           if (expDateText instanceof Date) { expDate = expDateText; }
+           else {
+             var parts = String(expDateText).split('-'); // Očekává formát YYYY-MM-DD
+             if(parts.length === 3) expDate = new Date(parts[0], parts[1]-1, parts[2], 23, 59, 59);
+           }
+           
+           if (expDate && Date.now() > expDate.getTime()) {
+             return { success: false, error: "Platnost tohoto hostovského účtu vypršela." };
+           }
+         }
+
+         return {
+           success: true,
+           member: {
+             name: rowName + (rowSurname ? " " + rowSurname : ""),
+             section: sectionCol > -1 ? String(data[r][sectionCol]).trim() : "",
+             role: roleCol > -1 ? String(data[r][roleCol]).trim() : "",
+             email: rowEmail
+           }
+         };
+      } else return { success: false, error: "Nesprávný PIN kód." };
     }
   }
-  return { success: false, error: "Člen nenalezen nebo chybný PIN." };
+  return { success: false, error: "Jméno nebo e-mail nenalezen." };
 }
 
 // --- 3. NAČTENÍ DAT (AKCE, NOTY, ÚČAST) ---
 function getInitialData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   
-  // Akce
   let akce = [];
   const sheetAkce = ss.getSheetByName("Přehled akcí");
   if (sheetAkce) {
@@ -88,35 +157,31 @@ function getInitialData() {
         let datumVal = row[4];
         if (datumVal instanceof Date) datumVal = Utilities.formatDate(datumVal, "Europe/Prague", "d. M. yyyy");
         akce.push({
-          id: String(row[0]),
-          typ: row[1],
-          nazev: row[2],
-          misto: row[3],
-          datum: datumVal,
+          id: String(row[0]), typ: row[1], nazev: row[2], misto: row[3], datum: datumVal,
           casOd: row[5] instanceof Date ? Utilities.formatDate(row[5], "Europe/Prague", "HH:mm") : row[5],
-          casDo: row[6],
-          casSrazu: row[7] instanceof Date ? Utilities.formatDate(row[7], "Europe/Prague", "HH:mm") : row[7],
+          casDo: row[6], casSrazu: row[7] instanceof Date ? Utilities.formatDate(row[7], "Europe/Prague", "HH:mm") : row[7],
           zacatekGeneralky: row[8] instanceof Date ? Utilities.formatDate(row[8], "Europe/Prague", "HH:mm") : row[8],
           uzavierka: row[9] instanceof Date ? Utilities.formatDate(row[9], "Europe/Prague", "d. M. yyyy") : row[9],
-          damy: row[10],
-          pani: row[11],
-          poznamka: row[12]
+          damy: row[10], pani: row[11], poznamka: row[12]
         });
       }
     }
   }
 
-  // Noty
   let noty = [];
-  const sheetNoty = ss.getSheetByName("Notový archiv");
+  const sheetNoty = ss.getSheetByName("Noty");
   if (sheetNoty) {
     const dataNoty = sheetNoty.getDataRange().getValues();
     for (let i = 1; i < dataNoty.length; i++) {
-      if (dataNoty[i][0]) noty.push({ nazev: dataNoty[i][0], skladatel: dataNoty[i][1], link: dataNoty[i][2] });
+      if (dataNoty[i][0]) {
+        noty.push({ 
+          skladba: String(dataNoty[i][0]), sekce: String(dataNoty[i][1]), 
+          odkaz: String(dataNoty[i][2]), program: String(dataNoty[i][3]), aktivni: String(dataNoty[i][4])
+        });
+      }
     }
   }
 
-  // Účast
   let ucast = [];
   const sheetUcast = ss.getSheetByName("Docházka a účast");
   if (sheetUcast) {
@@ -126,211 +191,308 @@ function getInitialData() {
     }
   }
 
-  return { akce: akce, noty: noty, ucast: ucast };
-}
-
-// --- 4. ULOŽENÍ HLASOVÁNÍ ---
-function saveUcast(payload) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("Docházka a účast");
-  if (!sheet) return { success: false, error: "List 'Docházka a účast' nenalezen" };
-
-  const data = sheet.getDataRange().getValues();
-  let rowIndex = -1;
-
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][1]) === String(payload.akceId) && String(data[i][3]) === String(payload.jmeno)) {
-      rowIndex = i + 1;
-      break;
+  // Načtení žádostí hostů (pouze těch nevyřízených)
+  let zadostiHostu = [];
+  const sheetZadosti = ss.getSheetByName("Žádosti hostů");
+  if (sheetZadosti) {
+    const dataZadosti = sheetZadosti.getDataRange().getValues();
+    for (let i = 1; i < dataZadosti.length; i++) {
+      if (dataZadosti[i][5] === "Nová") {
+        zadostiHostu.push({
+          rowIdx: i + 1, cas: dataZadosti[i][0], jmeno: dataZadosti[i][1], nastroj: dataZadosti[i][2], email: dataZadosti[i][3], telefon: dataZadosti[i][4]
+        });
+      }
     }
   }
 
-  const timestamp = Utilities.formatDate(new Date(), "Europe/Prague", "d. M. yyyy HH:mm:ss");
+  return { akce: akce, noty: noty, ucast: ucast, zadosti: zadostiHostu };
 
+}
+
+// --- ZBÝVAJÍCÍ FUNKCE ---
+function saveUcast(payload) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Docházka a účast");
+  const data = sheet.getDataRange().getValues();
+  let rowIndex = -1;
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][1]) === String(payload.akceId) && String(data[i][3]) === String(payload.jmeno)) { rowIndex = i + 1; break; }
+  }
+  const timestamp = Utilities.formatDate(new Date(), "Europe/Prague", "d. M. yyyy HH:mm:ss");
   if (rowIndex > 0) {
-    sheet.getRange(rowIndex, 1).setValue(timestamp);
-    sheet.getRange(rowIndex, 6).setValue(payload.stav);
-    sheet.getRange(rowIndex, 7).setValue(payload.duvod || "");
+    sheet.getRange(rowIndex, 1).setValue(timestamp); sheet.getRange(rowIndex, 6).setValue(payload.stav); sheet.getRange(rowIndex, 7).setValue(payload.duvod || "");
   } else {
     sheet.appendRow([timestamp, payload.akceId, payload.datumAkce || "", payload.jmeno, payload.sekce, payload.stav, payload.duvod || ""]);
   }
-
-  try { aktualizovatPrehledUčasti(); } catch (e) {}
   return { success: true };
 }
 
-// --- 5. TVORBA / ÚPRAVA AKCÍ (PRO VEDENÍ) ---
 function saveAkce(payload) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("Přehled akcí");
-  if (!sheet) return { success: false, error: "List 'Přehled akcí' nenalezen." };
-
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Přehled akcí");
   const data = sheet.getDataRange().getValues();
   let akceId = payload.id ? String(payload.id).trim() : "";
   let rowIndex = -1;
-
   if (akceId) {
-    for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0]).trim() === akceId) { rowIndex = i + 1; break; }
-    }
+    for (let i = 1; i < data.length; i++) { if (String(data[i][0]).trim() === akceId) { rowIndex = i + 1; break; } }
   }
-
-  if (rowIndex === -1) {
-    const typ = String(payload.typ || "").toLowerCase();
-    let prefix = "akce_";
-    if (typ.includes("koncert")) prefix = "k_";
-    else if (typ.includes("zkoušk") || typ.includes("zkouska")) prefix = "zk_";
-    else if (typ.includes("generálk") || typ.includes("generalka")) prefix = "gen_";
-
-    let maxNum = 0;
-    for (let i = 1; i < data.length; i++) {
-      let existingId = String(data[i][0]).trim();
-      if (existingId.startsWith(prefix)) {
-        let numPart = parseInt(existingId.replace(prefix, ""), 10);
-        if (!isNaN(numPart) && numPart > maxNum) maxNum = numPart;
-      }
-    }
-    akceId = prefix + String(maxNum + 1).padStart(3, '0');
-  }
-
-  // Zápis sloupců A až M
-  const rowValues = [
-    akceId, payload.typ || "", payload.nazev || "", payload.misto || "", payload.datum || "",
-    payload.casOd || "", "", payload.casSrazu || "", payload.zacatekGeneralky || "",
-    "", payload.damy || "", payload.pani || "", payload.poznamka || ""
-  ];
-
-  if (rowIndex > 0) {
-    sheet.getRange(rowIndex, 1, 1, rowValues.length).setValues([rowValues]);
-  } else {
-    sheet.appendRow(rowValues);
-  }
-
-  try { aktualizovatPrehledUčasti(); } catch (e) {}
+  if (rowIndex === -1) { akceId = "akce_" + new Date().getTime(); }
+  const rowValues = [akceId, payload.typ || "", payload.nazev || "", payload.misto || "", payload.datum || "", payload.casOd || "", "", payload.casSrazu || "", payload.zacatekGeneralky || "", "", payload.damy || "", payload.pani || "", payload.poznamka || ""];
+  if (rowIndex > 0) sheet.getRange(rowIndex, 1, 1, rowValues.length).setValues([rowValues]);
+  else sheet.appendRow(rowValues);
   return { success: true, id: akceId };
 }
 
-// --- 6. SMAZÁNÍ AKCE (PRO VEDENÍ) ---
 function deleteAkce(payload) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("Přehled akcí");
-  if (!sheet) return { success: false, error: "List 'Přehled akcí' nenalezen." };
-  
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Přehled akcí");
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim() === String(payload.id).trim()) {
-      sheet.deleteRow(i + 1);
-      try { aktualizovatPrehledUčasti(); } catch (e) {}
-      return { success: true };
-    }
+    if (String(data[i][0]).trim() === String(payload.id).trim()) { sheet.deleteRow(i + 1); return { success: true }; }
   }
-  return { success: false, error: "Akce nebyla nalezena." };
+  return { success: false, error: "Akce nenalezena." };
 }
 
-// --- 7. GENERÁTOR PŘEHLEDU ÚČASTI (MATICE) ---
-function aktualizovatPrehledUčasti() {
+// --- 8. HROMADNÉ ULOŽENÍ NOT Z APLIKACE (Chirurgický a bezpečný zápis) ---
+function updateNotyHromadne(payload) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const partituraSections = [
-    "1. Housle", "2. Housle", "Violy", "Violoncella", "Kontrabasy", "Flétny / Pikola", "Oboje / Anglický roh",
-    "Klarinety", "Fagoty", "Lesní rohy", "Trubky", "Pozouny", "Tuba", "Bicí nástroje", "Klávesy / Klavír", "Ostatní / Hosté"
-  ];
+  const sheet = ss.getSheetByName("Noty");
+  if (!sheet) return { success: false, error: "List Noty nenalezen." };
 
-  const sheetClenove = ss.getSheetByName("Seznam členů");
-  if (!sheetClenove) return;
-  const dataClenove = sheetClenove.getDataRange().getValues();
+  const data = sheet.getDataRange().getValues();
+  const zmeny = payload.zmeny || [];
   
-  let members = [];
-  for (let i = 1; i < dataClenove.length; i++) {
-    const row = dataClenove[i];
-    const jmeno = String(row[1] || "").trim();
-    const prijmeni = String(row[2] || "").trim();
-    const nástroj = String(row[4] || "").trim() || String(row[3] || "").trim();
-    const aktivni = String(row[8] || "").trim().toLowerCase();
+  if (zmeny.length === 0) return { success: true };
 
-    if ((aktivni === "ano" || aktivni === "true" || aktivni === "1") && jmeno) {
-      let secIndex = partituraSections.findIndex(s => s.toLowerCase() === nástroj.toLowerCase());
-      if (secIndex === -1) {
-        let insL = nástroj.toLowerCase();
-        if (insL.includes("housle") && insL.includes("1")) secIndex = 0;
-        else if (insL.includes("housle") && insL.includes("2")) secIndex = 1;
-        else if (insL.includes("housle")) secIndex = 0;
-        else if (insL.includes("viola")) secIndex = 2;
-        else if (insL.includes("cello") || insL.includes("kontrabas")) secIndex = 4; 
-        else if (insL.includes("flétn") || insL.includes("pikol")) secIndex = 5;
-        else if (insL.includes("oboj")) secIndex = 6;
-        else if (insL.includes("klarinet")) secIndex = 7;
-        else if (insL.includes("fagot")) secIndex = 8;
-        else if (insL.includes("roh")) secIndex = 9;
-        else if (insL.includes("trubk")) secIndex = 10;
-        else if (insL.includes("pozoun")) secIndex = 11;
-        else if (insL.includes("tuba")) secIndex = 12;
-        else if (insL.includes("bicí")) secIndex = 13;
-        else if (insL.includes("klavír")) secIndex = 14;
-        else secIndex = 15;
+  const mapaZmen = {};
+  zmeny.forEach(z => {
+    if (z && z.odkaz) mapaZmen[String(z.odkaz).trim()] = z;
+  });
+
+  // ZÁCHRANA: Zapisujeme jen do konkrétních upravených buněk, ne do celé tabulky naráz!
+  // Tímto absolutně eliminujeme riziko pádu paměti (OOM) na straně Google serverů.
+  for (let i = 1; i < data.length; i++) {
+    const odkazVTabulce = String(data[i][2]).trim();
+    if (mapaZmen[odkazVTabulce]) {
+      // i + 1 = přesný řádek v tabulce. Sloupec 4 je Program, sloupec 5 je Aktivni
+      sheet.getRange(i + 1, 4).setValue(mapaZmen[odkazVTabulce].program);
+      sheet.getRange(i + 1, 5).setValue(mapaZmen[odkazVTabulce].aktivni);
+    }
+  }
+  
+  return { success: true };
+}
+
+// ==============================================================================
+// 9. SLOVNÍK NÁSTROJŮ A ZKRATEK PRO TŘÍDĚNÍ NOT
+// ==============================================================================
+const SLOVNIK_NASTROJU = {
+  "1. Housle": ["1 housle", "housle 1", "violin 1", "violino 1", "1st violin", "vl 1", "vl i", "vno 1", "vno i", "violin i", "violino i", "violins 1", "violins i", "vn 1", "vn i", "violin e 1"],
+  "2. Housle": ["2 housle", "housle 2", "violin 2", "violino 2", "2nd violin", "vl 2", "vl ii", "vno 2", "vno ii", "violin ii", "violino ii", "violins 2", "violins ii", "vn 2", "vn ii", "violin e 2"],
+  "Housle": ["violin", "violins", "violino", "housle", "vn", "vno", "vl"],
+  "Violy": ["viola", "violas", "vla", "va", "viol"],
+  "Violoncella": ["cello", "violoncello", "vlc", "vc"],
+  "Kontrabasy": ["bass", "contrabass", "cb", "basso", "kontrabas", "db"],
+  "Flétny": ["flute", "flauto", "piccolo", "flétn", "fl", "picc"],
+  "Hoboje": ["oboe", "corno inglese", "english horn", "hoboj", "ob", "c i", "eng horn", "hautbois", "htb", "htb 1", "htb 2"],
+  "Klarinety / Saxofony": ["clarinet", "clarinette", "sax", "klarinet", "kl", "klar", "cl", "clar"],
+  "Fagoty": ["bassoon", "fagotto", "fagot", "fg", "fag", "bsn", "basson"],
+  "Lesní rohy": ["horn", "corno", "corni", "lesní roh", "cor", "hrn"],
+  "Trubky": ["trumpet", "tromba", "trubk", "trp", "tr", "tpt"],
+  "Trombóny a Tuba": ["trombone", "tuba", "pozoun", "trombón", "trb", "tbn", "pos"],
+  "Bicí nástroje": ["timpani", "percussion", "piatti", "tamburo", "cymbals", "bicí", "pauken", "tambourine", "triangolo", "snare", "drum", "drums", "bd", "gran cassa", "glockenspiel", "xylofon", "xylophone", "zvonkohra", "vibraphone", "marimba", "campane", "chimes", "bici", "perc", "timp"],
+  "Klávesy": ["piano", "keyboard", "klavír", "harp", "arpa", "harfa", "celesta", "cembalo", "cemballo", "organ", "varhany", "pno", "org"],
+  "Kytary": ["guitar", "chitarra", "kytar", "guit"],
+  "Zpěv": ["vocal", "choir", "coro", "soprano", "alto", "tenore", "basso", "zpěv", "vox", "voice"],
+  "Partitura": ["score", "partitura", "direzione", "part"]
+};
+
+// ==============================================================================
+// 10. FUNKCE PRO ODHAD SEKCE (Pomocí regulárních výrazů)
+// ==============================================================================
+function uhodniSekci(nazevSouboru) {
+  let cistyNazev = nazevSouboru.toLowerCase();
+  cistyNazev = cistyNazev.replace(/([a-zěščřžýáíéóúůďťň])([0-9])/g, '$1 $2');
+  cistyNazev = cistyNazev.replace(/[-_.,()[\]]/g, ' ');
+
+  for (const [sekce, klicovaSlova] of Object.entries(SLOVNIK_NASTROJU)) {
+    for (const slovo of klicovaSlova) {
+      const regex = new RegExp('\\b' + slovo + '\\b');
+      if (regex.test(cistyNazev)) {
+        return sekce;
       }
-      members.push({ celéJméno: jmeno + " " + prijmeni, příjmení: prijmeni, nástroj: nástroj || "Ostatní / Hosté", secIndex: secIndex });
     }
   }
+  return "??? K ROZTŘÍDĚNÍ ???";
+}
 
-  members.sort((a, b) => {
-    if (a.secIndex !== b.secIndex) return a.secIndex - b.secIndex;
-    return a.příjmení.localeCompare(b.příjmení, 'cs');
-  });
-
-  const sheetAkce = ss.getSheetByName("Přehled akcí");
-  if (!sheetAkce) return;
-  const dataAkce = sheetAkce.getDataRange().getValues();
-  let akceList = [];
-  for (let i = 1; i < dataAkce.length; i++) {
-    const row = dataAkce[i];
-    if (row[0] && row[4]) {
-      akceList.push({
-        id: String(row[0]), typ: row[1], nazev: row[2],
-        datumStr: row[4] instanceof Date ? Utilities.formatDate(row[4], "Europe/Prague", "d. M. yyyy") : String(row[4]),
-        dateObj: row[4] instanceof Date ? row[4] : new Date(row[4])
-      });
-    }
-  }
-  akceList.sort((a, b) => a.dateObj - b.dateObj);
-
-  const sheetUcast = ss.getSheetByName("Docházka a účast");
-  const dataUcast = sheetUcast ? sheetUcast.getDataRange().getValues() : [];
-  let ucastMap = {};
-  for (let i = 1; i < dataUcast.length; i++) {
-    if (dataUcast[i][1] && dataUcast[i][3]) ucastMap[String(dataUcast[i][3]).trim() + "_" + String(dataUcast[i][1])] = String(dataUcast[i][5]).trim();
-  }
-
-  let sheetPrehled = ss.getSheetByName("Přehled účasti");
-  if (!sheetPrehled) sheetPrehled = ss.insertSheet("Přehled účasti");
-  else sheetPrehled.clear();
-
-  let header = ["Jméno hráče", "Nástroj"];
-  akceList.forEach(a => header.push(a.typ + ": " + a.nazev + " (" + a.datumStr + ")"));
+// ==============================================================================
+// 11. HLAVNÍ FUNKCE PRO NAČÍTÁNÍ NOT Z DISKU DO TABULKY (S pamětí proti timeoutu)
+// ==============================================================================
+function nactiNotyZDisku() {
+  const slozkaId = '1xqZK2ZtOOAbGh6qIkyicdQeOQh2GErrN'; 
   
-  let tableData = [header];
-  members.forEach(m => {
-    let row = [m.celéJméno, m.nástroj];
-    akceList.forEach(a => {
-      let stav = ucastMap[m.celéJméno + "_" + a.id] || "";
-      row.push(stav === "Ano" ? "✓" : (stav === "Ne" ? "✕" : ""));
-    });
-    tableData.push(row);
-  });
-
-  let sumRow = ["Celkem zúčastněných", ""];
-  for (let colIdx = 2; colIdx < header.length; colIdx++) {
-    let count = 0;
-    for (let rowIdx = 1; rowIdx < tableData.length; rowIdx++) {
-      if (tableData[rowIdx][colIdx] === "✓") count++;
-    }
-    sumRow.push(count);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const list = ss.getSheetByName('Noty');
+  if (!list) {
+    SpreadsheetApp.getUi().alert("Chyba: Nebyl nalezen list s názvem 'Noty'!");
+    return;
   }
-  tableData.push(sumRow);
+  
+  const startCas = Date.now();
+  const MAX_CAS_BEHU = 5 * 60 * 1000; 
+  
+  const posledniRadek = list.getLastRow();
+  
+  if (posledniRadek === 0) {
+    list.appendRow(['Skladba', 'Sekce', 'Odkaz', 'Program', 'Aktivni']);
+    list.getRange("A1:E1").setFontWeight("bold");
+  }
+  
+  const existujiciOdkazy = new Set();
+  if (posledniRadek > 1) {
+    const ulozeneOdkazy = list.getRange(2, 3, posledniRadek - 1, 1).getValues();
+    ulozeneOdkazy.forEach(radek => existujiciOdkazy.add(radek[0]));
+  }
+  
+  const vlastnosti = PropertiesService.getDocumentProperties();
+  const ulozenaFronta = vlastnosti.getProperty('FRONTA_SLOZEK');
+  let fronta = [];
+  
+  if (ulozenaFronta) {
+    fronta = JSON.parse(ulozenaFronta);
+  } else {
+    fronta.push({ id: slozkaId, cesta: "" });
+  }
+  
+  const data = [];
+  let limitDosazen = false;
+  
+  while (fronta.length > 0) {
+    if (Date.now() - startCas > MAX_CAS_BEHU) {
+      limitDosazen = true;
+      break;
+    }
+    
+    const aktualniPolozka = fronta.shift();
+    let slozka;
+    try {
+      slozka = DriveApp.getFolderById(aktualniPolozka.id);
+    } catch (e) {
+      continue; 
+    }
+    
+    const soubory = slozka.getFilesByType(MimeType.PDF);
+    while (soubory.hasNext()) {
+      const soubor = soubory.next();
+      const odkaz = soubor.getUrl();
+      
+      if (existujiciOdkazy.has(odkaz)) continue;
+      
+      const nazevBezPdf = soubor.getName().replace('.pdf', ''); 
+      const plnyNazev = aktualniPolozka.cesta ? `${aktualniPolozka.cesta} - ${nazevBezPdf}` : nazevBezPdf;
+      const automatickaSekce = uhodniSekci(nazevBezPdf);
+      
+      data.push([plnyNazev, automatickaSekce, odkaz, 'Aktuální repertoár', 'ANO']);
+    }
+    
+    const podslozky = slozka.getFolders();
+    while (podslozky.hasNext()) {
+      const podslozka = podslozky.next();
+      const novaCesta = aktualniPolozka.cesta ? `${aktualniPolozka.cesta} / ${podslozka.getName()}` : podslozka.getName();
+      
+      fronta.push({ id: podslozka.getId(), cesta: novaCesta });
+    }
+  }
+  
+  if (data.length > 0) {
+    list.getRange(list.getLastRow() + 1, 1, data.length, data[0].length).setValues(data);
+  }
+  
+  if (limitDosazen) {
+    vlastnosti.setProperty('FRONTA_SLOZEK', JSON.stringify(fronta));
+    SpreadsheetApp.getUi().alert(
+      `ČASOVÝ LIMIT GOOGLU!\n\nSkript se po 5 minutách bezpečně pozastavil. Zatím se přidalo ${data.length} nových not.\n\nPROSÍM, SPUSŤTE SKRIPT ZNOVU.`
+    );
+  } else {
+    vlastnosti.deleteProperty('FRONTA_SLOZEK');
+    SpreadsheetApp.getUi().alert(
+      `HOTOVO - CELÝ ARCHIV PROŠEL!\n\nV tomto běhu bylo přidáno ${data.length} nových souborů.`
+    );
+  }
+}
 
-  sheetPrehled.getRange(1, 1, tableData.length, header.length).setValues(tableData);
-  sheetPrehled.getRange(1, 1, 1, header.length).setFontWeight("bold").setBackground("#221d44").setFontColor("#ffffff");
-  sheetPrehled.getRange(tableData.length, 1, 1, header.length).setFontWeight("bold").setBackground("#f0f2f5");
-  sheetPrehled.setFrozenRows(1);
-  sheetPrehled.setFrozenColumns(2);
-  sheetPrehled.autoResizeColumns(1, header.length);
+// ==============================================================================
+// FUNKCE PRO SPRÁVU HOSTŮ A E-MAILY
+// ==============================================================================
+
+function requestGuestAccount(payload) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName("Žádosti hostů");
+  if (!sheet) { // Pokud list neexistuje, automaticky se vytvoří
+    sheet = ss.insertSheet("Žádosti hostů");
+    sheet.appendRow(["Čas žádosti", "Jméno", "Nástroj", "E-mail", "Telefon", "Stav"]);
+    sheet.getRange("A1:F1").setFontWeight("bold");
+  }
+  const timestamp = Utilities.formatDate(new Date(), "Europe/Prague", "d. M. yyyy HH:mm");
+  sheet.appendRow([timestamp, payload.jmeno, payload.nastroj, payload.email, payload.telefon || "", "Nová"]);
+  return { success: true };
+}
+
+function approveGuest(payload) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheetClenove = ss.getSheetByName("Seznam členů");
+  if (!sheetClenove) return { success: false, error: "List 'Seznam členů' nenalezen." };
+  
+  let jmeno = payload.jmeno.trim();
+  if (!jmeno.toLowerCase().includes("host")) jmeno += " (Host)";
+  
+  // Vygenerování 4-místného pinu
+  const pin = payload.pin || Math.floor(1000 + Math.random() * 9000).toString(); 
+  
+  // Nalezení sloupců
+  const headers = sheetClenove.getRange(1, 1, 1, sheetClenove.getLastColumn()).getValues()[0];
+  let newRow = new Array(headers.length).fill("");
+  let expColIdx = -1;
+  
+  for(let i=0; i<headers.length; i++) {
+    let h = String(headers[i]).toLowerCase().trim();
+    if (h === "jméno") newRow[i] = jmeno;
+    else if (h === "e-mail") newRow[i] = payload.email;
+    else if (h === "pin") newRow[i] = pin;
+    else if (h === "nástrojová sekce") newRow[i] = payload.nastroj;
+    else if (h === "role") newRow[i] = "Host";
+    else if (h === "platnost do") { expColIdx = i; newRow[i] = payload.expirace; }
+  }
+  
+  // Pokud neexistuje sloupec "Platnost do", vytvoříme ho na konci
+  if (expColIdx === -1) {
+    sheetClenove.getRange(1, headers.length + 1).setValue("Platnost do");
+    newRow.push(payload.expirace);
+  }
+  
+  sheetClenove.appendRow(newRow);
+  
+  // Pokud šlo o schválení existující žádosti, změníme její stav
+  if (payload.zadostRowIdx) {
+    const sheetZadosti = ss.getSheetByName("Žádosti hostů");
+    if (sheetZadosti) sheetZadosti.getRange(payload.zadostRowIdx, 6).setValue("Schváleno");
+  }
+  
+  // ODESLÁNÍ E-MAILU HOSTOVI
+  try {
+    const subject = "Přístup do portálu orchestru TSO Bolech";
+    // ZDE SI DOPLŇTE ODKAZ NA VAŠI APLIKACI:
+    const urlAplikace = "https://mkytaran.github.io/tso-bolech/"; 
+    
+    const body = `Dobrý den,\n\nbyl Vám vytvořen hostovský účet do portálu Táborského symfonického orchestru Bolech.\n\n` +
+                 `Adresa portálu: ${urlAplikace}\n` +
+                 `Přihlašovací jméno: ${jmeno} (nebo tento e-mail)\n` +
+                 `Váš PIN kód: ${pin}\n\n` +
+                 `Účet je platný do: ${payload.expirace}\n\n` +
+                 `Těšíme se na spolupráci!`;
+                 
+    MailApp.sendEmail(payload.email, subject, body);
+  } catch(e) {
+    logError("Chyba odeslání e-mailu hostovi", e.toString());
+  }
+  
+  return { success: true, pin: pin };
 }

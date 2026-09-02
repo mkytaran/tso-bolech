@@ -348,7 +348,11 @@ function renderEvents() {
   const isVedení = userRole !== "" && userRole !== "-";
   
   if (isVedení) {
-    cont.innerHTML += `<button class="btn" style="background:var(--success); margin-bottom:16px;" onclick="openAkceForm()">➕ Přidat novou akci / informaci</button>`;
+    cont.innerHTML += `
+      <div style="display:flex; gap:12px; margin-bottom:16px;">
+        <button class="btn" style="background:var(--success); flex:1;" onclick="openAkceForm()">➕ Přidat akci</button>
+        <button class="btn" style="background:var(--primary-light); flex:1;" onclick="openGuestManager()">👥 Správa hostů</button>
+      </div>`;
   }
 
   const vsechnyViditelne = appData.akce.filter(a => isEventVisibleForUser(a));
@@ -961,6 +965,131 @@ function ulozitZmenyNot(e) {
     } else {
       alert("Chyba při ukládání: " + res.error);
     }
+  });
+}
+
+// ==============================================================================
+// LOGIKA PRO HOSTY (ŽÁDOSTI A SCHVALOVÁNÍ)
+// ==============================================================================
+
+// Odeslání žádosti z přihlašovací obrazovky
+function odeslatZadostHosta(e) {
+  e.preventDefault();
+  const btn = document.getElementById('guestReqBtn');
+  const puvodniText = btn.innerText;
+  btn.innerText = "Odesílám..."; btn.disabled = true;
+
+  const payload = {
+    jmeno: document.getElementById('guestName').value,
+    nastroj: document.getElementById('guestInstrument').value,
+    email: document.getElementById('guestEmail').value,
+    telefon: document.getElementById('guestPhone').value
+  };
+
+  runGoogleScript("requestGuestAccount", payload).then(res => {
+    btn.innerText = puvodniText; btn.disabled = false;
+    if (res.success) {
+      alert("Žádost byla úspěšně odeslána vedení! Jakmile ji schválí, přijde vám PIN na e-mail.");
+      document.getElementById('guestRequestCard').style.display = 'none'; 
+      document.getElementById('loginFormCard').style.display = 'block';
+    } else {
+      alert("Chyba při odesílání: " + res.error);
+    }
+  });
+}
+
+// Otevření okna pro vedení (Správa hostů)
+function openGuestManager() {
+  let html = `
+    <div id="guestModal" class="modal-overlay">
+      <div class="modal-box" style="max-height: 90vh; overflow-y: auto;">
+        <div style="display:flex; justify-content:space-between; margin-bottom: 20px;">
+          <h3 style="margin:0; font-size:22px;">👥 Správa hostů</h3>
+          <button type="button" class="btn" style="padding:4px 8px; background:transparent; border:1px solid var(--danger); color:var(--danger);" onclick="document.getElementById('guestModal').remove()">✕</button>
+        </div>
+        
+        <!-- Sekce 1: Vyřízení čekajících žádostí -->
+        <h4 style="margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom:4px;">Čekající žádosti</h4>
+        <div id="pendingRequestsContainer" style="margin-bottom: 24px;">`;
+        
+        if (!appData.zadosti || appData.zadosti.length === 0) {
+          html += `<p style="color:var(--text-muted); font-size:14px;">Žádné nové žádosti.</p>`;
+        } else {
+          appData.zadosti.forEach(z => {
+            html += `
+            <div style="border: 1px solid var(--border); padding: 12px; border-radius: 6px; margin-bottom: 12px; background: var(--bg);">
+              <strong>${escapeHtml(z.jmeno)}</strong> (${escapeHtml(z.nastroj)})<br>
+              <span style="font-size:13px; color:var(--text-muted);">E-mail: ${escapeHtml(z.email)} | Tel: ${escapeHtml(z.telefon)}</span>
+              
+              <div style="margin-top: 12px; display:flex; gap:8px; align-items:flex-end;">
+                <div style="flex:1;">
+                  <label style="font-size:12px;">Platnost do:</label>
+                  <input type="date" id="exp_${z.rowIdx}" class="modal-input" required>
+                </div>
+                <button type="button" class="btn" style="background:var(--success); padding:10px 14px;" onclick="schvalitHosta(${z.rowIdx}, '${escapeHtml(z.jmeno)}', '${escapeHtml(z.nastroj)}', '${escapeHtml(z.email)}', this)">Schválit a odeslat PIN</button>
+              </div>
+            </div>`;
+          });
+        }
+
+  html += `
+        </div>
+        
+        <!-- Sekce 2: Přímé pozvání (Vedení zve hosta samo) -->
+        <h4 style="margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom:4px;">Přímé pozvání hosta</h4>
+        <form onsubmit="pridatHostaNaprimo(event)">
+          <input type="text" id="dirGuestName" required placeholder="Jméno a Příjmení" class="modal-input" style="margin-bottom: 8px;">
+          <input type="text" id="dirGuestInst" required placeholder="Nástroj (např. Flétny)" class="modal-input" style="margin-bottom: 8px;">
+          <input type="email" id="dirGuestEmail" required placeholder="E-mail hosta" class="modal-input" style="margin-bottom: 8px;">
+          <label style="font-size:12px; margin-top:8px; display:block;">Platnost účtu do:</label>
+          <input type="date" id="dirGuestExp" required class="modal-input" style="margin-bottom: 16px;">
+          
+          <button type="submit" id="dirGuestBtn" class="btn" style="width:100%; background:var(--primary-light);">Vytvořit hosta a odeslat PIN</button>
+        </form>
+      </div>
+    </div>`;
+  
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// Funkce: Schválení konkrétní čekající žádosti
+function schvalitHosta(rowIdx, jmeno, nastroj, email, btnElem) {
+  const expDate = document.getElementById('exp_' + rowIdx).value;
+  if (!expDate) { alert("Musíte vybrat datum expirace!"); return; }
+  
+  btnElem.innerText = "Odesílám..."; btnElem.disabled = true;
+  
+  runGoogleScript("approveGuest", { zadostRowIdx: rowIdx, jmeno: jmeno, nastroj: nastroj, email: email, expirace: expDate })
+  .then(res => {
+    if(res.success) {
+      alert("Účet byl vytvořen a PIN byl odeslán na e-mail: " + email);
+      localStorage.removeItem("bolech_data_cache"); // Vynutí refresh dat
+      document.getElementById('guestModal').remove();
+      initApp();
+    } else { alert("Chyba: " + res.error); btnElem.innerText = "Schválit a odeslat PIN"; btnElem.disabled = false; }
+  });
+}
+
+// Funkce: Vedení zakládá hosta z hlavy
+function pridatHostaNaprimo(e) {
+  e.preventDefault();
+  const btn = document.getElementById('dirGuestBtn');
+  btn.innerText = "Odesílám..."; btn.disabled = true;
+  
+  const payload = {
+    jmeno: document.getElementById('dirGuestName').value,
+    nastroj: document.getElementById('dirGuestInst').value,
+    email: document.getElementById('dirGuestEmail').value,
+    expirace: document.getElementById('dirGuestExp').value
+  };
+
+  runGoogleScript("approveGuest", payload).then(res => {
+    if(res.success) {
+      alert("Host byl vytvořen a PIN byl odeslán e-mailem!");
+      localStorage.removeItem("bolech_data_cache");
+      document.getElementById('guestModal').remove();
+      initApp();
+    } else { alert("Chyba: " + res.error); btn.innerText = "Vytvořit hosta a odeslat PIN"; btn.disabled = false; }
   });
 }
 

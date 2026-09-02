@@ -30,16 +30,39 @@
   
   <!-- PŘIHLAŠOVACÍ OBRAZOVKA -->
   <div id="loginScreen" class="container" style="display:none; margin-top: 40px;">
-    <div class="card" style="padding:32px; text-align:center;">
+    
+    <!-- Klasické přihlášení -->
+    <div id="loginFormCard" class="card" style="padding:32px; text-align:center;">
       <h1 style="margin-bottom:12px; color:var(--text); font-size: 26px;">Vítejte</h1>
       <p style="margin-bottom:24px; color:var(--text-muted);">Zadejte své jméno nebo e-mail pro vstup do portálu orchestru.</p>
       <form onsubmit="handleLoginSubmit(event)">
         <input type="text" id="loginQuery" required placeholder="Jméno nebo E-mail" class="modal-input" style="margin-bottom: 12px;">
-        <!-- Nové políčko typu password skrývá zadávané znaky -->
         <input type="password" id="loginPin" required placeholder="Váš PIN kód" class="modal-input" style="margin-bottom: 16px;">
         <button type="submit" id="loginBtn" class="btn">Vstoupit</button>
       </form>
+      <!-- Tlačítko pro hosty -->
+      <button type="button" class="btn" style="background: transparent; border: 1px solid var(--border); color: var(--text); margin-top: 16px;" onclick="document.getElementById('loginFormCard').style.display='none'; document.getElementById('guestRequestCard').style.display='block';">
+        Chci účet hosta
+      </button>
     </div>
+
+    <!-- Žádost o účet hosta -->
+    <div id="guestRequestCard" class="card" style="display:none; padding:32px;">
+      <h2 style="margin-bottom:12px; color:var(--text); text-align:center;">Žádost o účet</h2>
+      <p style="margin-bottom:20px; color:var(--text-muted); text-align:center; font-size: 14px;">Vyplňte údaje, vedení vám po schválení zašle PIN e-mailem.</p>
+      <form onsubmit="odeslatZadostHosta(event)">
+        <input type="text" id="guestName" required placeholder="Jméno a Příjmení" class="modal-input" style="margin-bottom: 12px;">
+        <input type="text" id="guestInstrument" required placeholder="Nástroj (např. Lesní roh)" class="modal-input" style="margin-bottom: 12px;">
+        <input type="email" id="guestEmail" required placeholder="E-mail" class="modal-input" style="margin-bottom: 12px;">
+        <input type="tel" id="guestPhone" placeholder="Telefon (volitelné)" class="modal-input" style="margin-bottom: 20px;">
+        
+        <button type="submit" id="guestReqBtn" class="btn" style="background:var(--primary-light);">Odeslat žádost</button>
+        <button type="button" class="btn" style="background: transparent; color: var(--text-muted); margin-top: 12px;" onclick="document.getElementById('guestRequestCard').style.display='none'; document.getElementById('loginFormCard').style.display='block';">
+          Zpět na přihlášení
+        </button>
+      </form>
+    </div>
+
   </div>
 
   <!-- HLAVNÍ APLIKACE -->
@@ -125,6 +148,6 @@
   <!-- ============================================== -->
   <!-- ODKAZ NA EXTERNÍ JAVASCRIPT S VERZÍ            -->
   <!-- ============================================== -->
-  <script src="app.js?v=1.38"></script>
+  <script src="app.js?v=1.39"></script>
 </body>
 </html>
