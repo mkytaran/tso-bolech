@@ -52,7 +52,26 @@
       <p style="margin-bottom:20px; color:var(--text-muted); text-align:center; font-size: 14px;">Vyplňte údaje, vedení vám po schválení zašle PIN e-mailem.</p>
       <form onsubmit="odeslatZadostHosta(event)">
         <input type="text" id="guestName" required placeholder="Jméno a Příjmení" class="modal-input" style="margin-bottom: 12px;">
-        <input type="text" id="guestInstrument" required placeholder="Nástroj (např. Lesní roh)" class="modal-input" style="margin-bottom: 12px;">
+        <select id="guestInstrument" required class="modal-input" style="margin-bottom: 12px;">
+          <option value="" disabled selected>Vyberte nástrojovou sekci...</option>
+          <option value="1. Housle">1. Housle</option>
+          <option value="2. Housle">2. Housle</option>
+          <option value="Violy">Violy</option>
+          <option value="Violoncella">Violoncella</option>
+          <option value="Kontrabasy">Kontrabasy</option>
+          <option value="Flétny">Flétny</option>
+          <option value="Hoboje">Hoboje</option>
+          <option value="Klarinety / Saxofony">Klarinety / Saxofony</option>
+          <option value="Fagoty">Fagoty</option>
+          <option value="Lesní rohy">Lesní rohy</option>
+          <option value="Trubky">Trubky</option>
+          <option value="Trombóny a Tuba">Trombóny a Tuba</option>
+          <option value="Bicí nástroje">Bicí nástroje</option>
+          <option value="Klávesy">Klávesy</option>
+          <option value="Kytary">Kytary</option>
+          <option value="Zpěv">Zpěv</option>
+          <option value="Hosté">Jiný / Ostatní</option>
+        </select>
         <input type="email" id="guestEmail" required placeholder="E-mail" class="modal-input" style="margin-bottom: 12px;">
         <input type="tel" id="guestPhone" placeholder="Telefon (volitelné)" class="modal-input" style="margin-bottom: 20px;">
         

@@ -1053,7 +1053,26 @@ function openGuestManager() {
         <h4 style="margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom:4px;">Přímé pozvání hosta</h4>
         <form onsubmit="pridatHostaNaprimo(event)">
           <input type="text" id="dirGuestName" required placeholder="Jméno a Příjmení" class="modal-input" style="margin-bottom: 8px;">
-          <input type="text" id="dirGuestInst" required placeholder="Nástroj (např. Flétny)" class="modal-input" style="margin-bottom: 8px;">
+          <select id="dirGuestInst" required class="modal-input" style="margin-bottom: 8px;">
+            <option value="" disabled selected>Vyberte nástrojovou sekci...</option>
+            <option value="1. Housle">1. Housle</option>
+            <option value="2. Housle">2. Housle</option>
+            <option value="Violy">Violy</option>
+            <option value="Violoncella">Violoncella</option>
+            <option value="Kontrabasy">Kontrabasy</option>
+            <option value="Flétny">Flétny</option>
+            <option value="Hoboje">Hoboje</option>
+            <option value="Klarinety / Saxofony">Klarinety / Saxofony</option>
+            <option value="Fagoty">Fagoty</option>
+            <option value="Lesní rohy">Lesní rohy</option>
+            <option value="Trubky">Trubky</option>
+            <option value="Trombóny a Tuba">Trombóny a Tuba</option>
+            <option value="Bicí nástroje">Bicí nástroje</option>
+            <option value="Klávesy">Klávesy</option>
+            <option value="Kytary">Kytary</option>
+            <option value="Zpěv">Zpěv</option>
+            <option value="Hosté">Jiný / Ostatní</option>
+          </select>
           <input type="email" id="dirGuestEmail" required placeholder="E-mail hosta" class="modal-input" style="margin-bottom: 8px;">
           <label style="font-size:12px; margin-top:8px; display:block;">Platnost účtu do:</label>
           <input type="date" id="dirGuestExp" required class="modal-input" style="margin-bottom: 16px;">
