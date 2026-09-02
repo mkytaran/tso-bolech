@@ -425,14 +425,67 @@ function nactiNotyZDisku() {
 
 function requestGuestAccount(payload) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName("Žádosti hostů");
-  if (!sheet) { // Pokud list neexistuje, automaticky se vytvoří
-    sheet = ss.insertSheet("Žádosti hostů");
-    sheet.appendRow(["Čas žádosti", "Jméno", "Nástroj", "E-mail", "Telefon", "Stav"]);
-    sheet.getRange("A1:F1").setFontWeight("bold");
+  
+  // 1. ZÁPIS ŽÁDOSTI DO TABULKY
+  let sheetZadosti = ss.getSheetByName("Žádosti hostů");
+  if (!sheetZadosti) {
+    sheetZadosti = ss.insertSheet("Žádosti hostů");
+    sheetZadosti.appendRow(["Čas žádosti", "Jméno", "Nástroj", "E-mail", "Telefon", "Stav"]);
+    sheetZadosti.getRange("A1:F1").setFontWeight("bold");
   }
   const timestamp = Utilities.formatDate(new Date(), "Europe/Prague", "d. M. yyyy HH:mm");
-  sheet.appendRow([timestamp, payload.jmeno, payload.nastroj, payload.email, payload.telefon || "", "Nová"]);
+  sheetZadosti.appendRow([timestamp, payload.jmeno, payload.nastroj, payload.email, payload.telefon || "", "Nová"]);
+  
+  // 2. DYNAMICKÉ VYHLEDÁNÍ ADMINŮ V SEZNAMU ČLENŮ
+  let adminEmails = [];
+  try {
+    const sheetClenove = ss.getSheetByName("Seznam členů");
+    if (sheetClenove) {
+      const data = sheetClenove.getDataRange().getValues();
+      const headers = data[0];
+      let roleCol = -1, emailCol = -1;
+      
+      // Najdeme, kde jsou sloupce Role a E-mail
+      for (let i = 0; i < headers.length; i++) {
+        let h = String(headers[i]).toLowerCase().trim();
+        if (h === "role") roleCol = i;
+        if (h === "e-mail") emailCol = i;
+      }
+      
+      // Pokud sloupce existují, projdeme členy
+      if (roleCol > -1 && emailCol > -1) {
+        for (let i = 1; i < data.length; i++) {
+          if (String(data[i][roleCol]).toLowerCase().trim() === "admin") {
+            let email = String(data[i][emailCol]).trim();
+            if (email && email.includes("@")) {
+              adminEmails.push(email); // Přidáme e-mail admina do seznamu
+            }
+          }
+        }
+      }
+    }
+  } catch(e) {
+    logError("Chyba při hledání Admin e-mailů", e.toString());
+  }
+  
+  // 3. ODESLÁNÍ E-MAILU VŠEM NALEZENÝM ADMINŮM
+  if (adminEmails.length > 0) {
+    try {
+      const toEmails = adminEmails.join(","); // Pokud je adminů víc, spojí je čárkou
+      const subject = "Nová žádost o účet hosta - TSO Bolech";
+      const body = `V aplikaci čeká nová žádost o hostovský účet:\n\n` +
+                   `Jméno: ${payload.jmeno}\n` +
+                   `Nástroj: ${payload.nastroj}\n` +
+                   `E-mail: ${payload.email}\n` +
+                   `Telefon: ${payload.telefon || "Nevyplněn"}\n\n` +
+                   `Žádost můžete schválit přímo v aplikaci v sekci Správa hostů.`;
+                   
+      MailApp.sendEmail(toEmails, subject, body);
+    } catch(e) {
+      logError("Chyba odeslání e-mailu adminovi", e.toString());
+    }
+  }
+  
   return { success: true };
 }
 
@@ -502,4 +555,9 @@ function approveGuest(payload) {
   }
   
   return { success: true, pin: pin };
+}
+
+function povoleniOdesilatEmaily() {
+  // Tuto funkci stačí spustit jen jednou ručně, aby Google udělil práva
+  MailApp.sendEmail(Session.getActiveUser().getEmail(), "Test povolení Bolech", "Pokud toto čtete, aplikace už má právo odesílat e-maily!");
 }
