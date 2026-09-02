@@ -209,19 +209,22 @@ body.dark-mode.archive-open .nav-btn.active {
 .program-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start; /* Zabrání vertikálnímu roztahování tlačítka při více řádcích */
   margin: 24px 4px 12px 4px;
   border-bottom: 2px solid var(--border);
   padding-bottom: 8px;
+  gap: 16px; /* Bezpečná mezera, aby text nikdy nenajel na tlačítko */
 }
 
 .program-title {
   margin: 0;
   font-size: 15px;
   font-weight: 700;
-  color: var(--primary);
+  color: var(--primary-light); /* Perfektní kontrast: tmavší modrá ve světlém režimu, svítivě modrá v tmavém */
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  flex: 1; /* Název zabere maximum místa a odtlačí tlačítko */
+  line-height: 1.4;
 }
 
 .email-btn {
@@ -236,11 +239,32 @@ body.dark-mode.archive-open .nav-btn.active {
   align-items: center;
   gap: 6px;
   transition: background 0.2s;
+  flex-shrink: 0; /* Zakazuje smrsknutí tlačítka při nedostatku místa */
+  align-self: center; /* Udrží tlačítko vertikálně na středu bez roztahování */
 }
 
 .email-btn:active {
   background: var(--border);
 }
+
+/* Nové ikonkové tlačítko pro stažení not */
+.nota-down-btn {
+  background: var(--primary);
+  color: white;
+  text-decoration: none;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  flex-shrink: 0; /* Aby ho dlouhý název skladby nezmáčkl */
+  transition: opacity 0.2s;
+}
+.nota-down-btn:active {
+  opacity: 0.8;
+}
+
 
 .nota-card {
   background: var(--surface);

@@ -282,8 +282,12 @@ function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
             <h4>${nota.skladba}</h4>
             <span>${nota.sekce}</span>
           </div>
-          <a href="${nota.odkaz.replace(/.*\/d\/([a-zA-Z0-9_-]+).*/, 'https://drive.google.com/uc?export=download&id=$1')}" target="_blank" class="nota-open-btn">
-            Stáhnout
+          <a href="${nota.odkaz.replace(/.*\/d\/([a-zA-Z0-9_-]+).*/, 'https://drive.google.com/uc?export=download&id=$1')}" target="_blank" class="nota-down-btn" title="Stáhnout">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
           </a>
         </div>`;
     });
@@ -792,10 +796,9 @@ function vykresliAdminNoty() {
       const stavTrida = s.aktivni ? 'folder-active' : 'folder-inactive';
 
       html += `
-        <details class="card ${stavTrida}" style="margin-bottom: 16px; margin-left: 0; margin-right: 0; padding: 0; overflow: hidden; width: 100%; border: 1px solid var(--border);">
+        <details class="card ${stavTrida}" style="margin-bottom: 8px; margin-left: 0; margin-right: 0; padding: 0; overflow: hidden; width: 100%; border: 1px solid var(--border);">
           
-          <summary style="padding: 14px 16px; cursor: pointer; list-style: none; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid var(--border);">
-            
+          <summary style="padding: 10px 14px; cursor: pointer; list-style: none; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--border);">
             <!-- 1. Řádek: Název složky -->
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: bold; color: var(--text);">
               <span style="word-break: break-word; line-height: 1.3;">📁 ${zobrazenyNazev} <small style="font-weight:normal; opacity:0.6;">(${s.soubory.length})</small></span>
