@@ -540,7 +540,7 @@ function approveGuest(payload) {
   // ODESLÁNÍ E-MAILU HOSTOVI
   try {
     const subject = "Přístup do portálu orchestru TSO Bolech";
-    const urlAplikace = "https://vas-odkaz-na-aplikaci.cz"; // Doplňte svůj odkaz
+    const urlAplikace = "https://mkytaran.github.io/tso-bolech/"; // Doplňte svůj odkaz
     
     const body = `Dobrý den,\n\nbyl Vám vytvořen hostovský účet do portálu Táborského symfonického orchestru Bolech.\n\n` +
                  `Adresa portálu: ${urlAplikace}\n` +
