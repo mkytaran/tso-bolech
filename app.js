@@ -583,11 +583,18 @@ function openAkceForm(akce = null) {
   }
 
   const html = `
-    <div id="akceModal" class="modal-overlay">
-      <div class="modal-box" style="max-height: 90vh; overflow-y: auto;">
-        <h3 style="margin-bottom:16px; font-size:24px;">${isEdit ? 'Úprava položky' : 'Nová položka'}</h3>
-        <form id="editAkceForm" onsubmit="submitAkceForm(event, '${isEdit ? escapeHtml(akce.id) : ''}')">
-          
+        <div id="akceModal" class="modal-overlay">
+          <div class="modal-box" style="max-height: 90vh; overflow-y: auto;">
+            
+            <!-- HLAVIČKA S NATIVNÍ ŠIPKOU ZPĚT -->
+            <div style="display:flex; align-items:center; margin-bottom: 20px;">
+              <button type="button" style="background:transparent; border:none; font-size:16px; color:var(--text); padding:8px 16px 8px 0; margin-right:8px; cursor:pointer; display:flex; align-items:center; gap:6px;" onclick="document.getElementById('akceModal').remove()">
+                <span style="font-size:24px; line-height:1;">←</span> Zpět
+              </button>
+              <h3 style="margin:0; font-size:20px;">${isEdit ? 'Úprava položky' : 'Nová položka'}</h3>
+            </div>
+            
+            <form id="editAkceForm" onsubmit="submitAkceForm(event, '${isEdit ? escapeHtml(akce.id) : ''}')"> 
           <label>Typ:</label>
           <select id="f_typ" class="modal-input" onchange="toggleAkceFields()" ${selectDisabledAttr}>
             <option value="Tutti zkouška" ${akce?.typ==='Tutti zkouška'?'selected':''}>Tutti zkouška</option>
@@ -1047,9 +1054,11 @@ function openGuestManager() {
   let html = `
     <div id="guestModal" class="modal-overlay">
       <div class="modal-box" style="max-height: 90vh; overflow-y: auto; padding-bottom: 30px;">
-        <div style="display:flex; justify-content:space-between; margin-bottom: 20px;">
-          <h3 style="margin:0; font-size:22px;">👥 Správa hostů</h3>
-          <button type="button" class="btn" style="padding:4px 8px; background:transparent; border:1px solid var(--danger); color:var(--danger);" onclick="document.getElementById('guestModal').remove()">✕</button>
+        <div style="display:flex; align-items:center; margin-bottom: 20px;">
+          <button type="button" style="background:transparent; border:none; font-size:16px; color:var(--text); padding:8px 16px 8px 0; margin-right:8px; cursor:pointer; display:flex; align-items:center; gap:6px;" onclick="document.getElementById('guestModal').remove()">
+            <span style="font-size:24px; line-height:1;">←</span> Zpět
+          </button>
+          <h3 style="margin:0; font-size:20px;">👥 Správa hostů</h3>
         </div>
         
         <!-- Sekce 1: Vyřízení čekajících žádostí -->
