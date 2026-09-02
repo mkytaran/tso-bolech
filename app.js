@@ -10,66 +10,32 @@ let appData = { akce: [], noty: [], ucast: [] };
 // DEFINICE NÁSTROJŮ A SKUPIN ORCHESTRU
 // =====================================================
 
-
 // Hierarchie a řazení nástrojových skupin TSO Bolech
 const ORCHESTR_SKUPINY = {
-  "Smyčcové nástroje": [
-    "1. Housle", 
-    "2. Housle", 
-    "Violy", 
-    "Violoncella", 
-    "Kontrabasy"
-  ],
-  "Dechové nástroje": [
-    "Flétny", 
-    "Hoboje", 
-    "Klarinety / Saxofony", 
-    "Fagoty", 
-    "Lesní rohy", 
-    "Trubky", 
-    "Trombóny a Tuba"
-  ],
-  "Ostatní nástroje a zpěv": [
-    "Bicí nástroje", 
-    "Klávesy", 
-    "Kytary", 
-    "Zpěv"
-  ],
-  "Hosté": [
-    "Hosté"
-  ]
+  "Smyčcové nástroje": ["1. Housle", "2. Housle", "Violy", "Violoncella", "Kontrabasy"],
+  "Dechové nástroje": ["Flétny", "Hoboje", "Klarinety / Saxofony", "Fagoty", "Lesní rohy", "Trubky", "Trombóny a Tuba"],
+  "Ostatní nástroje a zpěv": ["Bicí nástroje", "Klávesy", "Kytary", "Zpěv"],
+  "Společné party": ["Smyčce", "Dechy", "Dřeva", "Žestě"],
+  "Hosté": ["Hosté"]
 };
 
-// Hlavní ploché pole kategorií pro zobrazení (přesně odpovídá názvům výše)
+// Hlavní ploché pole kategorií pro zobrazení
 const PARTITURA_SECTIONS = [
   "1. Housle", "2. Housle", "Violy", "Violoncella", "Kontrabasy", 
   "Flétny", "Hoboje", "Klarinety / Saxofony", "Fagoty", "Lesní rohy", 
-  "Trubky", "Trombóny a Tuba", "Bicí nástroje", "Klávesy", "Kytary", "Zpěv", "Hosté"
+  "Trubky", "Trombóny a Tuba", "Bicí nástroje", "Klávesy", "Kytary", "Zpěv", 
+  "Smyčce", "Dechy", "Dřeva", "Žestě", "Hosté"
 ];
 
 // -----------------------------------------------------
 // POMOCNÁ POLE PRO DETEKCI ZADANÝCH TEXTŮ A SKLOŇOVÁNÍ
 // -----------------------------------------------------
 
-// Kořeny slov pro smyčce (zachytí: housle, houslí, houslím, viola, violy, cello, violoncello...)
-const SMYCKE_SECTIONS = [
-  "housl", "viol", "cell", "kontrabas"
-];
+// Kořeny slov pro smyčce
+const SMYCKE_SECTIONS = ["housl", "viol", "cell", "kontrabas", "smyčce", "smycce"];
 
-// Kořeny slov pro dechy s ohledem na českou gramatiku
-const DECHOVE_SECTIONS = [
-  "flétn",        // flétna, flétny, flétnou
-  "hoboj",        // hoboj, hoboje, hobojem
-  "klarinet",     // klarinet, klarinety
-  "saxofon",      // saxofon, saxofony
-  "fagot",        // fagot, fagoty
-  "roh",          // roh, rohy, rohu (lesní roh)
-  "trubk",        // trubka, trubky, trubku
-  "trubc",        // trubce (3. a 6. pád)
-  "trombón",      // s čárkou
-  "trombon",      // bez čárky
-  "tuba", "tuby", "tubě", "tubou" // Tuba vypsaná podrobněji, aby nebrala nesmysly
-];
+// Kořeny slov pro dechy
+const DECHOVE_SECTIONS = ["flétn", "hoboj", "klarinet", "saxofon", "fagot", "roh", "trubk", "trubc", "trombón", "trombon", "tuba", "tuby", "tubě", "tubou", "dech", "dřev", "žest"];
 
 // Kořeny pro zachycení hostujících hráčů (host, hosté, hostující)
 const HOSTE_SECTIONS = [
@@ -245,13 +211,25 @@ function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
     // Dirigent vidí vše, co je označeno jako Partitura
     if (jeDirigent && nota.sekce === 'Partitura') return true;
     
-    // Shoda nástroje z tabulky s nástrojem uživatele
+    // Shoda nástroje z tabulky s nástrojem uživatele (Hoboj vidí Hoboj)
     if (nota.sekce === nastrojUzivatele) return true;
     
-    // Společné party pro housle (pokud je v tabulce "Housle", vidí to 1. i 2. housle)
-    if (nota.sekce === 'Housle' && (nastrojUzivatele === '1. Housle' || nastrojUzivatele === '2. Housle')) {
-      return true;
-    }
+    // --- HUDENÍ LOGIKA PRO SPOLEČNÉ PARTY ---
+    
+    // Společné party pro housle
+    if (nota.sekce === 'Housle' && (nastrojUzivatele === '1. Housle' || nastrojUzivatele === '2. Housle')) return true;
+    
+    // Smyčce (vidí všichni smyčcaři)
+    if (nota.sekce === 'Smyčce' && ['1. Housle', '2. Housle', 'Violy', 'Violoncella', 'Kontrabasy'].includes(nastrojUzivatele)) return true;
+    
+    // Dechy (vidí všechna dřeva i žestě)
+    if (nota.sekce === 'Dechy' && ['Flétny', 'Hoboje', 'Klarinety / Saxofony', 'Fagoty', 'Lesní rohy', 'Trubky', 'Trombóny a Tuba'].includes(nastrojUzivatele)) return true;
+    
+    // Dřeva
+    if (nota.sekce === 'Dřeva' && ['Flétny', 'Hoboje', 'Klarinety / Saxofony', 'Fagoty'].includes(nastrojUzivatele)) return true;
+    
+    // Žestě
+    if (nota.sekce === 'Žestě' && ['Lesní rohy', 'Trubky', 'Trombóny a Tuba'].includes(nastrojUzivatele)) return true;
     
     return false;
   });

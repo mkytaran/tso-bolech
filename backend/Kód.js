@@ -329,26 +329,33 @@ function updateNotyHromadne(payload) {
 }
 
 // ==============================================================================
-// 9. SLOVNÍK NÁSTROJŮ A ZKRATEK PRO TŘÍDĚNÍ NOT
+// 9. ROZŠÍŘENÝ SLOVNÍK NÁSTROJŮ A ZKRATEK PRO TŘÍDĚNÍ NOT
 // ==============================================================================
 const SLOVNIK_NASTROJU = {
-  "1. Housle": ["1 housle", "housle 1", "violin 1", "violino 1", "1st violin", "vl 1", "vl i", "vno 1", "vno i", "violin i", "violino i", "violins 1", "violins i", "vn 1", "vn i", "violin e 1"],
-  "2. Housle": ["2 housle", "housle 2", "violin 2", "violino 2", "2nd violin", "vl 2", "vl ii", "vno 2", "vno ii", "violin ii", "violino ii", "violins 2", "violins ii", "vn 2", "vn ii", "violin e 2"],
-  "Housle": ["violin", "violins", "violino", "housle", "vn", "vno", "vl"],
-  "Violy": ["viola", "violas", "vla", "va", "viol"],
+  "1. Housle": ["1 housle", "housle 1", "violin 1", "violino 1", "1st violin", "vl 1", "vl i", "vno 1", "vno i", "violin i", "violino i", "violins 1", "violins i", "vn 1", "vn i", "violin e 1", "violini 1", "violini i"],
+  "2. Housle": ["2 housle", "housle 2", "violin 2", "violino 2", "2nd violin", "vl 2", "vl ii", "vno 2", "vno ii", "violin ii", "violino ii", "violins 2", "violins ii", "vn 2", "vn ii", "violin e 2", "violini 2", "violini ii"],
+  "Housle": ["violin", "violins", "violino", "violini", "housle", "vn", "vno", "vl"],
+  "Violy": ["viola", "violas", "viole", "vla", "va", "viol"],
   "Violoncella": ["cello", "violoncello", "vlc", "vc"],
-  "Kontrabasy": ["bass", "contrabass", "cb", "basso", "kontrabas", "db"],
-  "Flétny": ["flute", "flauto", "piccolo", "flétn", "fl", "picc"],
+  "Kontrabasy": ["bass", "contrabass", "contrabassi", "contrabasso", "cb", "basso", "kontrabas", "db"],
+  "Flétny": ["flute", "flauto", "flauti", "flaut", "piccolo", "flétn", "fl", "picc"],
   "Hoboje": ["oboe", "corno inglese", "english horn", "hoboj", "ob", "c i", "eng horn", "hautbois", "htb", "htb 1", "htb 2"],
-  "Klarinety / Saxofony": ["clarinet", "clarinette", "sax", "klarinet", "kl", "klar", "cl", "clar"],
+  "Klarinety / Saxofony": ["clarinet", "clarinette", "clarinetti", "clarinetto", "sax", "saxophone", "klarinet", "kl", "klar", "cl", "clar"],
   "Fagoty": ["bassoon", "fagotto", "fagot", "fg", "fag", "bsn", "basson"],
-  "Lesní rohy": ["horn", "corno", "corni", "lesní roh", "cor", "hrn"],
-  "Trubky": ["trumpet", "tromba", "trubk", "trp", "tr", "tpt"],
-  "Trombóny a Tuba": ["trombone", "tuba", "pozoun", "trombón", "trb", "tbn", "pos"],
+  "Lesní rohy": ["horn", "corno", "corni", "lesní roh", "cor", "hrn", "roh", "rohy"],
+  "Trubky": ["trumpet", "tromba", "trombe", "trubk", "trp", "tr", "tpt"],
+  "Trombóny a Tuba": ["trombone", "tromboni", "trombon", "tuba", "pozoun", "posaun", "posaune", "trombón", "trb", "tbn", "pos"],
   "Bicí nástroje": ["timpani", "percussion", "piatti", "tamburo", "cymbals", "bicí", "pauken", "tambourine", "triangolo", "snare", "drum", "drums", "bd", "gran cassa", "glockenspiel", "xylofon", "xylophone", "zvonkohra", "vibraphone", "marimba", "campane", "chimes", "bici", "perc", "timp"],
-  "Klávesy": ["piano", "keyboard", "klavír", "harp", "arpa", "harfa", "celesta", "cembalo", "cemballo", "organ", "varhany", "pno", "org"],
+  "Klávesy": ["piano", "keyboard", "keyboards", "klavír", "harp", "arpa", "harfa", "harpe", "celesta", "cembalo", "cemballo", "organ", "organo", "varhany", "pno", "org"],
   "Kytary": ["guitar", "chitarra", "kytar", "guit"],
-  "Zpěv": ["vocal", "choir", "coro", "soprano", "alto", "tenore", "basso", "zpěv", "vox", "voice"],
+  "Zpěv": ["vocal", "choir", "coro", "soprano", "alto", "tenore", "basso", "zpěv", "vox", "voice", "canti", "canto"],
+  
+  // NOVÉ SOUHRNNÉ SKUPINY PRO NEROZDĚLENÉ NOTY
+  "Smyčce": ["smyčce", "smycce", "strings", "archi"],
+  "Dechy": ["dechy", "winds", "fiati"],
+  "Dřeva": ["dřeva", "dreva", "woodwinds", "legni", "holz"],
+  "Žestě": ["žestě", "zeste", "brass", "ottoni", "blech"],
+  
   "Partitura": ["score", "partitura", "direzione", "part"]
 };
 
@@ -608,4 +615,31 @@ function approveGuest(payload) {
 function povoleniOdesilatEmaily() {
   // Tuto funkci stačí spustit jen jednou ručně, aby Google udělil práva
   MailApp.sendEmail(Session.getActiveUser().getEmail(), "Test povolení Bolech", "Pokud toto čtete, aplikace už má právo odesílat e-maily!");
+}
+
+// ==============================================================================
+// FUNKCE PRO OPRAVU DOSUD NEROZTŘÍDĚNÝCH NOT V TABULCE
+// ==============================================================================
+function opravNeroztrideneNoty() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Noty");
+  if (!sheet) return;
+  
+  const data = sheet.getDataRange().getValues();
+  let opraveno = 0;
+  
+  // Procházíme tabulku a hledáme jen řádky, kde je sekce "??? K ROZTŘÍDĚNÍ ???"
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][1] === "??? K ROZTŘÍDĚNÍ ???") {
+      const nazev = String(data[i][0]);
+      const novaSekce = uhodniSekci(nazev);
+      
+      // Pokud nový slovník našel shodu, zapíšeme ji
+      if (novaSekce !== "??? K ROZTŘÍDĚNÍ ???") {
+        sheet.getRange(i + 1, 2).setValue(novaSekce); // +1 za hlavičku, sloupec 2 je Sekce
+        opraveno++;
+      }
+    }
+  }
+  
+  SpreadsheetApp.getUi().alert(`Hotovo! Nový slovník prohledal tabulku a úspěšně roztřídil dalších ${opraveno} položek. Vaše ručně upravené noty zůstaly nedotčeny.`);
 }
