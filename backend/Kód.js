@@ -441,24 +441,32 @@ function approveGuest(payload) {
   const sheetClenove = ss.getSheetByName("Seznam členů");
   if (!sheetClenove) return { success: false, error: "List 'Seznam členů' nenalezen." };
   
-  let jmeno = payload.jmeno.trim();
-  if (!jmeno.toLowerCase().includes("host")) jmeno += " (Host)";
+  // 1. ROZDĚLENÍ JMÉNA A PŘÍJMENÍ (První slovo = jméno, zbytek = příjmení)
+  let celeJmeno = payload.jmeno.trim();
+  let krestni = celeJmeno;
+  let prijmeni = "";
+  let spaceIdx = celeJmeno.indexOf(" ");
+  if (spaceIdx !== -1) {
+    krestni = celeJmeno.substring(0, spaceIdx).trim();
+    prijmeni = celeJmeno.substring(spaceIdx + 1).trim();
+  }
   
   // Vygenerování 4-místného pinu
   const pin = payload.pin || Math.floor(1000 + Math.random() * 9000).toString(); 
   
-  // Nalezení sloupců
+  // Nalezení sloupců a zápis dat
   const headers = sheetClenove.getRange(1, 1, 1, sheetClenove.getLastColumn()).getValues()[0];
   let newRow = new Array(headers.length).fill("");
   let expColIdx = -1;
   
   for(let i=0; i<headers.length; i++) {
     let h = String(headers[i]).toLowerCase().trim();
-    if (h === "jméno") newRow[i] = jmeno;
+    if (h === "jméno") newRow[i] = krestni; // Uloží jen křestní
+    else if (h === "příjmení") newRow[i] = prijmeni; // Uloží zbytek textu
     else if (h === "e-mail") newRow[i] = payload.email;
     else if (h === "pin") newRow[i] = pin;
     else if (h === "nástrojová sekce") newRow[i] = payload.nastroj;
-    else if (h === "role") newRow[i] = "Host";
+    else if (h === "role") newRow[i] = "Host"; // Host nezíská "(Host)" u jména, má to v roli
     else if (h === "platnost do") { expColIdx = i; newRow[i] = payload.expirace; }
   }
   
@@ -470,7 +478,7 @@ function approveGuest(payload) {
   
   sheetClenove.appendRow(newRow);
   
-  // Pokud šlo o schválení existující žádosti, změníme její stav
+  // Pokud šlo o schválení existující žádosti
   if (payload.zadostRowIdx) {
     const sheetZadosti = ss.getSheetByName("Žádosti hostů");
     if (sheetZadosti) sheetZadosti.getRange(payload.zadostRowIdx, 6).setValue("Schváleno");
@@ -479,12 +487,11 @@ function approveGuest(payload) {
   // ODESLÁNÍ E-MAILU HOSTOVI
   try {
     const subject = "Přístup do portálu orchestru TSO Bolech";
-    // ZDE SI DOPLŇTE ODKAZ NA VAŠI APLIKACI:
-    const urlAplikace = "https://mkytaran.github.io/tso-bolech/"; 
+    const urlAplikace = "https://vas-odkaz-na-aplikaci.cz"; // Doplňte svůj odkaz
     
     const body = `Dobrý den,\n\nbyl Vám vytvořen hostovský účet do portálu Táborského symfonického orchestru Bolech.\n\n` +
                  `Adresa portálu: ${urlAplikace}\n` +
-                 `Přihlašovací jméno: ${jmeno} (nebo tento e-mail)\n` +
+                 `Přihlašovací jméno: ${celeJmeno} (nebo tento e-mail)\n` +
                  `Váš PIN kód: ${pin}\n\n` +
                  `Účet je platný do: ${payload.expirace}\n\n` +
                  `Těšíme se na spolupráci!`;

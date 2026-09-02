@@ -123,8 +123,22 @@ function handleLoginSubmit(e) {
   .then(res => { 
     btn.innerText = "Vstoupit"; btn.disabled = false;
     if(res.success) { 
-      user = res.member; localStorage.setItem('bolech_auth_member', JSON.stringify(user)); 
-      document.getElementById('loginScreen').style.display = 'none'; initApp(); 
+      user = res.member; 
+      
+      // NOVÉ: DETEKCE HOSTA A NASTAVENÍ ČASOVÉ BOMBY
+      const jmeno = String(user.name || "").toLowerCase();
+      const sekce = String(user.section || "").toLowerCase();
+      const role = String(user.role || "").toLowerCase(); // <-- PŘIDANÁ DETEKCE ROLE
+      
+      // Podmínka nyní reaguje primárně i na roli "Host" z tabulky
+      if (sekce.includes('host') || jmeno.includes('host') || role === 'host') {
+        const pocetDni = 14; // Počet dní do expirace
+        user.platnostDo = Date.now() + (pocetDni * 24 * 60 * 60 * 1000); 
+      }
+
+      localStorage.setItem('bolech_auth_member', JSON.stringify(user)); 
+      document.getElementById('loginScreen').style.display = 'none'; 
+      initApp(); 
     } else alert(res.error); 
   }); 
 }
@@ -134,7 +148,7 @@ function initApp() {
   document.getElementById("userBadge").innerText = user.name;
   
   const userRole = String(user.role || "").trim().toLowerCase();
-  const isVedení = userRole !== "" && userRole !== "-";
+  const isVedení = userRole !== "" && userRole !== "-" && userRole !== "host";
   const jeDirigent = userRole === 'dirigent';
 
   // Zobrazíme tlačítko Správa pro vedení
@@ -345,7 +359,7 @@ function renderEvents() {
   const cont = document.getElementById("eventsContainer"); cont.innerHTML = "";
   const archCont = document.getElementById("archiveContainer"); archCont.innerHTML = "";
   const userRole = String(user.role||"").trim().toLowerCase();
-  const isVedení = userRole !== "" && userRole !== "-";
+  const isVedení = userRole !== "" && userRole !== "-" && userRole !== "host";
   
   if (isVedení) {
     cont.innerHTML += `
