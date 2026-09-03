@@ -191,55 +191,56 @@ function isEventVisibleForUser(akce) {
  * @param {String} nastrojUzivatele - Nástroj přihlášeného hráče (např. "1. Housle")
  * @param {Boolean} jeDirigent - True, pokud je hráč dirigent
  */
+
 function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
   const kontejner = document.getElementById('notyContainer');
   const infoText = document.getElementById('notyNastrojInfo');
   
   if (!kontejner) return;
 
-  // Zobrazení nástroje v hlavičce pro vizuální kontrolu hráče
+  const userRole = String(user.role || "").trim().toLowerCase();
+  const isVedení = ['admin', 'dirigent', 'vedení', 'vedeni'].includes(userRole);
+
   if (infoText) {
     infoText.textContent = jeDirigent ? "Režim partitury" : `Zobrazený part: ${nastrojUzivatele}`;
+  }
+
+  let htmlDropdown = '';
+  // Pokud je uživatel z vedení, vykreslíme mu roletku pro volbu partu
+  if (isVedení) {
+    htmlDropdown = `
+      <div style="margin-bottom: 20px; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+        <label style="font-size: 13px; font-weight: bold; display: block; margin-bottom: 8px; color: var(--text);">👀 Náhled partů (pouze pro vedení):</label>
+        <select class="modal-input" onchange="zmenitPohledNot(this.value)" style="margin-bottom:0; font-size:14px; background: var(--surface);">
+          <option value="Vlastní part" ${nastrojUzivatele === user.section ? 'selected' : ''}>Můj nástroj / Výchozí pohled (${user.section})</option>
+          ${PARTITURA_SECTIONS.map(s => `<option value="${s}" ${nastrojUzivatele === s && nastrojUzivatele !== user.section ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    `;
   }
 
   // 1. Filtrace podle aktivity a nástroje
   const relevantniNoty = dataNoty.filter(nota => {
     let aktivni = String(nota.aktivni || '').toUpperCase().trim();
-    // Pokud nota nemá ve sloupci Aktivni slovo "ANO", přeskočíme ji
     if (aktivni !== 'TRUE' && aktivni !== 'ANO' && aktivni !== '1') return false;
-    
-    // Dirigent vidí vše, co je označeno jako Partitura
     if (jeDirigent && nota.sekce === 'Partitura') return true;
-    
-    // Shoda nástroje z tabulky s nástrojem uživatele (Hoboj vidí Hoboj)
     if (nota.sekce === nastrojUzivatele) return true;
     
-    // --- HUDENÍ LOGIKA PRO SPOLEČNÉ PARTY ---
-    
-    // Společné party pro housle
     if (nota.sekce === 'Housle' && (nastrojUzivatele === '1. Housle' || nastrojUzivatele === '2. Housle')) return true;
-    
-    // Smyčce (vidí všichni smyčcaři)
     if (nota.sekce === 'Smyčce' && ['1. Housle', '2. Housle', 'Violy', 'Violoncella', 'Kontrabasy'].includes(nastrojUzivatele)) return true;
-    
-    // Dechy (vidí všechna dřeva i žestě)
     if (nota.sekce === 'Dechy' && ['Flétny', 'Hoboje', 'Klarinety / Saxofony', 'Fagoty', 'Lesní rohy', 'Trubky', 'Trombóny a Tuba'].includes(nastrojUzivatele)) return true;
-    
-    // Dřeva
     if (nota.sekce === 'Dřeva' && ['Flétny', 'Hoboje', 'Klarinety / Saxofony', 'Fagoty'].includes(nastrojUzivatele)) return true;
-    
-    // Žestě
     if (nota.sekce === 'Žestě' && ['Lesní rohy', 'Trubky', 'Trombóny a Tuba'].includes(nastrojUzivatele)) return true;
-    
     return false;
   });
 
+  let html = htmlDropdown;
+
   if (relevantniNoty.length === 0) {
-    kontejner.innerHTML = '<p style="color: var(--text-muted); text-align: center; margin-top: 40px; padding: 20px;">Pro váš nástroj aktuálně nejsou k dispozici žádné noty na repertoáru.</p>';
+    kontejner.innerHTML = html + '<p style="color: var(--text-muted); text-align: center; margin-top: 40px; padding: 20px;">Pro tento part aktuálně nejsou k dispozici žádné noty na repertoáru.</p>';
     return;
   }
 
-  // 2. Seskupení not podle sloupce Program (např. "Podzimní koncert")
   const notyPodleProgramu = {};
   relevantniNoty.forEach(nota => {
     const program = nota.program || 'Ostatní repertoár';
@@ -247,17 +248,13 @@ function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
     notyPodleProgramu[program].push(nota);
   });
 
-  // 3. Generování HTML obsahu
-  let html = '';
   for (const [program, noty] of Object.entries(notyPodleProgramu)) {
-    
-    // Získání vlastního e-mailu hráče ze seznamu členů
     let mujEmail = user.email || '';
     if (!mujEmail && appData.clenove) {
       const ja = appData.clenove.find(c => c.jmeno === user.name || c.name === user.name);
       if (ja && ja.email) mujEmail = ja.email.trim();
     }
-    // Sestavení textu s odkazy pro PŘÍMÉ STAŽENÍ
+    
     let emailPredmet = encodeURIComponent(`Noty TSO Bolech - ${program}`);
     let emailTelo = `Dobrý den,\n\nzasílám odkazy pro přímé stažení not (Program: ${program}, Part: ${nastrojUzivatele}).\n\n`;
     noty.forEach(n => {
@@ -265,10 +262,8 @@ function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
       emailTelo += `- ${n.skladba}:\n  ${stahovaciOdkaz}\n\n`;
     });
     emailTelo += `Portál TSO Bolech`;
-    
     let mailtoOdkaz = `mailto:${mujEmail}?subject=${emailPredmet}&body=${encodeURIComponent(emailTelo)}`;
 
-    // Hlavička programu a tlačítko na e-mail
     html += `
       <div class="program-header">
         <h3 class="program-title">${program}</h3>
@@ -278,7 +273,6 @@ function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
         </a>
       </div>`;
       
-    // Seznam skladeb v daném programu
     noty.forEach(nota => {
       html += `
         <div class="nota-card">
@@ -902,9 +896,9 @@ function vykresliAdminNoty() {
                 <span style="font-size: 11px; opacity: 0.8; white-space: nowrap; background: var(--border); padding: 4px 6px; border-radius: 4px; color: var(--text);">${escapeHtml(String(soub.sekce||''))}</span>
                 
                 <!-- Tlačítko pro odeslání e-mailem hostovi -->
-                <a href="mailto:?subject=TSO Bolech - Noty%20-%20${encodeURIComponent(soub.kratkyNazev)}&body=${emailBodyHost}" style="display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; min-width: 34px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text-muted); text-decoration: none; transition: background 0.2s;" title="Odeslat noty hostovi">
-                  <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-                </a>
+                <button type="button" onclick="pridatDoFrontyNot('${encodeURIComponent(soub.kratkyNazev)}', '${soub.odkaz}')" style="display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; min-width: 34px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text-muted); cursor: pointer; transition: background 0.2s;" title="Přidat do fronty k odeslání">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                </button>
                 
               </div>
               `;
@@ -1177,4 +1171,88 @@ function pridatHostaNaprimo(e) {
 
 function confirmLogout() { 
   if(confirm("Opravdu se chcete odhlásit?")) { localStorage.removeItem('bolech_auth_member'); localStorage.removeItem('bolech_data_cache'); location.reload(); } 
+}
+
+// ==============================================================================
+// LOGIKA PRO E-MAILOVOU FRONTU A PŘEPÍNÁNÍ POHLEDŮ (PRO VEDENÍ)
+// ==============================================================================
+
+window.emailFrontaNot = [];
+
+function pridatDoFrontyNot(kratkyNazev, odkaz) {
+  const dekodovanyNazev = decodeURIComponent(kratkyNazev);
+  if (!window.emailFrontaNot.find(n => n.odkaz === odkaz)) {
+    window.emailFrontaNot.push({ nazev: dekodovanyNazev, odkaz: odkaz });
+    vykresliFrontuNot();
+  }
+}
+
+function odebratZFrontyNot(odkaz) {
+  window.emailFrontaNot = window.emailFrontaNot.filter(n => n.odkaz !== odkaz);
+  vykresliFrontuNot();
+}
+
+function vymazatFrontuNot() {
+  window.emailFrontaNot = [];
+  vykresliFrontuNot();
+}
+
+function odeslatFrontuMailem() {
+  if (window.emailFrontaNot.length === 0) return;
+  
+  let emailTelo = "Dobrý den,\n\nzasílám odkazy pro přímé stažení vybraných not:\n\n";
+  window.emailFrontaNot.forEach(n => {
+    let downloadOdkaz = n.odkaz.replace(/.*\/d\/([a-zA-Z0-9_-]+).*/, 'https://drive.google.com/uc?export=download&id=$1');
+    emailTelo += `- ${n.nazev}:\n  ${downloadOdkaz}\n\n`;
+  });
+  
+  let mailtoOdkaz = `mailto:?subject=${encodeURIComponent("Vybrané noty - TSO Bolech")}&body=${encodeURIComponent(emailTelo)}`;
+  window.location.href = mailtoOdkaz;
+  vymazatFrontuNot(); // Po odeslání frontu vyčistíme
+}
+
+function vykresliFrontuNot() {
+  let widget = document.getElementById('emailFrontaWidget');
+  
+  if (window.emailFrontaNot.length === 0) {
+    if (widget) widget.style.display = 'none';
+    return;
+  }
+
+  if (!widget) {
+    widget = document.createElement('div');
+    widget.id = 'emailFrontaWidget';
+    // Widget "plave" těsně nad spodním menu
+    widget.style = "position: fixed; bottom: 85px; left: 10px; right: 10px; background: var(--surface); border: 2px solid var(--primary); border-radius: 12px; padding: 12px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.3);";
+    document.body.appendChild(widget);
+  }
+  
+  widget.style.display = 'block';
+  
+  let html = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <strong style="color:var(--text);">📨 Připraveno k odeslání (${window.emailFrontaNot.length})</strong>
+      <button type="button" onclick="vymazatFrontuNot()" style="background:transparent; border:none; color:var(--danger); font-size:12px; padding:4px;">Vymazat frontu</button>
+    </div>
+    <div style="max-height: 100px; overflow-y:auto; margin-bottom:12px; font-size:13px; color:var(--text-muted);">
+      ${window.emailFrontaNot.map(n => `
+        <div style="display:flex; justify-content:space-between; margin-bottom:6px; padding-bottom:6px; border-bottom:1px dashed var(--border);">
+          <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:85%;">${escapeHtml(n.nazev)}</span>
+          <button onclick="odebratZFrontyNot('${n.odkaz}')" style="background:transparent; border:none; color:var(--danger); padding:0 4px; cursor:pointer;">✕</button>
+        </div>
+      `).join('')}
+    </div>
+    <button onclick="odeslatFrontuMailem()" class="btn" style="width:100%; background:var(--primary); padding:10px;">Odeslat vše e-mailem</button>
+  `;
+  widget.innerHTML = html;
+}
+
+// Funkce pro přepínání cizích partů ve Správě not
+function zmenitPohledNot(novyNastroj) {
+  const jeDirigent = String(user.role || "").trim().toLowerCase() === 'dirigent';
+  
+  const nastrojProZobrazeni = (novyNastroj === 'Vlastní part') ? user.section : novyNastroj;
+  const simulujDirigenta = (novyNastroj === 'Vlastní part' && jeDirigent);
+  
+  vykresliNoty(appData.noty || [], nastrojProZobrazeni, simulujDirigenta);
 }
