@@ -763,13 +763,30 @@ function switchTab(t, b) {
   const tabNoty = document.getElementById('tab-sheetmusic');
   if (tabNoty) tabNoty.style.display = t === 'sheetmusic' ? 'block' : 'none'; 
   
-  document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active')); 
-  if (b) b.classList.add('active'); 
+  // 1. Vyresetování všech tlačítek v menu
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.classList.remove('active'); 
+    btn.style.color = ''; // Smaže naši individuální barvu, když se překlikne jinam
+  }); 
+  
+  // 2. Aktivace a obarvení kliknutého tlačítka
+  if (b) { 
+    b.classList.add('active'); 
+    
+    // Nastavení unikátních barev
+    if (t === 'events') {
+      b.style.color = '#3b82f6'; // Akce -> Modrá
+    } else if (t === 'sheetmusic') {
+      b.style.color = 'var(--success)'; // Noty -> Zelená
+    } else if (t === 'admin-noty') {
+      b.style.color = '#06b6d4'; // Správa not -> Tyrkysová
+    }
+    // U 'archive' (Infoarchiv) barvu nenastavujeme ručně zde, řídí se nadále vaší CSS třídou
+  } 
   
   if (t === 'archive') document.body.classList.add('archive-open');
   else document.body.classList.remove('archive-open');
 }
-
 // Globální paměť pro bezpečné ukládání složek
 window.stromSlozek = []; 
 

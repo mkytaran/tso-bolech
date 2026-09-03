@@ -329,33 +329,31 @@ function updateNotyHromadne(payload) {
 }
 
 // ==============================================================================
-// 9. ROZŠÍŘENÝ SLOVNÍK NÁSTROJŮ A ZKRATEK PRO TŘÍDĚNÍ NOT
+// 9. MAXIMÁLNĚ ROZŠÍŘENÝ SLOVNÍK NÁSTROJŮ A ZKRATEK PRO TŘÍDĚNÍ NOT
 // ==============================================================================
 const SLOVNIK_NASTROJU = {
-  "1. Housle": ["1 housle", "housle 1", "violin 1", "violino 1", "1st violin", "vl 1", "vl i", "vno 1", "vno i", "violin i", "violino i", "violins 1", "violins i", "vn 1", "vn i", "violin e 1", "violini 1", "violini i"],
-  "2. Housle": ["2 housle", "housle 2", "violin 2", "violino 2", "2nd violin", "vl 2", "vl ii", "vno 2", "vno ii", "violin ii", "violino ii", "violins 2", "violins ii", "vn 2", "vn ii", "violin e 2", "violini 2", "violini ii"],
+  "1. Housle": ["1 housle", "housle 1", "violin 1", "violino 1", "1st violin", "vl 1", "vl i", "vno 1", "vno i", "violin i", "violino i", "violins 1", "violins i", "vn 1", "vn i", "violin e 1", "violini 1", "violini i", "violine 1", "violine1", "violinei", "violinii", "vln1", "violini1"],
+  "2. Housle": ["2 housle", "housle 2", "violin 2", "violino 2", "2nd violin", "vl 2", "vl ii", "vno 2", "vno ii", "violin ii", "violino ii", "violins 2", "violins ii", "vn 2", "vn ii", "violin e 2", "violini 2", "violine 2", "violine2", "violineii", "violine ii", "vln2", "violini ii", "violiniii", "violini2", "violino2"],
   "Housle": ["violin", "violins", "violino", "violini", "housle", "vn", "vno", "vl"],
   "Violy": ["viola", "violas", "viole", "vla", "va", "viol"],
-  "Violoncella": ["cello", "violoncello", "vlc", "vc"],
-  "Kontrabasy": ["bass", "contrabass", "contrabassi", "contrabasso", "cb", "basso", "kontrabas", "db"],
-  "Flétny": ["flute", "flauto", "flauti", "flaut", "piccolo", "flétn", "fl", "picc"],
-  "Hoboje": ["oboe", "corno inglese", "english horn", "hoboj", "ob", "c i", "eng horn", "hautbois", "htb", "htb 1", "htb 2"],
-  "Klarinety / Saxofony": ["clarinet", "clarinette", "clarinetti", "clarinetto", "sax", "saxophone", "klarinet", "kl", "klar", "cl", "clar"],
-  "Fagoty": ["bassoon", "fagotto", "fagot", "fg", "fag", "bsn", "basson"],
-  "Lesní rohy": ["horn", "corno", "corni", "lesní roh", "cor", "hrn", "roh", "rohy"],
-  "Trubky": ["trumpet", "tromba", "trombe", "trubk", "trp", "tr", "tpt"],
-  "Trombóny a Tuba": ["trombone", "tromboni", "trombon", "tuba", "pozoun", "posaun", "posaune", "trombón", "trb", "tbn", "pos"],
-  "Bicí nástroje": ["timpani", "percussion", "piatti", "tamburo", "cymbals", "bicí", "pauken", "tambourine", "triangolo", "snare", "drum", "drums", "bd", "gran cassa", "glockenspiel", "xylofon", "xylophone", "zvonkohra", "vibraphone", "marimba", "campane", "chimes", "bici", "perc", "timp"],
+  "Violoncella": ["cello", "violoncello", "violoncellos", "violoncelli", "vlc", "vcl", "vc"],
+  "Kontrabasy": ["bass", "contrabass", "contrabassi", "contrabasso", "contrabasses", "cb", "basso", "kontrabas", "db"],
+  "Flétny": ["flute", "flauto", "flauto1", "flauto2", "flautoi", "flautoii", "flauti", "flautiiaii", "flaut", "piccolo", "flétn", "fletna", "fletny", "fletna 1 2", "fl", "picc"],
+  "Hoboje": ["oboe", "oboes", "corno inglese", "english horn", "hoboj", "ob", "c i", "eng horn", "hautbois", "htb", "htb 1", "htb 2"],
+  "Klarinety / Saxofony": ["clarinet", "clarinets", "clarinette", "clarinetti", "clarinettiiaii", "clarinetto", "clarinettoi", "clarinettoii", "basklarinet", "sax", "saxophone", "saxofon", "klarinet", "kl", "klar", "cl", "clar"],
+  "Fagoty": ["bassoon", "bassoons", "fagotto", "fagot", "fg", "fag", "bsn", "basson"],
+  "Lesní rohy": ["horn", "horns", "corno", "cornoiii", "corni", "corniiaii", "lesní roh", "cor", "hrn", "roh", "rohy"],
+  "Trubky": ["trumpet", "trumpeta", "trumpets", "tromba", "trombe", "trompete", "trombeiaii", "trubk", "trp", "tr", "tpt"],
+  "Trombóny a Tuba": ["trombone", "tromboneiii", "tromboni", "tromboniiaii", "trombon", "tuba", "pozoun", "posaun", "posaune", "trombón", "trb", "trbn3", "trbn2", "trbn1", "tbn", "pos"],
+  "Bicí nástroje": ["timpani", "tympany", "percussion", "piatti", "tamburo", "cymbals", "bicí", "pauken", "tambourine", "triangolo", "snare", "drum", "drums", "bd", "gran cassa", "glockenspiel", "xylofon", "xylophone", "zvonkohra", "vibraphone", "marimba", "campane", "chimes", "bici", "perc", "timp"],
   "Klávesy": ["piano", "keyboard", "keyboards", "klavír", "harp", "arpa", "harfa", "harpe", "celesta", "cembalo", "cemballo", "organ", "organo", "varhany", "pno", "org"],
   "Kytary": ["guitar", "chitarra", "kytar", "guit"],
   "Zpěv": ["vocal", "choir", "coro", "soprano", "alto", "tenore", "basso", "zpěv", "vox", "voice", "canti", "canto"],
   
-  // NOVÉ SOUHRNNÉ SKUPINY PRO NEROZDĚLENÉ NOTY
   "Smyčce": ["smyčce", "smycce", "strings", "archi"],
   "Dechy": ["dechy", "winds", "fiati"],
   "Dřeva": ["dřeva", "dreva", "woodwinds", "legni", "holz"],
   "Žestě": ["žestě", "zeste", "brass", "ottoni", "blech"],
-  
   "Partitura": ["score", "partitura", "direzione", "part"]
 };
 
@@ -364,8 +362,12 @@ const SLOVNIK_NASTROJU = {
 // ==============================================================================
 function uhodniSekci(nazevSouboru) {
   let cistyNazev = nazevSouboru.toLowerCase();
+  
+  // Přidá mezeru mezi písmeno a číslo (např. violini1 -> violini 1)
   cistyNazev = cistyNazev.replace(/([a-zěščřžýáíéóúůďťň])([0-9])/g, '$1 $2');
-  cistyNazev = cistyNazev.replace(/[-_.,()[\]]/g, ' ');
+  
+  // PŘIDÁNO + a &: Převede všechny oddělovače na mezeru (odstraní i podtržítka, pomlčky, plus, atd.)
+  cistyNazev = cistyNazev.replace(/[-_.,()[\]+&]/g, ' ');
 
   for (const [sekce, klicovaSlova] of Object.entries(SLOVNIK_NASTROJU)) {
     for (const slovo of klicovaSlova) {
@@ -377,6 +379,7 @@ function uhodniSekci(nazevSouboru) {
   }
   return "??? K ROZTŘÍDĚNÍ ???";
 }
+
 
 // ==============================================================================
 // 11. HLAVNÍ FUNKCE PRO NAČÍTÁNÍ NOT Z DISKU DO TABULKY (S pamětí proti timeoutu)
