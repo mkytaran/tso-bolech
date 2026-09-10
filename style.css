@@ -261,6 +261,43 @@ body.dark-mode.archive-open .nav-btn.active {
   background: var(--border);
 }
 
+/* Karta noty - obal */
+.nota-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;       /* Ujistí se, že karta nepřeteče obrazovku */
+  overflow: hidden;  /* Cokoliv navíc schová */
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* Kontejner pro text (název a nástroj) */
+.nota-info {
+  flex: 1;           /* Zabere všechen volný prostor */
+  min-width: 0;      /* KRITICKÉ: dovolí textu zmenšit se pod svou reálnou šířku */
+  padding-right: 12px; /* Odstup od tlačítka stáhnout */
+}
+
+/* Samotný text názvu skladby */
+.nota-info h4 {
+  overflow-wrap: anywhere; /* Zalomení kdekoliv, i uprostřed slova/podtržítka */
+  word-break: break-word;  /* Pojistka pro starší prohlížeče */
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.nota-info span {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
 /* Nové ikonkové tlačítko pro stažení not */
 .nota-down-btn {
   background: var(--primary);
@@ -272,36 +309,11 @@ body.dark-mode.archive-open .nav-btn.active {
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  flex-shrink: 0; /* Aby ho dlouhý název skladby nezmáčkl */
+  flex-shrink: 0; /* KRITICKÉ: Zakáže prohlížeči tlačítko zmenšit nebo zmáčknout */
   transition: opacity 0.2s;
 }
 .nota-down-btn:active {
   opacity: 0.8;
-}
-
-
-.nota-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  margin-bottom: 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
-
-.nota-info h4 {
-  margin: 0 0 4px 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.nota-info span {
-  font-size: 13px;
-  color: var(--text-muted);
 }
 
 .nota-open-btn {
