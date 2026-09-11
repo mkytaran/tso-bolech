@@ -589,22 +589,31 @@ details.folder-tree > summary::-webkit-details-marker {
   pointer-events: auto;
 }
 
-/* 2. Přímé rozmazání okolního obsahu */
-body.card-flipped-active #eventsContainer,
+/* 1. Rozmazání záhlaví a spodní lišty */
+body.card-flipped-active header,
 body.card-flipped-active .bottom-nav,
-body.card-flipped-active header {
+body.card-flipped-active .admin-actions {
   filter: blur(4px);
   -webkit-filter: blur(4px);
   transition: filter 0.2s ease;
   user-select: none;
 }
 
-/* 3. Vynesení aktivní karty nad clonu a zrušení filtru */
+/* 2. Rozmazání POUZE ostatních karet (nikoliv té otočené) */
+body.card-flipped-active .card-flip-container:not(.active-focus),
+body.card-flipped-active .card:not(.card-flip-container) {
+  filter: blur(4px);
+  -webkit-filter: blur(4px);
+  opacity: 0.6;
+  transition: filter 0.2s ease, opacity 0.2s ease;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 3. Aktivní otočená karta zůstane 100% ostrá a nad clonou */
 .card-flip-container.active-focus {
   position: relative;
   z-index: 1000;
-  filter: none !important;
-  -webkit-filter: none !important;
 }
 
 .card-flipper.is-flipped .card-back {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bolech-portal-v2';
+const CACHE_NAME = 'bolech-portal-v3';
 
 // Zde můžete vypsat soubory, které se mají uložit pro rychlejší načítání
 const ASSETS = [
