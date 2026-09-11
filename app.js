@@ -41,16 +41,9 @@ const PARTITURA_SECTIONS = [
 // POMOCNÁ POLE PRO DETEKCI ZADANÝCH TEXTŮ A SKLOŇOVÁNÍ
 // -----------------------------------------------------
 
-// Kořeny slov pro smyčce
 const SMYCKE_SECTIONS = ["housl", "viol", "cell", "kontrabas", "smyčce", "smycce"];
-
-// Kořeny slov pro dechy
 const DECHOVE_SECTIONS = ["flétn", "hoboj", "klarinet", "saxofon", "fagot", "roh", "trubk", "trubc", "trombón", "trombon", "tuba", "tuby", "tubě", "tubou", "dech", "dřev", "žest"];
-
-// Kořeny pro zachycení hostujících hráčů (host, hosté, hostující)
-const HOSTE_SECTIONS = [
-  "host"
-];
+const HOSTE_SECTIONS = ["host"];
 
 function initTheme() {
   const savedTheme = localStorage.getItem('bolech_theme');
@@ -101,14 +94,12 @@ function handleLoginSubmit(e) {
     if(res.success) { 
       user = res.member; 
       
-      // NOVÉ: DETEKCE HOSTA A NASTAVENÍ ČASOVÉ BOMBY
       const jmeno = String(user.name || "").toLowerCase();
       const sekce = String(user.section || "").toLowerCase();
-      const role = String(user.role || "").toLowerCase(); // <-- PŘIDANÁ DETEKCE ROLE
+      const role = String(user.role || "").toLowerCase();
       
-      // Podmínka nyní reaguje primárně i na roli "Host" z tabulky
       if (sekce.includes('host') || jmeno.includes('host') || role === 'host') {
-        const pocetDni = 14; // Počet dní do expirace
+        const pocetDni = 14; 
         user.platnostDo = Date.now() + (pocetDni * 24 * 60 * 60 * 1000); 
       }
 
@@ -124,14 +115,10 @@ function initApp() {
   document.getElementById("userBadge").innerText = user.name;
   
   const userRole = String(user.role || "").trim().toLowerCase();
-  
-  // BEZPEČNOSTNÍ POJISTKA: Přesný výčet rolí, které mají práva správy
   const povoleneRole = ['admin', 'dirigent', 'vedení', 'vedeni'];
   const isVedení = povoleneRole.includes(userRole);
-  
   const jeDirigent = userRole === 'dirigent';
   
-  // Zobrazíme tlačítko Správa pro vedení
   if (isVedení) {
     document.getElementById('btn-nav-admin').style.display = 'flex';
   }
@@ -141,7 +128,7 @@ function initApp() {
     appData = JSON.parse(cachedData); 
     renderEvents(); 
     vykresliNoty(appData.noty || [], user.section, jeDirigent);
-    if (isVedení) vykresliAdminNoty(); // Volání pro vedení
+    if (isVedení) vykresliAdminNoty();
   }
 
   runGoogleScript("getInitialData").then(d => { 
@@ -150,7 +137,7 @@ function initApp() {
       localStorage.setItem("bolech_data_cache", JSON.stringify(appData));
       renderEvents(); 
       vykresliNoty(appData.noty || [], user.section, jeDirigent);
-      if (isVedení) vykresliAdminNoty(); // Volání pro vedení
+      if (isVedení) vykresliAdminNoty();
     }
   });
 }
@@ -195,13 +182,6 @@ function isEventVisibleForUser(akce) {
   return true; 
 }
 
-/**
- * Funkce vygeneruje seznam not pro daného hráče.
- * @param {Array} dataNoty - Získaná data z Google Tabulky (pole objektů)
- * @param {String} nastrojUzivatele - Nástroj přihlášeného hráče (např. "1. Housle")
- * @param {Boolean} jeDirigent - True, pokud je hráč dirigent
- */
-
 function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
   const kontejner = document.getElementById('notyContainer');
   const infoText = document.getElementById('notyNastrojInfo');
@@ -216,7 +196,6 @@ function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
   }
 
   let htmlDropdown = '';
-  // Pokud je uživatel z vedení, vykreslíme mu roletku pro volbu partu
   if (isVedení) {
     htmlDropdown = `
       <div style="margin-bottom: 20px; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
@@ -229,7 +208,6 @@ function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
     `;
   }
 
-  // 1. Filtrace podle aktivity a nástroje
   const relevantniNoty = dataNoty.filter(nota => {
     let aktivni = String(nota.aktivni || '').toUpperCase().trim();
     if (aktivni !== 'TRUE' && aktivni !== 'ANO' && aktivni !== '1') return false;
@@ -304,49 +282,107 @@ function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
   kontejner.innerHTML = html;
 }
 
-// --- VYKRESLOVÁNÍ POZNÁMKY S HARMONOGRAMEM ---
-function formatPoznamkaHtml(rawNote) {
-  if (!rawNote) return '';
-  if (!rawNote.includes('===HARMONOGRAM===')) {
-    return `<div class="oznameni-text" style="margin-top:12px;">${escapeHtml(rawNote)}</div>`;
+// --- PARSOVÁNÍ STRUKTURY POZNÁMKY (HLAVNÍ TEXT, HARMONOGRAM, PROGRAM) ---
+function parsovatPoznamku(rawNote) {
+  let mainNote = rawNote || '';
+  let schedData = '';
+  let progData = '';
+
+  if (mainNote.includes('===HARMONOGRAM===')) {
+    let partsH = mainNote.split('===HARMONOGRAM===');
+    mainNote = partsH[0].trim();
+    let rest = partsH[1].trim();
+    if (rest.includes('===PROGRAM===')) {
+      let partsP = rest.split('===PROGRAM===');
+      schedData = partsP[0].trim();
+      progData = partsP[1].trim();
+    } else {
+      schedData = rest;
+    }
+  } else if (mainNote.includes('===PROGRAM===')) {
+    let partsP = mainNote.split('===PROGRAM===');
+    mainNote = partsP[0].trim();
+    progData = partsP[1].trim();
   }
-  
-  let parts = rawNote.split('===HARMONOGRAM===');
-  let mainNote = escapeHtml(parts[0].trim());
-  let sData = parts[1].trim();
-  let html = '';
-  
-  if(mainNote) html += `<div class="oznameni-text" style="margin-top:12px;">${mainNote}</div>`;
-  
-  if (sData) {
-    // Odstraněn rámeček a pozadí. Přidána pouze horní přerušovaná čára, zvětšeno písmo nadpisu (18px) a tabulky (16px).
-    html += `<div style="margin-top:20px; padding-top:16px; border-top: 1px dashed var(--border);">
-        <h4 style="margin-top:0; margin-bottom:12px; font-size:18px; color:var(--text);">⏱️ Časový plán</h4>
-        <table style="width:100%; border-collapse: collapse; font-size:16px;">`;
-    sData.split('\n').forEach((line, index, arr) => {
-        let p = line.split('|');
-        let time = escapeHtml(p[0]||'').trim();
-        let desc = escapeHtml(p[1]||'').trim().replace(/\[BR\]/g, '<br>');
-        let borderObj = (index === arr.length - 1) ? 'none' : '1px solid var(--border)';
-        
-        // Zvětšený vertikální padding buněk pro lepší čitelnost větších písmen
-        html += `<tr>
-            <td style="padding:8px 12px 8px 0; vertical-align:top; text-align:right; border-bottom:${borderObj}; white-space:nowrap; font-weight:bold; width:1%; color:var(--text);">${time}</td>
-            <td style="padding:8px 0; vertical-align:top; border-bottom:${borderObj}; color:var(--text);">${desc}</td>
-        </tr>`;
-    });
-    html += `</table></div>`;
-  }
+
+  return { mainNote, schedData, progData };
+}
+
+// --- VYKRESLENÍ HARMONOGRAMU ---
+function formatHarmonogramHtml(sData) {
+  if (!sData) return '';
+  let html = `<div style="margin-top:20px; padding-top:16px; border-top: 1px dashed var(--border);">
+      <h4 style="margin-top:0; margin-bottom:12px; font-size:18px; color:var(--text);">⏱️ Časový plán</h4>
+      <table style="width:100%; border-collapse: collapse; font-size:16px;">`;
+  sData.split('\n').forEach((line, index, arr) => {
+      let p = line.split('|');
+      let time = escapeHtml(p[0]||'').trim();
+      let desc = escapeHtml(p[1]||'').trim().replace(/\[BR\]/g, '<br>');
+      let borderObj = (index === arr.length - 1) ? 'none' : '1px solid var(--border)';
+      
+      html += `<tr>
+          <td style="padding:8px 12px 8px 0; vertical-align:top; text-align:right; border-bottom:${borderObj}; white-space:nowrap; font-weight:bold; width:1%; color:var(--text);">${time}</td>
+          <td style="padding:8px 0; vertical-align:top; border-bottom:${borderObj}; color:var(--text);">${desc}</td>
+      </tr>`;
+  });
+  html += `</table></div>`;
   return html;
 }
 
+// --- VYKRESLENÍ ŠABLONY PROGRAMU NA ZADNÍ STRANĚ KARTY ---
+function formatProgramHtml(pData) {
+  if (!pData) return '';
+  let rows = '';
+  pData.split('\n').forEach(line => {
+    let parts = line.split('|');
+    if (parts.length >= 2) {
+      let num = escapeHtml(parts[0] || '').trim();
+      let author = escapeHtml(parts[1] || '').trim();
+      let piece = escapeHtml(parts[2] || '').trim();
+      rows += `
+        <tr>
+          <td class="col-num">${num ? num + '.' : ''}</td>
+          <td class="col-author">${author}</td>
+          <td class="col-piece">${piece}</td>
+        </tr>
+      `;
+    }
+  });
+
+  if (!rows) return '';
+
+  return `
+    <div style="margin-top: 10px;">
+      <h4 style="margin-bottom: 8px; font-size: 16px; color: var(--text);">🎼 Program / Pořadí skladeb</h4>
+      <table class="program-table">
+        <thead>
+          <tr>
+            <th class="col-num">#</th>
+            <th class="col-author">Skladatel</th>
+            <th class="col-piece">Dílo / Skladba</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// Funkce otočení karty
+function flipCard(cardId) {
+  const flipper = document.getElementById(cardId);
+  if (flipper) {
+    flipper.classList.toggle('is-flipped');
+  }
+}
 
 function renderEvents() {
   const cont = document.getElementById("eventsContainer"); cont.innerHTML = "";
   const archCont = document.getElementById("archiveContainer"); archCont.innerHTML = "";
   const userRole = String(user.role||"").trim().toLowerCase();
   
-  // BEZPEČNOSTNÍ POJISTKA: Přesný výčet rolí, které mají práva správy
   const povoleneRole = ['admin', 'dirigent', 'vedení', 'vedeni'];
   const isVedení = povoleneRole.includes(userRole);
   
@@ -386,27 +422,54 @@ function generateAkceHtml(akce, isVedení) {
   
   let editBtn = isVedení ? `<button class="edit-btn" onclick='openAkceForm(${JSON.stringify(akce).replace(/'/g, "&#39;")})'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>` : "";
 
+  const parsed = parsovatPoznamku(akce.poznamka);
+  const hasProgram = !!parsed.progData;
+  const hasDetailsOnBack = hasProgram || !!parsed.mainNote;
+  const cardFlipperId = `flipper-${akce.id}`;
+
   return `
-    <div class="card">
-      <div class="card-top-bar ${barClass}"><span>${akce.typ}</span><span>🗓️ ${akce.datum}</span></div>
-      <div class="card-body">
-        <div class="card-title-row"><div class="card-title">${akce.nazev}</div>${editBtn}</div>
-        ${akce.misto ? `<p style="margin-bottom:6px;">📍 ${akce.misto}</p>` : ''}
-        <p style="margin-bottom:6px;">🕒 Začátek: <strong>${akce.casOd}</strong></p>
-        ${akce.casSrazu ? `<p style="margin-bottom:6px;">⏰ Sraz: <strong>${akce.casSrazu}</strong></p>` : ''}
-        ${akce.zacatekGeneralky ? `<p style="margin-bottom:6px;">🎻 Generálka: <strong>${akce.zacatekGeneralky}</strong></p>` : ''}
-        ${akce.damy ? `<p style="margin-bottom:6px;">👗 Dámy: ${akce.damy}</p>` : ''}
-        ${akce.pani ? `<p style="margin-bottom:6px;">🤵 Páni: ${akce.pani}</p>` : ''}
-        ${formatPoznamkaHtml(akce.poznamka)}
-        <div class="att-buttons" style="margin-top:16px;">
-          <button class="btn-att ${myVote?.stav==='Ano'?'selected-ano':''}" onclick="submitUcast('${akce.id}','${akce.datum}','Ano',this)">✓ Účastním se</button>
-          <button class="btn-att ${myVote?.stav==='Ne'?'selected-ne':''}" onclick="submitUcast('${akce.id}','${akce.datum}','Ne',this)">✕ Neúčastním</button>
+    <div class="card-flip-container">
+      <div class="card-flipper" id="${cardFlipperId}">
+        
+        <!-- PŘEDNÍ STRANA KARTY -->
+        <div class="card-front">
+          ${hasDetailsOnBack ? `<button type="button" class="corner-fold-btn" onclick="flipCard('${cardFlipperId}')" title="Zobrazit program a detaily"></button>` : ''}
+          <div class="card-top-bar ${barClass}"><span>${akce.typ}</span><span>🗓️ ${akce.datum}</span></div>
+          <div class="card-body">
+            <div class="card-title-row"><div class="card-title">${akce.nazev}</div>${editBtn}</div>
+            ${akce.misto ? `<p style="margin-bottom:6px;">📍 ${akce.misto}</p>` : ''}
+            <p style="margin-bottom:6px;">🕒 Začátek: <strong>${akce.casOd}</strong></p>
+            ${akce.casSrazu ? `<p style="margin-bottom:6px;">⏰ Sraz: <strong>${akce.casSrazu}</strong></p>` : ''}
+            ${akce.zacatekGeneralky ? `<p style="margin-bottom:6px;">🎻 Generálka: <strong>${akce.zacatekGeneralky}</strong></p>` : ''}
+            ${akce.damy ? `<p style="margin-bottom:6px;">👗 Dámy: ${akce.damy}</p>` : ''}
+            ${akce.pani ? `<p style="margin-bottom:6px;">🤵 Páni: ${akce.pani}</p>` : ''}
+            
+            ${formatHarmonogramHtml(parsed.schedData)}
+
+            <div class="att-buttons" style="margin-top:16px;">
+              <button class="btn-att ${myVote?.stav==='Ano'?'selected-ano':''}" onclick="submitUcast('${akce.id}','${akce.datum}','Ano',this)">✓ Účastním se</button>
+              <button class="btn-att ${myVote?.stav==='Ne'?'selected-ne':''}" onclick="submitUcast('${akce.id}','${akce.datum}','Ne',this)">✕ Neúčastním</button>
+            </div>
+            <div id="duvod-${akce.id}" class="duvod-box" style="display:${myVote?.stav==='Ne'&&!myVote?.duvod?'block':'none'}">
+              <input type="text" id="in-${akce.id}" placeholder="Důvod neúčasti" class="modal-input" style="margin-bottom:12px;">
+              <button class="btn" onclick="saveDuvod('${akce.id}','${akce.datum}',this)">Odeslat důvod</button>
+            </div>
+            <div id="roster-container-${akce.id}">${generateRosterHtml(akce.id)}</div>
+          </div>
         </div>
-        <div id="duvod-${akce.id}" class="duvod-box" style="display:${myVote?.stav==='Ne'&&!myVote?.duvod?'block':'none'}">
-          <input type="text" id="in-${akce.id}" placeholder="Důvod neúčasti" class="modal-input" style="margin-bottom:12px;">
-          <button class="btn" onclick="saveDuvod('${akce.id}','${akce.datum}',this)">Odeslat důvod</button>
+
+        <!-- ZADNÍ STRANA KARTY (PROGRAM & PODROBNOSTI) -->
+        <div class="card-back">
+          <div class="card-top-bar ${barClass}">
+            <span>DETAILY & PROGRAM</span>
+            <button type="button" class="btn-flip-back" onclick="flipCard('${cardFlipperId}')">✕ Zpět na přehled</button>
+          </div>
+          <div class="card-body">
+            ${parsed.mainNote ? `<div class="oznameni-text" style="margin-bottom: 16px;">${escapeHtml(parsed.mainNote)}</div>` : ''}
+            ${formatProgramHtml(parsed.progData)}
+          </div>
         </div>
-        <div id="roster-container-${akce.id}">${generateRosterHtml(akce.id)}</div>
+
       </div>
     </div>`;
 }
@@ -422,13 +485,17 @@ function generateOznameniHtml(akce, isVedení, isArchiv = false) {
       akceBtn = `<button class="btn" style="background:transparent; color:var(--primary-light); border:1px solid var(--primary-light); padding:8px; margin-top:16px; font-size:14px;" onclick="obnovitOznameni('${akce.id}')">↩️ Vrátit zpět na hlavní stránku</button>`;
     }
   }
+
+  const parsed = parsovatPoznamku(akce.poznamka);
   
   return `
     <div class="card card-oznameni">
       <div class="card-top-bar bar-oznameni"><span>💡 Informace</span><span>🗓️ ${akce.datum}</span></div>
       <div class="card-body" style="padding-top:12px;">
         <div class="card-title-row" style="margin-bottom:4px;"><div class="card-title" style="font-size:20px;">${akce.nazev}</div>${editBtn}</div>
-        ${formatPoznamkaHtml(akce.poznamka)}
+        ${parsed.mainNote ? `<div class="oznameni-text" style="margin-top:12px;">${escapeHtml(parsed.mainNote)}</div>` : ''}
+        ${formatHarmonogramHtml(parsed.schedData)}
+        ${formatProgramHtml(parsed.progData)}
         ${akceBtn}
       </div>
     </div>`;
@@ -524,7 +591,7 @@ function formatDateForSave(isoDate) {
   return isoDate;
 }
 
-// --- PŘIDÁVÁNÍ ŘÁDKŮ HARMONOGRAMU ---
+// --- PŘIDÁVÁNÍ ŘÁDKŮ HARMONOGRAMU DO FORMULÁŘE ---
 function addScheduleRow(time = '', desc = '') {
   const cont = document.getElementById('schedule-rows');
   if (!cont) return;
@@ -542,33 +609,56 @@ function addScheduleRow(time = '', desc = '') {
   cont.appendChild(div);
 }
 
+// --- PŘIDÁVÁNÍ ŘÁDKŮ PROGRAMU DO FORMULÁŘE ---
+function addProgramRow(num = '', author = '', piece = '') {
+  const cont = document.getElementById('program-rows');
+  if (!cont) return;
+  const div = document.createElement('div');
+  div.style = 'border: 1px dashed var(--border); padding: 8px; margin-bottom: 8px; border-radius: 6px; position: relative; display: flex; gap: 8px; align-items: flex-start;';
+  div.innerHTML = `
+    <div style="width: 48px;">
+      <label style="font-size: 11px; display: block;">Poř.</label>
+      <input type="text" class="modal-input prog-num" placeholder="1" value="${escapeHtml(num)}" style="padding: 6px; font-size: 13px; text-align: center;">
+    </div>
+    <div style="flex: 1;">
+      <label style="font-size: 11px; display: block;">Autor / Skladatel:</label>
+      <input type="text" class="modal-input prog-author" placeholder="např. B. Smetana" value="${escapeHtml(author)}" style="padding: 6px 8px; font-size: 14px;">
+    </div>
+    <div style="flex: 2;">
+      <label style="font-size: 11px; display: block;">Dílo / Skladba:</label>
+      <input type="text" class="modal-input prog-piece" placeholder="např. Má vlast - Vltava" value="${escapeHtml(piece)}" style="padding: 6px 8px; font-size: 14px;">
+    </div>
+    <button type="button" style="margin-top: 18px; background: transparent; border: 1px solid var(--danger); border-radius: 4px; color: var(--danger); font-size: 12px; padding: 6px 8px;" onclick="this.parentElement.remove()">✕</button>
+  `;
+  cont.appendChild(div);
+}
+
 function openAkceForm(akce = null) {
   const isEdit = akce !== null;
   const selectDisabledAttr = isEdit ? 'disabled style="background: var(--bg); opacity: 0.8;"' : '';
   const formDateValue = formatDateForInput(akce?.datum || '');
   
-  // Rozšifrování dat pro editaci (oddělení textu a harmonogramu)
-  let rawNote = akce?.poznamka || '';
-  let mainNote = rawNote;
+  const parsed = parsovatPoznamku(akce?.poznamka || '');
   let scheduleLines = [];
-  
-  if (rawNote.includes('===HARMONOGRAM===')) {
-    let parts = rawNote.split('===HARMONOGRAM===');
-    mainNote = parts[0].trim();
-    let sData = parts[1].trim();
-    if (sData) {
-      scheduleLines = sData.split('\n').map(line => {
-        let p = line.split('|');
-        return { time: p[0]||'', desc: p[1]||'' };
-      });
-    }
+  if (parsed.schedData) {
+    scheduleLines = parsed.schedData.split('\n').map(line => {
+      let p = line.split('|');
+      return { time: p[0]||'', desc: p[1]||'' };
+    });
+  }
+
+  let programLines = [];
+  if (parsed.progData) {
+    programLines = parsed.progData.split('\n').map(line => {
+      let p = line.split('|');
+      return { num: p[0]||'', author: p[1]||'', piece: p[2]||'' };
+    });
   }
 
   const html = `
         <div id="akceModal" class="modal-overlay">
           <div class="modal-box" style="max-height: 90vh; overflow-y: auto;">
             
-            <!-- HLAVIČKA S NATIVNÍ ŠIPKOU ZPĚT -->
             <div style="display:flex; align-items:center; margin-bottom: 20px;">
               <button type="button" style="background:transparent; border:none; font-size:16px; color:var(--text); padding:8px 16px 8px 0; margin-right:8px; cursor:pointer; display:flex; align-items:center; gap:6px;" onclick="document.getElementById('akceModal').remove()">
                 <span style="font-size:24px; line-height:1;">←</span> Zpět
@@ -629,16 +719,25 @@ function openAkceForm(akce = null) {
             </div>
           </div>
 
-          <label>Hlavní text (Poznámka):</label>
-          <textarea id="f_poznamka" class="modal-input" style="min-height:160px; resize:vertical;">${escapeHtml(mainNote)}</textarea>
+          <label>Hlavní text (Poznámka / organizační info):</label>
+          <textarea id="f_poznamka" class="modal-input" style="min-height:100px; resize:vertical;">${escapeHtml(parsed.mainNote)}</textarea>
 
           <!-- Sekce pro harmonogram -->
           <div style="margin-top: 16px; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
               <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
                   <span style="font-weight:bold; color:var(--text);">⏱️ Připojit časový plán</span>
-                  <button type="button" class="btn" style="padding:6px 12px; font-size:13px; background:var(--primary-light);" onclick="addScheduleRow()">➕ Přidat políčko</button>
+                  <button type="button" class="btn" style="padding:6px 12px; font-size:13px; background:var(--primary-light);" onclick="addScheduleRow()">➕ Přidat čas</button>
               </label>
               <div id="schedule-rows"></div>
+          </div>
+
+          <!-- Sekce pro program skladeb (na zadní stranu) -->
+          <div style="margin-top: 16px; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+              <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                  <span style="font-weight:bold; color:var(--text);">🎼 Program skladeb (zadní strana karty)</span>
+                  <button type="button" class="btn" style="padding:6px 12px; font-size:13px; background:var(--primary-light);" onclick="addProgramRow()">➕ Přidat skladbu</button>
+              </label>
+              <div id="program-rows"></div>
           </div>
 
           <div style="display:flex; gap:12px; margin-top:24px; flex-wrap:wrap;">
@@ -653,8 +752,8 @@ function openAkceForm(akce = null) {
   document.body.insertAdjacentHTML('beforeend', html);
   toggleAkceFields(); 
   
-  // Pokud už editujeme existující harmonogram, vložíme mu jeho řádky
   scheduleLines.forEach(s => addScheduleRow(s.time, s.desc));
+  programLines.forEach(p => addProgramRow(p.num, p.author, p.piece));
 }
 
 function toggleAkceFields() {
@@ -678,22 +777,36 @@ function submitAkceForm(e, akceId) {
   const jeZkouska = typ.includes('zkouška') || typ.includes('Zkouška');
   const finalId = akceId || generovatIdAkce(typ);
 
-  // Zpracování dat z harmonogramu zpět do textu
   let finalPoznamka = document.getElementById('f_poznamka').value.trim();
+  
+  // Harmonogram
   const schedTimes = document.querySelectorAll('.sched-time');
   const schedDescs = document.querySelectorAll('.sched-desc');
   let schedText = "";
-  
   for(let i = 0; i < schedTimes.length; i++) {
     let t = schedTimes[i].value.trim();
-    // Skryté uložení Entrů z velkého textového pole
     let d = schedDescs[i].value.trim().replace(/\n/g, '[BR]');
     if(t || d) schedText += `\n${t}|${d}`;
   }
-  
-  // Skryté uložení obou věcí do jednoho sloupce v Googlu
   if (schedText !== "") {
     finalPoznamka += `\n\n===HARMONOGRAM===${schedText}`;
+  }
+
+  // Program skladeb
+  const progNums = document.querySelectorAll('.prog-num');
+  const progAuthors = document.querySelectorAll('.prog-author');
+  const progPieces = document.querySelectorAll('.prog-piece');
+  let progText = "";
+  for(let i = 0; i < progPieces.length; i++) {
+    let num = progNums[i].value.trim();
+    let author = progAuthors[i].value.trim();
+    let piece = progPieces[i].value.trim();
+    if (author || piece) {
+      progText += `\n${num}|${author}|${piece}`;
+    }
+  }
+  if (progText !== "") {
+    finalPoznamka += `\n\n===PROGRAM===${progText}`;
   }
 
   const payload = {
@@ -730,10 +843,8 @@ function deleteAkcePrompt(akceId) {
   }
 }
 
-// Globální hlídač neuložených změn
 window.maNeulozeneZmeny = false;
 
-// Funkce, která tlačítko obarví na červeno
 function oznacNeulozeneZmeny() {
   window.maNeulozeneZmeny = true;
   const btn = document.getElementById('btnUlozitNoty');
@@ -743,7 +854,6 @@ function oznacNeulozeneZmeny() {
   }
 }
 
-// Varování při pokusu zavřít celou stránku/prohlížeč
 window.addEventListener('beforeunload', (e) => {
   if (window.maNeulozeneZmeny) {
     e.preventDefault();
@@ -752,7 +862,6 @@ window.addEventListener('beforeunload', (e) => {
 });
 
 function switchTab(t, b) { 
-  // Ochrana před opuštěním Správy not s neuloženými změnami
   if (window.maNeulozeneZmeny && t !== 'admin-noty') {
     if (!confirm("⚠️ Ve Správě not máte NEULOŽENÉ ZMĚNY!\n\nOpravdu chcete odejít bez uložení? Změny se nenávratně smažou.")) {
       return; 
@@ -767,39 +876,28 @@ function switchTab(t, b) {
   const tabNoty = document.getElementById('tab-sheetmusic');
   if (tabNoty) tabNoty.style.display = t === 'sheetmusic' ? 'block' : 'none'; 
   
-  // 1. Vyresetování všech tlačítek v menu
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.remove('active'); 
-    btn.style.color = ''; // Smaže naši individuální barvu, když se překlikne jinam
+    btn.style.color = ''; 
   }); 
   
-  // 2. Aktivace a obarvení kliknutého tlačítka
   if (b) { 
     b.classList.add('active'); 
-    
-    // Nastavení unikátních barev
-    if (t === 'events') {
-      b.style.color = '#3b82f6'; // Akce -> Modrá
-    } else if (t === 'sheetmusic') {
-      b.style.color = 'var(--success)'; // Noty -> Zelená
-    } else if (t === 'admin-noty') {
-      b.style.color = '#06b6d4'; // Správa not -> Tyrkysová
-    }
-    // U 'archive' (Infoarchiv) barvu nenastavujeme ručně zde, řídí se nadále vaší CSS třídou
+    if (t === 'events') b.style.color = '#3b82f6';
+    else if (t === 'sheetmusic') b.style.color = 'var(--success)';
+    else if (t === 'admin-noty') b.style.color = '#06b6d4';
   } 
   
   if (t === 'archive') document.body.classList.add('archive-open');
   else document.body.classList.remove('archive-open');
 }
-// Globální paměť pro bezpečné ukládání složek
+
 window.stromSlozek = []; 
 
-// --- GENERATOR STROMU PRO VEDENÍ (Chytré zobrazení prvků) ---
 function vykresliAdminNoty() {
   const cont = document.getElementById('adminNotyContainer');
   if (!cont) return;
 
-  // Pojistka pro plnou šířku, pokud by v HTML zůstalo odsazení
   cont.style.padding = "0";
   cont.style.margin = "0"; 
   cont.style.width = "100%";
@@ -812,7 +910,6 @@ function vykresliAdminNoty() {
       return;
     }
 
-    // 1. Roztřídění do složek
     appData.noty.forEach(nota => {
       let skladbaText = String(nota.skladba || '').trim();
       if (!skladbaText) return;
@@ -832,20 +929,14 @@ function vykresliAdminNoty() {
       }
     });
 
-   // 2. Uložení seřazených složek do bezpečné paměti (AKTIVNÍ NAHOŘE, pak abecedně)
     window.stromSlozek = Object.values(slozkyMap).sort((a, b) => {
-      // Pokud je jedna složka aktivní a druhá ne, aktivní jde nahoru
       if (a.aktivni && !b.aktivni) return -1;
       if (!a.aktivni && b.aktivni) return 1;
-      
-      // Pokud mají obě stejný stav (obě aktivní, nebo obě neaktivní), seřadí se abecedně
       return a.cesta.localeCompare(b.cesta);
     });
 
-    // 3. Vykreslení s vloženým miniaturním stylem pro chytré skrývání
     let html = `
       <style>
-        /* Kouzlo: Skryje ovládací prvky, pokud složka NENÍ aktivní a zároveň NENÍ rozbalená */
         details.folder-inactive:not([open]) .folder-controls {
           display: none !important;
         }
@@ -855,21 +946,17 @@ function vykresliAdminNoty() {
     window.stromSlozek.forEach((s, index) => {
       const zobrazenyNazev = escapeHtml(s.cesta).replace(/\//g, '<span style="color:var(--text-muted); margin:0 4px;">❯</span>');
       const checkBg = s.aktivni ? 'var(--success)' : 'transparent';
-      
-      // Třída, která řídí, zda se mají prvky skrývat
       const stavTrida = s.aktivni ? 'folder-active' : 'folder-inactive';
 
       html += `
         <details class="card ${stavTrida}" style="margin-bottom: 8px; margin-left: 0; margin-right: 0; padding: 0; overflow: hidden; width: 100%; border: 1px solid var(--border);">
           
           <summary style="padding: 10px 14px; cursor: pointer; list-style: none; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--border);">
-            <!-- 1. Řádek: Název složky -->
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: bold; color: var(--text);">
               <span style="word-break: break-word; line-height: 1.3;">📁 ${zobrazenyNazev} <small style="font-weight:normal; opacity:0.6;">(${s.soubory.length})</small></span>
               <span style="opacity: 0.4; font-size: 14px; padding-left: 8px;">▼</span>
             </div>
 
-            <!-- 2. Řádek: Ovládací prvky (skryjí se automaticky podle stavu) -->
             <div class="folder-controls" onclick="event.stopPropagation();" style="display: flex; gap: 8px; align-items: center; width: 100%;">
               
               <input type="text" id="prog_${index}" class="modal-input" placeholder="Název programu..." value="${escapeHtml(s.program)}" style="flex: 1; margin: 0; padding: 10px; font-size: 14px; border-radius: 6px;" oninput="oznacNeulozeneZmeny()">  
@@ -878,7 +965,6 @@ function vykresliAdminNoty() {
                 <input type="checkbox" id="chk_${index}" ${s.aktivni ? 'checked' : ''} style="transform: scale(1.4); margin: 0; cursor: pointer;" 
                        onchange="
                          oznacNeulozeneZmeny();
-                         // Dynamická změna barvy a stavu při zaškrtnutí (aby pole nezmizelo po sbalení)
                          this.parentElement.style.background = this.checked ? 'var(--success)' : 'transparent';
                          const det = this.closest('details');
                          if(this.checked) { det.classList.remove('folder-inactive'); det.classList.add('folder-active'); }
@@ -889,27 +975,17 @@ function vykresliAdminNoty() {
             </div>
           </summary>
           
-          <!-- Seznam skladeb -->
           <div class="folder-content" style="padding: 12px; display: flex; flex-direction: column; gap: 6px; background: var(--bg);">
             ${s.soubory.map(soub => {
-              // Přímý odkaz pro rychlé stáhnutí hostem
-              let downloadOdkaz = soub.odkaz.replace(/.*\/d\/([a-zA-Z0-9_-]+).*/, 'https://drive.google.com/uc?export=download&id=$1');
-              let emailBodyHost = encodeURIComponent("Ahoj, zasílám odkaz ke stažení not (" + soub.kratkyNazev + "):\n\n" + downloadOdkaz);
-              
               return `
               <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card, transparent); gap: 8px;">
-                
                 <a href="${soub.odkaz.replace(/\/view.*/, '/preview')}" target="_blank" style="font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; color: var(--primary); text-decoration: none; font-weight: 600; cursor: pointer;">
                   📄 <span style="text-decoration: underline;">${escapeHtml(soub.kratkyNazev)}</span>
                 </a>
-                
                 <span style="font-size: 11px; opacity: 0.8; white-space: nowrap; background: var(--border); padding: 4px 6px; border-radius: 4px; color: var(--text);">${escapeHtml(String(soub.sekce||''))}</span>
-                
-                <!-- Tlačítko pro odeslání e-mailem hostovi -->
                 <button type="button" onclick="pridatDoFrontyNot('${encodeURIComponent(soub.kratkyNazev)}', '${soub.odkaz}')" style="display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; min-width: 34px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text-muted); cursor: pointer; transition: background 0.2s;" title="Přidat do fronty k odeslání">
                 <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
                 </button>
-                
               </div>
               `;
             }).join('')}
@@ -926,15 +1002,12 @@ function vykresliAdminNoty() {
   }
 }
 
-// --- ULOŽENÍ ZMĚN NA GOOGLE ---
 function ulozitZmenyNot(e) {
-  // 1. ZÁZRAČNÁ OPRAVA: Zabráníme prohlížeči, aby při kliknutí obnovil stránku!
   const eventObj = e || window.event;
   if (eventObj && eventObj.preventDefault) {
     eventObj.preventDefault();
   }
 
-  // 2. Bezpečné nalezení tlačítka (i kdyby uživatel klikl na ikonku uvnitř)
   const button = eventObj ? (eventObj.currentTarget || eventObj.target) : null;
   if (button) {
     button.innerText = "⏳ Ukládám změny...";
@@ -943,7 +1016,6 @@ function ulozitZmenyNot(e) {
 
   const zmeny = [];
 
-  // Projdeme pouze naši očíslovanou paměť, žádné zmatky v textech
   window.stromSlozek.forEach((s, index) => {
     const chk = document.getElementById('chk_' + index);
     const inputProg = document.getElementById('prog_' + index);
@@ -952,7 +1024,6 @@ function ulozitZmenyNot(e) {
       const novaAktivni = chk.checked;
       const novyProgram = inputProg.value.trim();
 
-      // Pokud se u složky opravdu něco změnilo oproti původnímu stavu
       if (s.aktivni !== novaAktivni || s.program !== novyProgram) {
         const stavText = novaAktivni ? 'ANO' : '';
 
@@ -967,7 +1038,6 @@ function ulozitZmenyNot(e) {
     }
   });
 
-  // Pokud se nic nezměnilo, ani nevoláme Google
   if (zmeny.length === 0) {
     alert("Nebyly provedeny žádné změny.");
     if (button) {
@@ -977,15 +1047,14 @@ function ulozitZmenyNot(e) {
     return;
   }
 
-  // Odeslání
   runGoogleScript("updateNotyHromadne", { zmeny: zmeny }).then(res => {
     if (button) {
       button.disabled = false;
       button.innerHTML = "💾 Uložit všechny změny";
-      button.style.background = "var(--success)"; // Zpátky na zelenou
+      button.style.background = "var(--success)";
     }
     if (res.success) {
-      window.maNeulozeneZmeny = false; // Vypneme alarm
+      window.maNeulozeneZmeny = false;
       alert("Změny v archivu byly úspěšně uloženy.");
       localStorage.removeItem("bolech_data_cache");
       initApp(); 
@@ -995,11 +1064,6 @@ function ulozitZmenyNot(e) {
   });
 }
 
-// ==============================================================================
-// LOGIKA PRO HOSTY (ŽÁDOSTI A SCHVALOVÁNÍ)
-// ==============================================================================
-
-// Odeslání žádosti z přihlašovací obrazovky
 function odeslatZadostHosta(e) {
   e.preventDefault();
   const btn = document.getElementById('guestReqBtn');
@@ -1025,9 +1089,7 @@ function odeslatZadostHosta(e) {
   });
 }
 
-// Otevření okna pro vedení (Správa hostů)
 function openGuestManager() {
-  // Rozdělení dat na aktivní hosty a běžné členy
   let htmlHoste = "";
   let htmlClenove = "";
   
@@ -1049,7 +1111,6 @@ function openGuestManager() {
   if(!htmlHoste) htmlHoste = "<p style='color:var(--text-muted); font-size:13px;'>Žádní aktivní hosté.</p>";
   if(!htmlClenove) htmlClenove = "<p style='color:var(--text-muted); font-size:13px;'>Žádní členové.</p>";
 
-  // Sestavení samotného okna
   let html = `
     <div id="guestModal" class="modal-overlay">
       <div class="modal-box" style="max-height: 90vh; overflow-y: auto; padding-bottom: 30px;">
@@ -1060,7 +1121,6 @@ function openGuestManager() {
           <h3 style="margin:0; font-size:20px;">👥 Správa hostů</h3>
         </div>
         
-        <!-- Sekce 1: Vyřízení čekajících žádostí -->
         <h4 style="margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom:4px;">Čekající žádosti</h4>
         <div id="pendingRequestsContainer" style="margin-bottom: 24px;">`;
         
@@ -1087,12 +1147,10 @@ function openGuestManager() {
   html += `
         </div>
         
-        <!-- Sekce 2: Přímé pozvání -->
         <h4 style="margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom:4px;">Přímé pozvání hosta</h4>
         <form onsubmit="pridatHostaNaprimo(event)">
           <input type="text" id="dirGuestName" required placeholder="Jméno a Příjmení" class="modal-input" style="margin-bottom: 8px;">
           
-          <!-- ROLETKA PRO NÁSTROJ -->
           <select id="dirGuestInst" required class="modal-input" style="margin-bottom: 8px;">
             <option value="" disabled selected>Vyberte nástrojovou sekci...</option>
             <option value="1. Housle">1. Housle</option>
@@ -1121,7 +1179,6 @@ function openGuestManager() {
           <button type="submit" id="dirGuestBtn" class="btn" style="width:100%; background:var(--primary-light);">Vytvořit hosta a odeslat PIN</button>
         </form>
 
-        <!-- Sekce 3: Aktuální databáze (Ochrana proti duplikátům) -->
         <h4 style="margin-top: 24px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom:4px;">Aktivní účty (kontrola)</h4>
         
         <div style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border); padding: 10px; border-radius: 6px; background: var(--bg);">
@@ -1138,7 +1195,6 @@ function openGuestManager() {
   document.body.insertAdjacentHTML('beforeend', html);
 }
 
-// Funkce: Schválení konkrétní čekající žádosti
 function schvalitHosta(rowIdx, jmeno, nastroj, email, btnElem) {
   const expDate = document.getElementById('exp_' + rowIdx).value;
   if (!expDate) { alert("Musíte vybrat datum expirace!"); return; }
@@ -1149,14 +1205,13 @@ function schvalitHosta(rowIdx, jmeno, nastroj, email, btnElem) {
   .then(res => {
     if(res.success) {
       alert("Účet byl vytvořen a PIN byl odeslán na e-mail: " + email);
-      localStorage.removeItem("bolech_data_cache"); // Vynutí refresh dat
+      localStorage.removeItem("bolech_data_cache");
       document.getElementById('guestModal').remove();
       initApp();
     } else { alert("Chyba: " + res.error); btnElem.innerText = "Schválit a odeslat PIN"; btnElem.disabled = false; }
   });
 }
 
-// Funkce: Vedení zakládá hosta z hlavy
 function pridatHostaNaprimo(e) {
   e.preventDefault();
   const btn = document.getElementById('dirGuestBtn');
@@ -1182,10 +1237,6 @@ function pridatHostaNaprimo(e) {
 function confirmLogout() { 
   if(confirm("Opravdu se chcete odhlásit?")) { localStorage.removeItem('bolech_auth_member'); localStorage.removeItem('bolech_data_cache'); location.reload(); } 
 }
-
-// ==============================================================================
-// LOGIKA PRO E-MAILOVOU FRONTU A PŘEPÍNÁNÍ POHLEDŮ (PRO VEDENÍ)
-// ==============================================================================
 
 window.emailFrontaNot = [];
 
@@ -1218,7 +1269,7 @@ function odeslatFrontuMailem() {
   
   let mailtoOdkaz = `mailto:?subject=${encodeURIComponent("Vybrané noty - TSO Bolech")}&body=${encodeURIComponent(emailTelo)}`;
   window.location.href = mailtoOdkaz;
-  vymazatFrontuNot(); // Po odeslání frontu vyčistíme
+  vymazatFrontuNot();
 }
 
 function vykresliFrontuNot() {
@@ -1232,7 +1283,6 @@ function vykresliFrontuNot() {
   if (!widget) {
     widget = document.createElement('div');
     widget.id = 'emailFrontaWidget';
-    // Widget "plave" těsně nad spodním menu
     widget.style = "position: fixed; bottom: 85px; left: 10px; right: 10px; background: var(--surface); border: 2px solid var(--primary); border-radius: 12px; padding: 12px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.3);";
     document.body.appendChild(widget);
   }
@@ -1257,12 +1307,9 @@ function vykresliFrontuNot() {
   widget.innerHTML = html;
 }
 
-// Funkce pro přepínání cizích partů ve Správě not
 function zmenitPohledNot(novyNastroj) {
   const jeDirigent = String(user.role || "").trim().toLowerCase() === 'dirigent';
-  
   const nastrojProZobrazeni = (novyNastroj === 'Vlastní part') ? user.section : novyNastroj;
   const simulujDirigenta = (novyNastroj === 'Vlastní part' && jeDirigent);
-  
   vykresliNoty(appData.noty || [], nastrojProZobrazeni, simulujDirigenta);
 }
