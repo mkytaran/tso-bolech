@@ -41,25 +41,21 @@ body { background: var(--bg); color: var(--text); padding-bottom: 100px; font-si
 input, select, textarea { background: var(--surface); color: var(--text); border: 1px solid var(--border); font-size: 17px; padding: 12px; border-radius: 8px; width: 100%; outline: none; transition: border-color 0.2s; }
 input:focus, select:focus, textarea:focus { border-color: var(--primary-light); }
 
-/* ZÁHLAVÍ APLIKACE (Kompaktní App Bar) */
-/* ===================================================== */
-/* ZÁHLAVÍ APLIKACE (Kompaktní App Bar s barvou opony)   */
-/* ===================================================== */
+/* ZÁHLAVÍ APLIKACE (Kompaktní App Bar s barvou opony) */
 .app-header { 
-  background: var(--primary); /* Čistá jednolitá tmavě modrá barva */
+  background: var(--primary); 
   box-shadow: 0 2px 10px rgba(0,0,0,0.3); 
   display: flex; 
   justify-content: space-between; 
   align-items: center; 
   padding: 8px 16px; 
-  /* Přidáme horní padding pro iPhony a telefony s výřezem */
   padding-top: max(8px, env(safe-area-inset-top)); 
   min-height: 60px;
   border-bottom: 1px solid #010c11;
 }
 
 .header-logo {
-  height: 44px; /* O něco větší výška pro lepší čitelnost tenkých linek loga */
+  height: 44px; 
   width: auto;
   object-fit: contain;
 }
@@ -170,7 +166,6 @@ nav {
   display: flex; 
   justify-content: space-around; 
   border-top: 1px solid var(--border); 
-  /* ZÁZRAK PRO GESTURE BAR: Menu se natáhne přesně o velikost spodní zóny telefonu */
   padding: 6px 0 calc(8px + env(safe-area-inset-bottom)) 0; 
   z-index: 100; 
 }
@@ -187,13 +182,12 @@ nav {
 /* JEMNÉ BAREVNÉ ODLIŠENÍ INFOARCHIVU                    */
 /* ===================================================== */
 body.archive-open {
-  background-color: #fdf8f4; /* Lehký teplý papírový nádech */
+  background-color: #fdf8f4; 
 }
 body.dark-mode.archive-open {
-  background-color: #120d0a; /* Velmi tmavá, hřejivější barva místo modré */
+  background-color: #120d0a; 
 }
 
-/* Změna barvy aktivního tlačítka v dolní navigaci na barvu oznámení */
 body.archive-open .nav-btn.active {
   color: #d97706; 
 }
@@ -202,20 +196,20 @@ body.dark-mode.archive-open .nav-btn.active {
 }
 
 /* ===================================================== */
-/* MAXIMALIZACE MÍSTA NA MOBILU (Vyladěný kompromis)     */
+/* MAXIMALIZACE MÍSTA NA MOBILU                         */
 /* ===================================================== */
 
 .card {
-  margin: 12px -4px; /* Karta je o něco širší než v základu, ale nelepí se na hrany telefonu */
-  border-radius: 12px; /* Vrácení hezkých, výraznějších kulatých rohů */
+  margin: 12px -4px; 
+  border-radius: 12px; 
 }
 
 .card-body {
-  padding: 14px 16px; /* Příjemný prostor pro text, aby nebyl nalepený na kraji karty */
+  padding: 14px 16px; 
 }
 
 .card-top-bar {
-  padding: 8px 16px; /* Ideální kompromis – pruh není ani zbytečně tlustý, ani příliš úzký */
+  padding: 8px 16px; 
 }
  
 /* --- STYLY PRO SEKCI NOTY --- */
@@ -223,21 +217,21 @@ body.dark-mode.archive-open .nav-btn.active {
 .program-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start; /* Zabrání vertikálnímu roztahování tlačítka při více řádcích */
+  align-items: flex-start; 
   margin: 24px 4px 12px 4px;
   border-bottom: 2px solid var(--border);
   padding-bottom: 8px;
-  gap: 16px; /* Bezpečná mezera, aby text nikdy nenajel na tlačítko */
+  gap: 16px; 
 }
 
 .program-title {
   margin: 0;
   font-size: 15px;
   font-weight: 700;
-  color: var(--primary-light); /* Perfektní kontrast: tmavší modrá ve světlém režimu, svítivě modrá v tmavém */
+  color: var(--primary-light); 
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  flex: 1; /* Název zabere maximum místa a odtlačí tlačítko */
+  flex: 1; 
   line-height: 1.4;
 }
 
@@ -253,8 +247,8 @@ body.dark-mode.archive-open .nav-btn.active {
   align-items: center;
   gap: 6px;
   transition: background 0.2s;
-  flex-shrink: 0; /* Zakazuje smrsknutí tlačítka při nedostatku místa */
-  align-self: center; /* Udrží tlačítko vertikálně na středu bez roztahování */
+  flex-shrink: 0; 
+  align-self: center; 
 }
 
 .email-btn:active {
@@ -266,8 +260,8 @@ body.dark-mode.archive-open .nav-btn.active {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;       /* Ujistí se, že karta nepřeteče obrazovku */
-  overflow: hidden;  /* Cokoliv navíc schová */
+  width: 100%;       
+  overflow: hidden;  
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -276,17 +270,15 @@ body.dark-mode.archive-open .nav-btn.active {
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
-/* Kontejner pro text (název a nástroj) */
 .nota-info {
-  flex: 1;           /* Zabere všechen volný prostor */
-  min-width: 0;      /* KRITICKÉ: dovolí textu zmenšit se pod svou reálnou šířku */
-  padding-right: 12px; /* Odstup od tlačítka stáhnout */
+  flex: 1;           
+  min-width: 0;      
+  padding-right: 12px; 
 }
 
-/* Samotný text názvu skladby */
 .nota-info h4 {
-  overflow-wrap: anywhere; /* Zalomení kdekoliv, i uprostřed slova/podtržítka */
-  word-break: break-word;  /* Pojistka pro starší prohlížeče */
+  overflow-wrap: anywhere; 
+  word-break: break-word;  
   margin: 0 0 4px 0;
   font-size: 16px;
   font-weight: 600;
@@ -298,7 +290,6 @@ body.dark-mode.archive-open .nav-btn.active {
   color: var(--text-muted);
 }
 
-/* Nové ikonkové tlačítko pro stažení not */
 .nota-down-btn {
   background: var(--primary);
   color: white;
@@ -309,7 +300,7 @@ body.dark-mode.archive-open .nav-btn.active {
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  flex-shrink: 0; /* KRITICKÉ: Zakáže prohlížeči tlačítko zmenšit nebo zmáčknout */
+  flex-shrink: 0; 
   transition: opacity 0.2s;
 }
 .nota-down-btn:active {
@@ -340,7 +331,7 @@ details.folder-tree > summary {
   font-weight: 600;
   cursor: pointer;
   background: var(--bg);
-  list-style: none; /* Skryje nativní šipku u některých prohlížečů */
+  list-style: none; 
   display: flex;
   align-items: center;
   gap: 8px;
@@ -359,7 +350,6 @@ details.folder-tree > summary::-webkit-details-marker {
   display: flex;
   justify-content: space-between;
 }
-/* Přepínač a input pro program */
 .folder-controls {
   display: flex;
   gap: 8px;
@@ -373,25 +363,25 @@ details.folder-tree > summary::-webkit-details-marker {
   width: 150px;
 }
 
-/* Kontejner pro zachování 3D prostoru */
+/* ===================================================== */
+/* 3D OBOUSTRANNÉ KARTY & OHNUTÝ ROH                     */
+/* ===================================================== */
+
 .card-flip-container {
   perspective: 1000px;
   margin: 12px -4px;
 }
 
-/* Samotná karta s oboustranným chováním */
 .card-flipper {
   position: relative;
   transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   transform-style: preserve-3d;
 }
 
-/* Třída aktivovaná po kliknutí na roh */
 .card-flipper.is-flipped {
   transform: rotateY(180deg);
 }
 
-/* Obě strany karty */
 .card-front, .card-back {
   width: 100%;
   backface-visibility: hidden;
@@ -403,13 +393,12 @@ details.folder-tree > summary::-webkit-details-marker {
   overflow: hidden;
 }
 
-/* Zadní strana je otočená o 180 stupňů */
 .card-back {
   position: absolute;
   top: 0;
   left: 0;
   transform: rotateY(180deg);
-  display: none; /* Přepíná se skriptem pro přirozenou výšku */
+  display: none; 
 }
 
 .card-flipper.is-flipped .card-front {
@@ -423,7 +412,7 @@ details.folder-tree > summary::-webkit-details-marker {
 
 /* Úprava horní lišty karty – bezpečný odstup zprava pro datum */
 .card-top-bar {
-  padding: 8px 52px 8px 16px; /* Zvětšený odstup, aby datum nekolidovalo s rohem */
+  padding: 8px 52px 8px 16px; 
   position: relative;
 }
 
@@ -441,7 +430,7 @@ details.folder-tree > summary::-webkit-details-marker {
   padding: 0;
 }
 
-/* 1. Odkrytý trojúhelník v barvě pozadí stránky s písmenem "i" vycentrovaným v ploše */
+/* 1. Odkrytý trojúhelník v barvě pozadí stránky s vycentrovaným písmem "i" */
 .corner-fold-btn::before {
   content: "i";
   position: absolute;
@@ -449,7 +438,6 @@ details.folder-tree > summary::-webkit-details-marker {
   right: 0;
   width: 44px;
   height: 44px;
-  /* Vykrojení rohu pod úhlem 45° */
   clip-path: polygon(100% 0, 0 0, 100% 100%);
   background-color: var(--bg);
   color: var(--primary-light);
@@ -457,7 +445,6 @@ details.folder-tree > summary::-webkit-details-marker {
   font-weight: 800;
   font-family: serif;
   font-style: italic;
-  /* Pozicování "i" do geometrického středu trojúhelníku */
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
@@ -467,7 +454,8 @@ details.folder-tree > summary::-webkit-details-marker {
   transition: all 0.2s ease;
   line-height: 1;
 }
-/* 2. Samotný ohnutý cíp – znatelně světlejší než pruh se stínem */
+
+/* 2. Samotný ohnutý cíp s gradientem a stínem */
 .corner-fold-btn::after {
   content: "";
   position: absolute;
@@ -475,7 +463,6 @@ details.folder-tree > summary::-webkit-details-marker {
   right: 0;
   width: 42px;
   height: 42px;
-  /* Trojúhelník ohnuté stránky směřující dovnitř */
   clip-path: polygon(0 0, 0 100%, 100% 100%);
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.15) 100%);
   filter: drop-shadow(-3px 3px 4px rgba(0, 0, 0, 0.35));
@@ -483,7 +470,6 @@ details.folder-tree > summary::-webkit-details-marker {
   transition: all 0.2s ease;
 }
 
-/* Tmavý režim: jasnější rub pro kontrast na tmavém pruhu */
 .dark-mode .corner-fold-btn::before {
   color: var(--primary-light);
 }
@@ -493,25 +479,11 @@ details.folder-tree > summary::-webkit-details-marker {
   filter: drop-shadow(-3px 3px 5px rgba(0, 0, 0, 0.6));
 }
 
-/* Efekt při najetí myší nebo stisknutí – roh se mírně odhrne */
 .corner-fold-btn:hover::after {
   width: 45px;
   height: 45px;
 }
-/* Tmavý režim: mírně tmavší rub ohybu pro přirozenější kontrast */
-.dark-mode .corner-fold-btn::after {
-  border-color: transparent rgba(255, 255, 255, 0.25) transparent transparent;
-  filter: drop-shadow(-3px 3px 5px rgba(0, 0, 0, 0.6));
-}
 
-/* Interakce při najetí myší – roh se mírně zvětší a naznačí listování */
-.corner-fold-btn:hover::before {
-  border-width: 0 42px 42px 0;
-}
-
-.corner-fold-btn:hover::after {
-  border-width: 0 40px 40px 0;
-}
 /* Tlačítko zpět na zadní straně */
 .btn-flip-back {
   display: inline-flex;
@@ -568,7 +540,10 @@ details.folder-tree > summary::-webkit-details-marker {
   color: var(--text);
 }
 
-/* 1. Tmavá clona za kartou (bez problematického backdrop-filteru) */
+/* ===================================================== */
+/* ZTMAVENÍ & ROZMAZÁNÍ POZADÍ PŘI OTOČENÍ KARTY        */
+/* ===================================================== */
+
 .card-backdrop {
   position: fixed;
   top: 0;
@@ -589,9 +564,9 @@ details.folder-tree > summary::-webkit-details-marker {
   pointer-events: auto;
 }
 
-/* 1. Rozmazání záhlaví a spodní lišty */
-body.card-flipped-active header,
-body.card-flipped-active .bottom-nav,
+/* Rozmazání hlavičky a spodní navigace */
+body.card-flipped-active .app-header,
+body.card-flipped-active nav,
 body.card-flipped-active .admin-actions {
   filter: blur(4px);
   -webkit-filter: blur(4px);
@@ -599,7 +574,7 @@ body.card-flipped-active .admin-actions {
   user-select: none;
 }
 
-/* 2. Rozmazání POUZE ostatních karet (nikoliv té otočené) */
+/* Rozmazání ostatních karet (otočená zůstává ostrá) */
 body.card-flipped-active .card-flip-container:not(.active-focus),
 body.card-flipped-active .card:not(.card-flip-container) {
   filter: blur(4px);
@@ -610,7 +585,7 @@ body.card-flipped-active .card:not(.card-flip-container) {
   user-select: none;
 }
 
-/* 3. Aktivní otočená karta zůstane 100% ostrá a nad clonou */
+/* Vynesení aktivní otočené karty nad clonu */
 .card-flip-container.active-focus {
   position: relative;
   z-index: 1000;
