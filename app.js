@@ -370,7 +370,6 @@ function formatProgramHtml(pData) {
   `;
 }
 
-// Globální proměnná pro sledování aktuálně otočené karty
 let aktivniOtocenaKartaId = null;
 
 function flipCard(cardId) {
@@ -382,7 +381,6 @@ function flipCard(cardId) {
   const isCurrentlyFlipped = flipper.classList.contains('is-flipped');
 
   if (!isCurrentlyFlipped) {
-    // Zavřít případnou jinou kartu, pokud byla otevřená
     if (aktivniOtocenaKartaId && aktivniOtocenaKartaId !== cardId) {
       zavritOtocenouKartu();
     }
@@ -390,16 +388,17 @@ function flipCard(cardId) {
     flipper.classList.add('is-flipped');
     if (container) container.classList.add('active-focus');
     if (backdrop) backdrop.classList.add('active');
+    document.body.classList.add('card-flipped-active'); // Rozmaže zbytek stránky
     aktivniOtocenaKartaId = cardId;
   } else {
     flipper.classList.remove('is-flipped');
     if (container) container.classList.remove('active-focus');
     if (backdrop) backdrop.classList.remove('active');
+    document.body.classList.remove('card-flipped-active'); // Odstraní rozmazání
     aktivniOtocenaKartaId = null;
   }
 }
 
-// Umožní zavřít kartu ťuknutím kamkoliv mimo ni do rozmazaného prostoru
 function zavritOtocenouKartu() {
   if (aktivniOtocenaKartaId) {
     flipCard(aktivniOtocenaKartaId);

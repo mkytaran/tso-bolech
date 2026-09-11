@@ -568,32 +568,45 @@ details.folder-tree > summary::-webkit-details-marker {
   color: var(--text);
 }
 
-/* Překryvná vrstva s rozmazáním pozadí */
+/* 1. Tmavá clona za kartou (bez problematického backdrop-filteru) */
 .card-backdrop {
   position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.45);
   z-index: 900;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.25s ease;
 }
 
-/* Aktivní stav překryvné vrstvy */
 .card-backdrop.active {
   opacity: 1;
   pointer-events: auto;
 }
 
-/* Kontejner karty při otočení vystoupí nad rozmazanou vrstvu */
+/* 2. Přímé rozmazání okolního obsahu */
+body.card-flipped-active #eventsContainer,
+body.card-flipped-active .bottom-nav,
+body.card-flipped-active header {
+  filter: blur(4px);
+  -webkit-filter: blur(4px);
+  transition: filter 0.2s ease;
+  user-select: none;
+}
+
+/* 3. Vynesení aktivní karty nad clonu a zrušení filtru */
 .card-flip-container.active-focus {
   position: relative;
   z-index: 1000;
+  filter: none !important;
+  -webkit-filter: none !important;
 }
 
-/* Zvýraznění stínu otočené karty, aby ještě víc vynikla */
 .card-flipper.is-flipped .card-back {
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
 }
