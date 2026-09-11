@@ -370,11 +370,39 @@ function formatProgramHtml(pData) {
   `;
 }
 
-// Funkce otočení karty
+// Globální proměnná pro sledování aktuálně otočené karty
+let aktivniOtocenaKartaId = null;
+
 function flipCard(cardId) {
   const flipper = document.getElementById(cardId);
-  if (flipper) {
-    flipper.classList.toggle('is-flipped');
+  const backdrop = document.getElementById('card-backdrop');
+  if (!flipper) return;
+
+  const container = flipper.closest('.card-flip-container');
+  const isCurrentlyFlipped = flipper.classList.contains('is-flipped');
+
+  if (!isCurrentlyFlipped) {
+    // Zavřít případnou jinou kartu, pokud byla otevřená
+    if (aktivniOtocenaKartaId && aktivniOtocenaKartaId !== cardId) {
+      zavritOtocenouKartu();
+    }
+    
+    flipper.classList.add('is-flipped');
+    if (container) container.classList.add('active-focus');
+    if (backdrop) backdrop.classList.add('active');
+    aktivniOtocenaKartaId = cardId;
+  } else {
+    flipper.classList.remove('is-flipped');
+    if (container) container.classList.remove('active-focus');
+    if (backdrop) backdrop.classList.remove('active');
+    aktivniOtocenaKartaId = null;
+  }
+}
+
+// Umožní zavřít kartu ťuknutím kamkoliv mimo ni do rozmazaného prostoru
+function zavritOtocenouKartu() {
+  if (aktivniOtocenaKartaId) {
+    flipCard(aktivniOtocenaKartaId);
   }
 }
 

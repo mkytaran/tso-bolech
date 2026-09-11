@@ -421,47 +421,97 @@ details.folder-tree > summary::-webkit-details-marker {
   display: block;
 }
 
-/* --- OHNUTÝ ROH (DOG-EAR) --- */
+/* Úprava horní lišty karty – bezpečný odstup zprava pro datum */
+.card-top-bar {
+  padding: 8px 52px 8px 16px; /* Zvětšený odstup, aby datum nekolidovalo s rohem */
+  position: relative;
+}
+
+/* --- OHNUTÝ ROH (DOG-EAR S IKONKOU INFO) --- */
 .corner-fold-btn {
   position: absolute;
   top: 0;
   right: 0;
-  width: 38px;
-  height: 38px;
+  width: 48px;
+  height: 48px;
   cursor: pointer;
   z-index: 10;
   background: transparent;
   border: none;
+  padding: 0;
 }
 
-/* Stín a trojúhelník ohnutí */
+/* 1. Odkrytý trojúhelník v barvě pozadí stránky s písmenem "i" vycentrovaným v ploše */
 .corner-fold-btn::before {
-  content: "";
+  content: "i";
   position: absolute;
   top: 0;
   right: 0;
-  border-style: solid;
-  border-width: 0 32px 32px 0;
-  border-color: transparent var(--bg) transparent transparent;
+  width: 44px;
+  height: 44px;
+  /* Vykrojení rohu pod úhlem 45° */
+  clip-path: polygon(100% 0, 0 0, 100% 100%);
+  background-color: var(--bg);
+  color: var(--primary-light);
+  font-size: 13px;
+  font-weight: 800;
+  font-family: serif;
+  font-style: italic;
+  /* Pozicování "i" do geometrického středu trojúhelníku */
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding-top: 7px;
+  padding-right: 11px;
+  box-sizing: border-box;
   transition: all 0.2s ease;
+  line-height: 1;
 }
-
+/* 2. Samotný ohnutý cíp – znatelně světlejší než pruh se stínem */
 .corner-fold-btn::after {
   content: "";
   position: absolute;
   top: 0;
   right: 0;
-  border-style: solid;
-  border-width: 0 30px 30px 0;
-  border-color: transparent rgba(255, 255, 255, 0.35) transparent transparent;
-  box-shadow: -2px 2px 5px rgba(0, 0, 0, 0.25);
+  width: 42px;
+  height: 42px;
+  /* Trojúhelník ohnuté stránky směřující dovnitř */
+  clip-path: polygon(0 0, 0 100%, 100% 100%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.15) 100%);
+  filter: drop-shadow(-3px 3px 4px rgba(0, 0, 0, 0.35));
+  backdrop-filter: blur(2px);
   transition: all 0.2s ease;
 }
 
-.corner-fold-btn:hover::after {
-  border-width: 0 36px 36px 0;
+/* Tmavý režim: jasnější rub pro kontrast na tmavém pruhu */
+.dark-mode .corner-fold-btn::before {
+  color: var(--primary-light);
 }
 
+.dark-mode .corner-fold-btn::after {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.1) 100%);
+  filter: drop-shadow(-3px 3px 5px rgba(0, 0, 0, 0.6));
+}
+
+/* Efekt při najetí myší nebo stisknutí – roh se mírně odhrne */
+.corner-fold-btn:hover::after {
+  width: 45px;
+  height: 45px;
+}
+/* Tmavý režim: mírně tmavší rub ohybu pro přirozenější kontrast */
+.dark-mode .corner-fold-btn::after {
+  border-color: transparent rgba(255, 255, 255, 0.25) transparent transparent;
+  filter: drop-shadow(-3px 3px 5px rgba(0, 0, 0, 0.6));
+}
+
+/* Interakce při najetí myší – roh se mírně zvětší a naznačí listování */
+.corner-fold-btn:hover::before {
+  border-width: 0 42px 42px 0;
+}
+
+.corner-fold-btn:hover::after {
+  border-width: 0 40px 40px 0;
+}
 /* Tlačítko zpět na zadní straně */
 .btn-flip-back {
   display: inline-flex;
@@ -516,4 +566,34 @@ details.folder-tree > summary::-webkit-details-marker {
 
 .program-table td.col-piece {
   color: var(--text);
+}
+
+/* Překryvná vrstva s rozmazáním pozadí */
+.card-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 900;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+/* Aktivní stav překryvné vrstvy */
+.card-backdrop.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Kontejner karty při otočení vystoupí nad rozmazanou vrstvu */
+.card-flip-container.active-focus {
+  position: relative;
+  z-index: 1000;
+}
+
+/* Zvýraznění stínu otočené karty, aby ještě víc vynikla */
+.card-flipper.is-flipped .card-back {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
 }
