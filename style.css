@@ -484,49 +484,41 @@ details.folder-tree > summary::-webkit-details-marker {
   height: 45px;
 }
 
-/* --- ŠABLONA PROGRAMU (ZAROVNÁNÍ ČÍSLA DOPRAVA) --- */
+/* --- ŠABLONA PROGRAMU --- */
 .program-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 10px;
+  margin-top: 6px;
   font-size: 14px;
 }
 
-.program-table th {
-  text-align: left;
-  padding: 6px 10px;
-  border-bottom: 2px solid var(--border);
-  color: var(--primary-light);
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.program-table th.col-num,
+/* Sloupec pro dvoumístné číslo zarovnané doprava s minimální šířkou */
 .program-table td.col-num {
   text-align: right;
-  padding-right: 14px;
-  width: 38px;
+  padding: 6px 8px 6px 0;
+  width: 22px;
+  min-width: 22px;
   font-weight: 700;
   color: var(--text-muted);
   white-space: nowrap;
-}
-
-.program-table td {
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
   vertical-align: top;
+  border-bottom: 1px solid var(--border);
 }
 
 .program-table td.col-author {
   font-weight: 600;
   color: var(--text);
-  width: 35%;
-  padding-right: 12px;
+  width: 38%;
+  padding: 6px 8px;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
 }
 
 .program-table td.col-piece {
   color: var(--text);
+  padding: 6px 0 6px 8px;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
 }
 
 /* ===================================================== */
@@ -544,7 +536,7 @@ details.folder-tree > summary::-webkit-details-marker {
   background: rgba(15, 23, 42, 0.45);
   z-index: 900;
   opacity: 0;
-  pointer-events: none;
+  pointer-events: none !important;
   transition: opacity 0.25s ease;
 }
 

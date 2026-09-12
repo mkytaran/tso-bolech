@@ -362,13 +362,6 @@ function formatProgramHtml(pData) {
     <div style="margin-top: 10px;">
       <h4 style="margin-bottom: 8px; font-size: 16px; color: var(--text);">🎼 Program</h4>
       <table class="program-table">
-        <thead>
-          <tr>
-            <th class="col-num">#</th>
-            <th class="col-author">Autor / Skladatel</th>
-            <th class="col-piece">Dílo / Skladba</th>
-          </tr>
-        </thead>
         <tbody>
           ${rows}
         </tbody>
@@ -378,39 +371,71 @@ function formatProgramHtml(pData) {
 }
 
 // Funkce pro otočení karty
+// Globální proměnné pro řízení otočení karty
 let aktivniOtocenaKartaId = null;
+let isFlippingBusy = false; // Zámek proti vícenásobnému kliku na dotykovém displeji
 
 function flipCard(cardId) {
+  if (isFlippingBusy) return;
+  isFlippingBusy = true;
+  setTimeout(() => { isFlippingBusy = false; }, 320); // Uvolní zámek po doběhnutí animace
+
   const flipper = document.getElementById(cardId);
   const backdrop = document.getElementById('card-backdrop');
-  if (!flipper) return;
+  if (!flipper) {
+    zavritOtocenouKartu();
+    return;
+  }
 
   const container = flipper.closest('.card-flip-container');
   const isCurrentlyFlipped = flipper.classList.contains('is-flipped');
 
   if (!isCurrentlyFlipped) {
+    // Pokud je už jiná karta otočená, napřed ji zavřeme
     if (aktivniOtocenaKartaId && aktivniOtocenaKartaId !== cardId) {
-      zavritOtocenouKartu();
+      const oldFlipper = document.getElementById(aktivniOtocenaKartaId);
+      if (oldFlipper) {
+        oldFlipper.classList.remove('is-flipped');
+        const oldCont = oldFlipper.closest('.card-flip-container');
+        if (oldCont) oldCont.classList.remove('active-focus');
+      }
     }
     
     flipper.classList.add('is-flipped');
     if (container) container.classList.add('active-focus');
     if (backdrop) backdrop.classList.add('active');
-    document.body.classList.add('card-flipped-active'); 
+    document.body.classList.add('card-flipped-active');
     aktivniOtocenaKartaId = cardId;
   } else {
+    // Zavření aktuální karty
     flipper.classList.remove('is-flipped');
     if (container) container.classList.remove('active-focus');
     if (backdrop) backdrop.classList.remove('active');
-    document.body.classList.remove('card-flipped-active'); 
+    document.body.classList.remove('card-flipped-active');
     aktivniOtocenaKartaId = null;
   }
 }
 
+// Pojistná funkce pro zavření kliknutím na backdrop
 function zavritOtocenouKartu() {
+  if (isFlippingBusy) return;
+  
   if (aktivniOtocenaKartaId) {
-    flipCard(aktivniOtocenaKartaId);
+    const cardId = aktivniOtocenaKartaId;
+    aktivniOtocenaKartaId = null;
+    const flipper = document.getElementById(cardId);
+    if (flipper) {
+      flipper.classList.remove('is-flipped');
+      const container = flipper.closest('.card-flip-container');
+      if (container) container.classList.remove('active-focus');
+    }
   }
+
+  // Bezpečnostní reset všech případných zbytků rozmazání
+  const backdrop = document.getElementById('card-backdrop');
+  if (backdrop) backdrop.classList.remove('active');
+  document.body.classList.remove('card-flipped-active');
+  document.querySelectorAll('.card-flip-container.active-focus').forEach(c => c.classList.remove('active-focus'));
 }
 
 function renderEvents() {
