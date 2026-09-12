@@ -302,7 +302,14 @@ function parsovatPoznamku(rawNote) {
   } else if (mainNote.includes('===PROGRAM===')) {
     let partsP = mainNote.split('===PROGRAM===');
     mainNote = partsP[0].trim();
-    progData = partsP[1].trim();
+    let rest = partsP[1].trim();
+    if (rest.includes('===HARMONOGRAM===')) {
+      let partsH = rest.split('===HARMONOGRAM===');
+      progData = partsH[0].trim();
+      schedData = partsH[1].trim();
+    } else {
+      progData = rest;
+    }
   }
 
   return { mainNote, schedData, progData };
@@ -329,7 +336,7 @@ function formatHarmonogramHtml(sData) {
   return html;
 }
 
-// --- VYKRESLENÍ ŠABLONY PROGRAMU NA ZADNÍ STRANĚ KARTY ---
+// --- VYKRESLENÍ PROGRAMU NA ZADNÍ STRANĚ KARTY (ČÍSLO ZAROVNANÉ DOPRAVA) ---
 function formatProgramHtml(pData) {
   if (!pData) return '';
   let rows = '';
@@ -353,12 +360,12 @@ function formatProgramHtml(pData) {
 
   return `
     <div style="margin-top: 10px;">
-      <h4 style="margin-bottom: 8px; font-size: 16px; color: var(--text);">🎼 Program / Pořadí skladeb</h4>
+      <h4 style="margin-bottom: 8px; font-size: 16px; color: var(--text);">🎼 Program</h4>
       <table class="program-table">
         <thead>
           <tr>
             <th class="col-num">#</th>
-            <th class="col-author">Skladatel</th>
+            <th class="col-author">Autor / Skladatel</th>
             <th class="col-piece">Dílo / Skladba</th>
           </tr>
         </thead>
@@ -370,6 +377,7 @@ function formatProgramHtml(pData) {
   `;
 }
 
+// Funkce pro otočení karty
 let aktivniOtocenaKartaId = null;
 
 function flipCard(cardId) {
@@ -388,13 +396,13 @@ function flipCard(cardId) {
     flipper.classList.add('is-flipped');
     if (container) container.classList.add('active-focus');
     if (backdrop) backdrop.classList.add('active');
-    document.body.classList.add('card-flipped-active'); // Rozmaže zbytek stránky
+    document.body.classList.add('card-flipped-active'); 
     aktivniOtocenaKartaId = cardId;
   } else {
     flipper.classList.remove('is-flipped');
     if (container) container.classList.remove('active-focus');
     if (backdrop) backdrop.classList.remove('active');
-    document.body.classList.remove('card-flipped-active'); // Odstraní rozmazání
+    document.body.classList.remove('card-flipped-active'); 
     aktivniOtocenaKartaId = null;
   }
 }
@@ -485,7 +493,7 @@ function generateAkceHtml(akce, isVedení) {
           </div>
         </div>
 
-        <!-- ZADNÍ STRANA KARTY (PROGRAM & PODROBNOSTI) -->
+        <!-- ZADNÍ STRANA KARTY (PROGRAM & DETAILY) -->
         <div class="card-back">
           <div class="card-top-bar ${barClass}">
             <span>DETAILY & PROGRAM</span>
@@ -618,6 +626,66 @@ function formatDateForSave(isoDate) {
   return isoDate;
 }
 
+// --- POHYBOVÉ A ČÍSLOVACÍ FUNKCE PROGRAMU ---
+function moveProgramRow(btn, direction) {
+  const row = btn.closest('.prog-item-row');
+  if (!row) return;
+  if (direction === -1 && row.previousElementSibling) {
+    row.parentElement.insertBefore(row, row.previousElementSibling);
+  } else if (direction === 1 && row.nextElementSibling) {
+    row.parentElement.insertBefore(row.nextElementSibling, row);
+  }
+  renumberProgramRows();
+}
+
+function renumberProgramRows() {
+  const rows = document.querySelectorAll('.prog-item-row');
+  rows.forEach((r, idx) => {
+    const numInput = r.querySelector('.prog-num');
+    if (numInput && (!numInput.value || !isNaN(parseInt(numInput.value)))) {
+      numInput.value = (idx + 1);
+    }
+  });
+}
+
+// --- PŘIDÁVÁNÍ ŘÁDKŮ PROGRAMU (1. PATRO: POŘADÍ + AUTOR + POSUN, 2. PATRO: DÍLO) ---
+function addProgramRow(num = '', author = '', piece = '') {
+  const cont = document.getElementById('program-rows');
+  if (!cont) return;
+  
+  if (!num) {
+    num = cont.querySelectorAll('.prog-item-row').length + 1;
+  }
+
+  const div = document.createElement('div');
+  div.className = 'prog-item-row';
+  div.style = 'border: 1px dashed var(--border); padding: 10px; margin-bottom: 8px; border-radius: 8px; background: var(--surface); position: relative;';
+  
+  div.innerHTML = `
+    <div style="display: flex; gap: 8px; align-items: flex-end; margin-bottom: 8px;">
+      <div style="width: 58px; flex-shrink: 0;">
+        <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 2px;">Pořadí:</label>
+        <input type="text" class="modal-input prog-num" placeholder="1" value="${escapeHtml(num)}" style="padding: 8px 6px; font-size: 14px; text-align: right;">
+      </div>
+      <div style="flex: 1; min-width: 0;">
+        <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 2px;">Autor / Skladatel:</label>
+        <input type="text" class="modal-input prog-author" placeholder="např. Antonín Dvořák" value="${escapeHtml(author)}" style="padding: 8px 10px; font-size: 14px;">
+      </div>
+      <div style="display: flex; gap: 4px; flex-shrink: 0;">
+        <button type="button" class="btn" style="padding: 8px 10px; font-size: 13px; background: var(--bg); color: var(--text); border: 1px solid var(--border); width: auto;" onclick="moveProgramRow(this, -1)" title="Posunout nahoru">▲</button>
+        <button type="button" class="btn" style="padding: 8px 10px; font-size: 13px; background: var(--bg); color: var(--text); border: 1px solid var(--border); width: auto;" onclick="moveProgramRow(this, 1)" title="Posunout dolů">▼</button>
+        <button type="button" class="btn" style="padding: 8px 10px; font-size: 13px; background: transparent; color: var(--danger); border: 1px solid var(--danger); width: auto;" onclick="this.closest('.prog-item-row').remove(); renumberProgramRows();" title="Smazat">✕</button>
+      </div>
+    </div>
+    
+    <div>
+      <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 2px;">Dílo / Skladba:</label>
+      <input type="text" class="modal-input prog-piece" placeholder="např. Slovanský tanec č. 8 g moll" value="${escapeHtml(piece)}" style="padding: 8px 10px; font-size: 14px;">
+    </div>
+  `;
+  cont.appendChild(div);
+}
+
 // --- PŘIDÁVÁNÍ ŘÁDKŮ HARMONOGRAMU DO FORMULÁŘE ---
 function addScheduleRow(time = '', desc = '') {
   const cont = document.getElementById('schedule-rows');
@@ -636,49 +704,26 @@ function addScheduleRow(time = '', desc = '') {
   cont.appendChild(div);
 }
 
-// --- PŘIDÁVÁNÍ ŘÁDKŮ PROGRAMU DO FORMULÁŘE ---
-function addProgramRow(num = '', author = '', piece = '') {
-  const cont = document.getElementById('program-rows');
-  if (!cont) return;
-  const div = document.createElement('div');
-  div.style = 'border: 1px dashed var(--border); padding: 8px; margin-bottom: 8px; border-radius: 6px; position: relative; display: flex; gap: 8px; align-items: flex-start;';
-  div.innerHTML = `
-    <div style="width: 48px;">
-      <label style="font-size: 11px; display: block;">Poř.</label>
-      <input type="text" class="modal-input prog-num" placeholder="1" value="${escapeHtml(num)}" style="padding: 6px; font-size: 13px; text-align: center;">
-    </div>
-    <div style="flex: 1;">
-      <label style="font-size: 11px; display: block;">Autor / Skladatel:</label>
-      <input type="text" class="modal-input prog-author" placeholder="např. B. Smetana" value="${escapeHtml(author)}" style="padding: 6px 8px; font-size: 14px;">
-    </div>
-    <div style="flex: 2;">
-      <label style="font-size: 11px; display: block;">Dílo / Skladba:</label>
-      <input type="text" class="modal-input prog-piece" placeholder="např. Má vlast - Vltava" value="${escapeHtml(piece)}" style="padding: 6px 8px; font-size: 14px;">
-    </div>
-    <button type="button" style="margin-top: 18px; background: transparent; border: 1px solid var(--danger); border-radius: 4px; color: var(--danger); font-size: 12px; padding: 6px 8px;" onclick="this.parentElement.remove()">✕</button>
-  `;
-  cont.appendChild(div);
-}
-
 function openAkceForm(akce = null) {
   const isEdit = akce !== null;
   const selectDisabledAttr = isEdit ? 'disabled style="background: var(--bg); opacity: 0.8;"' : '';
   const formDateValue = formatDateForInput(akce?.datum || '');
   
   const parsed = parsovatPoznamku(akce?.poznamka || '');
-  let scheduleLines = [];
-  if (parsed.schedData) {
-    scheduleLines = parsed.schedData.split('\n').map(line => {
-      let p = line.split('|');
-      return { time: p[0]||'', desc: p[1]||'' };
-    });
-  }
-
+  
   let programLines = [];
   if (parsed.progData) {
     programLines = parsed.progData.split('\n').map(line => {
       let p = line.split('|');
       return { num: p[0]||'', author: p[1]||'', piece: p[2]||'' };
+    });
+  }
+
+  let scheduleLines = [];
+  if (parsed.schedData) {
+    scheduleLines = parsed.schedData.split('\n').map(line => {
+      let p = line.split('|');
+      return { time: p[0]||'', desc: p[1]||'' };
     });
   }
 
@@ -747,24 +792,24 @@ function openAkceForm(akce = null) {
           </div>
 
           <label>Hlavní text (Poznámka / organizační info):</label>
-          <textarea id="f_poznamka" class="modal-input" style="min-height:100px; resize:vertical;">${escapeHtml(parsed.mainNote)}</textarea>
+          <textarea id="f_poznamka" class="modal-input" style="min-height:90px; resize:vertical;">${escapeHtml(parsed.mainNote)}</textarea>
+
+          <!-- Sekce pro Program (umístěno PŘED časový plán) -->
+          <div style="margin-top: 16px; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+              <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                  <span style="font-weight:bold; color:var(--text);">🎼 Program</span>
+                  <button type="button" class="btn" style="padding:6px 12px; font-size:13px; background:var(--primary-light); width:auto;" onclick="addProgramRow()">➕ Přidat skladbu</button>
+              </label>
+              <div id="program-rows"></div>
+          </div>
 
           <!-- Sekce pro harmonogram -->
           <div style="margin-top: 16px; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
               <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
                   <span style="font-weight:bold; color:var(--text);">⏱️ Připojit časový plán</span>
-                  <button type="button" class="btn" style="padding:6px 12px; font-size:13px; background:var(--primary-light);" onclick="addScheduleRow()">➕ Přidat čas</button>
+                  <button type="button" class="btn" style="padding:6px 12px; font-size:13px; background:var(--primary-light); width:auto;" onclick="addScheduleRow()">➕ Přidat čas</button>
               </label>
               <div id="schedule-rows"></div>
-          </div>
-
-          <!-- Sekce pro program skladeb (na zadní stranu) -->
-          <div style="margin-top: 16px; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
-              <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
-                  <span style="font-weight:bold; color:var(--text);">🎼 Program skladeb (zadní strana karty)</span>
-                  <button type="button" class="btn" style="padding:6px 12px; font-size:13px; background:var(--primary-light);" onclick="addProgramRow()">➕ Přidat skladbu</button>
-              </label>
-              <div id="program-rows"></div>
           </div>
 
           <div style="display:flex; gap:12px; margin-top:24px; flex-wrap:wrap;">
@@ -779,8 +824,8 @@ function openAkceForm(akce = null) {
   document.body.insertAdjacentHTML('beforeend', html);
   toggleAkceFields(); 
   
-  scheduleLines.forEach(s => addScheduleRow(s.time, s.desc));
   programLines.forEach(p => addProgramRow(p.num, p.author, p.piece));
+  scheduleLines.forEach(s => addScheduleRow(s.time, s.desc));
 }
 
 function toggleAkceFields() {
@@ -806,20 +851,7 @@ function submitAkceForm(e, akceId) {
 
   let finalPoznamka = document.getElementById('f_poznamka').value.trim();
   
-  // Harmonogram
-  const schedTimes = document.querySelectorAll('.sched-time');
-  const schedDescs = document.querySelectorAll('.sched-desc');
-  let schedText = "";
-  for(let i = 0; i < schedTimes.length; i++) {
-    let t = schedTimes[i].value.trim();
-    let d = schedDescs[i].value.trim().replace(/\n/g, '[BR]');
-    if(t || d) schedText += `\n${t}|${d}`;
-  }
-  if (schedText !== "") {
-    finalPoznamka += `\n\n===HARMONOGRAM===${schedText}`;
-  }
-
-  // Program skladeb
+  // 1. Program skladeb
   const progNums = document.querySelectorAll('.prog-num');
   const progAuthors = document.querySelectorAll('.prog-author');
   const progPieces = document.querySelectorAll('.prog-piece');
@@ -834,6 +866,19 @@ function submitAkceForm(e, akceId) {
   }
   if (progText !== "") {
     finalPoznamka += `\n\n===PROGRAM===${progText}`;
+  }
+
+  // 2. Harmonogram
+  const schedTimes = document.querySelectorAll('.sched-time');
+  const schedDescs = document.querySelectorAll('.sched-desc');
+  let schedText = "";
+  for(let i = 0; i < schedTimes.length; i++) {
+    let t = schedTimes[i].value.trim();
+    let d = schedDescs[i].value.trim().replace(/\n/g, '[BR]');
+    if(t || d) schedText += `\n${t}|${d}`;
+  }
+  if (schedText !== "") {
+    finalPoznamka += `\n\n===HARMONOGRAM===${schedText}`;
   }
 
   const payload = {
