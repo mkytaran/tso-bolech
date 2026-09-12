@@ -345,7 +345,7 @@ function formatProgramHtml(pData) {
     if (parts.length >= 2) {
       let num = escapeHtml(parts[0] || '').trim();
       let author = escapeHtml(parts[1] || '').trim();
-      let piece = escapeHtml(parts[2] || '').trim();
+      let piece = escapeHtml(parts[2] || '').trim().replace(/\[BR\]/g, '<br>');
       rows += `
         <tr>
           <td class="col-num">${num ? num + '.' : ''}</td>
@@ -687,7 +687,21 @@ function renumberProgramRows() {
   });
 }
 
-// --- PŘIDÁVÁNÍ ŘÁDKŮ PROGRAMU (1. PATRO: POŘADÍ + AUTOR + POSUN, 2. PATRO: DÍLO) ---
+// Bezpečné smazání řádku skladby s pojistkou proti překlepu
+function removeProgramRow(btn) {
+  if (confirm("Opravdu chcete tuto skladbu z programu odstranit?")) {
+    const row = btn.closest('.prog-item-row');
+    if (row) {
+      row.remove();
+      renumberProgramRows();
+    }
+  }
+}
+
+// Přidání řádku programu: 
+// 1. patro: Nástrojová lišta (posun ▲/▼ a smazání ✕ zarovnané doprava)
+// 2. patro: Pořadí + Autor na maximum šířky
+// 3. patro: Dílo / Skladba na celou šířku
 function addProgramRow(num = '', author = '', piece = '') {
   const cont = document.getElementById('program-rows');
   if (!cont) return;
@@ -698,11 +712,19 @@ function addProgramRow(num = '', author = '', piece = '') {
 
   const div = document.createElement('div');
   div.className = 'prog-item-row';
-  div.style = 'border: 1px dashed var(--border); padding: 10px; margin-bottom: 8px; border-radius: 8px; background: var(--surface); position: relative;';
+  div.style = 'border: 1px dashed var(--border); padding: 10px; margin-bottom: 10px; border-radius: 8px; background: var(--surface);';
   
   div.innerHTML = `
-    <div style="display: flex; gap: 8px; align-items: flex-end; margin-bottom: 8px;">
-      <div style="width: 58px; flex-shrink: 0;">
+    <!-- 1. patro: Ovládací tlačítka nahoře vpravo -->
+    <div style="display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 6px;">
+      <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); width: auto;" onclick="moveProgramRow(this, -1)" title="Posunout nahoru">▲</button>
+      <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); width: auto;" onclick="moveProgramRow(this, 1)" title="Posunout dolů">▼</button>
+      <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: transparent; color: var(--danger); border: 1px solid var(--danger); width: auto; margin-left: 6px;" onclick="removeProgramRow(this)" title="Smazat skladbu">✕</button>
+    </div>
+
+    <!-- 2. patro: Pořadí a Autor (Autor má plnou šířku bez tlačítek) -->
+    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+      <div style="width: 52px; flex-shrink: 0;">
         <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 2px;">Pořadí:</label>
         <input type="text" class="modal-input prog-num" placeholder="1" value="${escapeHtml(num)}" style="padding: 8px 6px; font-size: 14px; text-align: right;">
       </div>
@@ -710,16 +732,12 @@ function addProgramRow(num = '', author = '', piece = '') {
         <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 2px;">Autor / Skladatel:</label>
         <input type="text" class="modal-input prog-author" placeholder="např. Antonín Dvořák" value="${escapeHtml(author)}" style="padding: 8px 10px; font-size: 14px;">
       </div>
-      <div style="display: flex; gap: 4px; flex-shrink: 0;">
-        <button type="button" class="btn" style="padding: 8px 10px; font-size: 13px; background: var(--bg); color: var(--text); border: 1px solid var(--border); width: auto;" onclick="moveProgramRow(this, -1)" title="Posunout nahoru">▲</button>
-        <button type="button" class="btn" style="padding: 8px 10px; font-size: 13px; background: var(--bg); color: var(--text); border: 1px solid var(--border); width: auto;" onclick="moveProgramRow(this, 1)" title="Posunout dolů">▼</button>
-        <button type="button" class="btn" style="padding: 8px 10px; font-size: 13px; background: transparent; color: var(--danger); border: 1px solid var(--danger); width: auto;" onclick="this.closest('.prog-item-row').remove(); renumberProgramRows();" title="Smazat">✕</button>
-      </div>
     </div>
     
+    <!-- 3. patro: Dílo / Skladba (víceřádkové pole s automatickým zalamováním) -->
     <div>
       <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 2px;">Dílo / Skladba:</label>
-      <input type="text" class="modal-input prog-piece" placeholder="např. Slovanský tanec č. 8 g moll" value="${escapeHtml(piece)}" style="padding: 8px 10px; font-size: 14px;">
+      <textarea class="modal-input prog-piece" placeholder="např. Symfonie č. 9 e moll „Z Nového světa“, op. 95 (B. 178)" rows="2" style="padding: 8px 10px; font-size: 14px; min-height: 54px; resize: vertical; line-height: 1.4;">${escapeHtml(piece).replace(/\[BR\]/g, '\n')}</textarea>
     </div>
   `;
   cont.appendChild(div);
@@ -833,13 +851,15 @@ function openAkceForm(akce = null) {
           <label>Hlavní text (Poznámka / organizační info):</label>
           <textarea id="f_poznamka" class="modal-input" style="min-height:90px; resize:vertical;">${escapeHtml(parsed.mainNote)}</textarea>
 
-          <!-- Sekce pro Program (umístěno PŘED časový plán) -->
+          <!-- Sekce pro Program -->
           <div style="margin-top: 16px; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
               <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
                   <span style="font-weight:bold; color:var(--text);">🎼 Program</span>
                   <button type="button" class="btn" style="padding:6px 12px; font-size:13px; background:var(--primary-light); width:auto;" onclick="addProgramRow()">➕ Přidat skladbu</button>
               </label>
               <div id="program-rows"></div>
+              <!-- Tlačítko dole pod seznamem skladeb -->
+              <button type="button" class="btn" style="width:100%; margin-top:8px; padding:10px; font-size:14px; background:var(--primary-light);" onclick="addProgramRow()">➕ Přidat další skladbu</button>
           </div>
 
           <!-- Sekce pro harmonogram -->
@@ -898,7 +918,8 @@ function submitAkceForm(e, akceId) {
   for(let i = 0; i < progPieces.length; i++) {
     let num = progNums[i].value.trim();
     let author = progAuthors[i].value.trim();
-    let piece = progPieces[i].value.trim();
+    // Převedeme případné zalomení řádku uvnitř textarey na [BR]
+    let piece = progPieces[i].value.trim().replace(/\n/g, '[BR]');
     if (author || piece) {
       progText += `\n${num}|${author}|${piece}`;
     }
