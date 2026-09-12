@@ -455,7 +455,8 @@ function generateAkceHtml(akce, isVedení) {
   else if(akce.typ === 'Zkouška smyčců') barClass = 'bar-zkouska-smycce';
   else if(akce.typ === 'Zkouška dechů') barClass = 'bar-zkouska-dechy';
   
-  let editBtn = isVedení ? `<button class="edit-btn" onclick='openAkceForm(${JSON.stringify(akce).replace(/'/g, "&#39;")})'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>` : "";
+  // Zastavíme propagaci, aby klik na ikonu tužky kartu neotočil
+  let editBtn = isVedení ? `<button class="edit-btn" onclick='event.stopPropagation(); openAkceForm(${JSON.stringify(akce).replace(/'/g, "&#39;")})'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>` : "";
 
   const parsed = parsovatPoznamku(akce.poznamka);
   const hasProgram = !!parsed.progData;
@@ -468,20 +469,27 @@ function generateAkceHtml(akce, isVedení) {
         
         <!-- PŘEDNÍ STRANA KARTY -->
         <div class="card-front">
-          ${hasDetailsOnBack ? `<button type="button" class="corner-fold-btn" onclick="flipCard('${cardFlipperId}')" title="Zobrazit program a detaily"></button>` : ''}
-          <div class="card-top-bar ${barClass}"><span>${akce.typ}</span><span>🗓️ ${akce.datum}</span></div>
-          <div class="card-body">
-            <div class="card-title-row"><div class="card-title">${akce.nazev}</div>${editBtn}</div>
-            ${akce.misto ? `<p style="margin-bottom:6px;">📍 ${akce.misto}</p>` : ''}
-            <p style="margin-bottom:6px;">🕒 Začátek: <strong>${akce.casOd}</strong></p>
-            ${akce.casSrazu ? `<p style="margin-bottom:6px;">⏰ Sraz: <strong>${akce.casSrazu}</strong></p>` : ''}
-            ${akce.zacatekGeneralky ? `<p style="margin-bottom:6px;">🎻 Generálka: <strong>${akce.zacatekGeneralky}</strong></p>` : ''}
-            ${akce.damy ? `<p style="margin-bottom:6px;">👗 Dámy: ${akce.damy}</p>` : ''}
-            ${akce.pani ? `<p style="margin-bottom:6px;">🤵 Páni: ${akce.pani}</p>` : ''}
-            
-            ${formatHarmonogramHtml(parsed.schedData)}
+          ${hasDetailsOnBack ? `<button type="button" class="corner-fold-btn" onclick="event.stopPropagation(); flipCard('${cardFlipperId}')" title="Zobrazit program a detaily"></button>` : ''}
+          
+          <!-- Klikatelná horní zóna (vše nad tlačítky účasti) -->
+          <div class="${hasDetailsOnBack ? 'card-clickable-area' : ''}" ${hasDetailsOnBack ? `onclick="flipCard('${cardFlipperId}')"` : ''}>
+            <div class="card-top-bar ${barClass}"><span>${akce.typ}</span><span>🗓️ ${akce.datum}</span></div>
+            <div class="card-body" style="padding-bottom: 0;">
+              <div class="card-title-row"><div class="card-title">${akce.nazev}</div>${editBtn}</div>
+              ${akce.misto ? `<p style="margin-bottom:6px;">📍 ${akce.misto}</p>` : ''}
+              <p style="margin-bottom:6px;">🕒 Začátek: <strong>${akce.casOd}</strong></p>
+              ${akce.casSrazu ? `<p style="margin-bottom:6px;">⏰ Sraz: <strong>${akce.casSrazu}</strong></p>` : ''}
+              ${akce.zacatekGeneralky ? `<p style="margin-bottom:6px;">🎻 Generálka: <strong>${akce.zacatekGeneralky}</strong></p>` : ''}
+              ${akce.damy ? `<p style="margin-bottom:6px;">👗 Dámy: ${akce.damy}</p>` : ''}
+              ${akce.pani ? `<p style="margin-bottom:6px;">🤵 Páni: ${akce.pani}</p>` : ''}
+              
+              ${formatHarmonogramHtml(parsed.schedData)}
+            </div>
+          </div>
 
-            <div class="att-buttons" style="margin-top:16px;">
+          <!-- Neklikatelná spodní zóna s tlačítky účasti a přehledem docházky -->
+          <div class="card-body" style="padding-top: 16px;">
+            <div class="att-buttons">
               <button class="btn-att ${myVote?.stav==='Ano'?'selected-ano':''}" onclick="submitUcast('${akce.id}','${akce.datum}','Ano',this)">✓ Účastním se</button>
               <button class="btn-att ${myVote?.stav==='Ne'?'selected-ne':''}" onclick="submitUcast('${akce.id}','${akce.datum}','Ne',this)">✕ Neúčastním</button>
             </div>
@@ -493,11 +501,10 @@ function generateAkceHtml(akce, isVedení) {
           </div>
         </div>
 
-        <!-- ZADNÍ STRANA KARTY (PROGRAM & DETAILY) -->
-        <div class="card-back">
+        <!-- ZADNÍ STRANA KARTY (KLIKNUTÍM KAMKOLIV SE OTOČÍ ZPĚT) -->
+        <div class="card-back card-clickable-area" onclick="flipCard('${cardFlipperId}')" title="Klepnutím otočíte zpět">
           <div class="card-top-bar ${barClass}">
             <span>DETAILY & PROGRAM</span>
-            <button type="button" class="btn-flip-back" onclick="flipCard('${cardFlipperId}')">✕ Zpět na přehled</button>
           </div>
           <div class="card-body">
             ${parsed.mainNote ? `<div class="oznameni-text" style="margin-bottom: 16px;">${escapeHtml(parsed.mainNote)}</div>` : ''}

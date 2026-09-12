@@ -484,22 +484,6 @@ details.folder-tree > summary::-webkit-details-marker {
   height: 45px;
 }
 
-/* Tlačítko zpět na zadní straně */
-.btn-flip-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--bg);
-  color: var(--text-muted);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 6px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  margin-bottom: 12px;
-}
-
 /* --- ŠABLONA PROGRAMU (ZAROVNÁNÍ ČÍSLA DOPRAVA) --- */
 .program-table {
   width: 100%;
@@ -598,4 +582,9 @@ body.card-flipped-active .card:not(.card-flip-container) {
 
 .card-flipper.is-flipped .card-back {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+/* Zóna karty umožňující otočení */
+.card-clickable-area {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
