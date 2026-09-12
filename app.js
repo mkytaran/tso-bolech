@@ -418,11 +418,13 @@ function flipCard(cardId) {
 
 // Pojistná funkce pro zavření kliknutím na backdrop
 function zavritOtocenouKartu() {
-  if (isFlippingBusy) return;
-  
-  if (aktivniOtocenaKartaId) {
-    const cardId = aktivniOtocenaKartaId;
-    aktivniOtocenaKartaId = null;
+  // 1. Zrušíme ID aktivní karty i případný zámek
+  const cardId = aktivniOtocenaKartaId;
+  aktivniOtocenaKartaId = null;
+  isFlippingBusy = false;
+
+  // 2. Pokud máme ID, otočíme konkrétní kartu zpět
+  if (cardId) {
     const flipper = document.getElementById(cardId);
     if (flipper) {
       flipper.classList.remove('is-flipped');
@@ -431,14 +433,19 @@ function zavritOtocenouKartu() {
     }
   }
 
-  // Bezpečnostní reset všech případných zbytků rozmazání
+  // 3. Pojistka: otočíme zpět všechny karty a sundáme focus kontejnery
+  document.querySelectorAll('.card-flipper.is-flipped').forEach(f => f.classList.remove('is-flipped'));
+  document.querySelectorAll('.card-flip-container.active-focus').forEach(c => c.classList.remove('active-focus'));
+
+  // 4. Bezpodmínečně vyčistíme clonu a rozmazání ze stránky
   const backdrop = document.getElementById('card-backdrop');
   if (backdrop) backdrop.classList.remove('active');
   document.body.classList.remove('card-flipped-active');
-  document.querySelectorAll('.card-flip-container.active-focus').forEach(c => c.classList.remove('active-focus'));
 }
 
 function renderEvents() {
+  // POJISTKA: Pokud běží překreslení dat ze sítě, zrušíme rozmazání a resetujeme stav
+  zavritOtocenouKartu();
   const cont = document.getElementById("eventsContainer"); cont.innerHTML = "";
   const archCont = document.getElementById("archiveContainer"); archCont.innerHTML = "";
   const userRole = String(user.role||"").trim().toLowerCase();
