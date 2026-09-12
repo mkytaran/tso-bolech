@@ -506,6 +506,7 @@ details.folder-tree > summary::-webkit-details-marker {
 }
 
 .program-table td.col-author {
+  text-align: left;
   font-weight: 600;
   color: var(--text);
   width: 38%;
@@ -515,6 +516,7 @@ details.folder-tree > summary::-webkit-details-marker {
 }
 
 .program-table td.col-piece {
+  text-align: left;
   color: var(--text);
   padding: 6px 0 6px 8px;
   vertical-align: top;
