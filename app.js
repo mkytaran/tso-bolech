@@ -1,4 +1,4 @@
-// Registrace Service Workeru pro PWA (možnost instalace na plochu)
+// Registrace Service Workeru pro PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').then((registration) => {
@@ -8,8 +8,9 @@ if ('serviceWorker' in navigator) {
     });
   });
 }
+
 // =========================================================================
-// VAŠE URL ADRESA Z GOOGLE APPS SCRIPTU
+// URL Z GOOGLE APPS SCRIPTU
 // ========================================================================= 
 const API_URL = "https://script.google.com/macros/s/AKfycbwVHLODjApvEPwE4RQo5nQxdr9Y8Ng-EoWTGGsH3l45L174huUMCh_99edIV-cbXQVHQQ/exec";
 
@@ -20,7 +21,6 @@ let appData = { akce: [], noty: [], ucast: [] };
 // DEFINICE NÁSTROJŮ A SKUPIN ORCHESTRU
 // =====================================================
 
-// Hierarchie a řazení nástrojových skupin TSO Bolech
 const ORCHESTR_SKUPINY = {
   "Smyčcové nástroje": ["1. Housle", "2. Housle", "Violy", "Violoncella", "Kontrabasy"],
   "Dechové nástroje": ["Flétny", "Hoboje", "Klarinety / Saxofony", "Fagoty", "Lesní rohy", "Trubky", "Trombóny a Tuba"],
@@ -29,7 +29,6 @@ const ORCHESTR_SKUPINY = {
   "Hosté": ["Hosté"]
 };
 
-// Hlavní ploché pole kategorií pro zobrazení
 const PARTITURA_SECTIONS = [
   "1. Housle", "2. Housle", "Violy", "Violoncella", "Kontrabasy", 
   "Flétny", "Hoboje", "Klarinety / Saxofony", "Fagoty", "Lesní rohy", 
@@ -37,13 +36,8 @@ const PARTITURA_SECTIONS = [
   "Smyčce", "Dechy", "Dřeva", "Žestě", "Hosté"
 ];
 
-// -----------------------------------------------------
-// POMOCNÁ POLE PRO DETEKCI ZADANÝCH TEXTŮ A SKLOŇOVÁNÍ
-// -----------------------------------------------------
-
 const SMYCKE_SECTIONS = ["housl", "viol", "cell", "kontrabas", "smyčce", "smycce"];
 const DECHOVE_SECTIONS = ["flétn", "hoboj", "klarinet", "saxofon", "fagot", "roh", "trubk", "trubc", "trombón", "trombon", "tuba", "tuby", "tubě", "tubou", "dech", "dřev", "žest"];
-const HOSTE_SECTIONS = ["host"];
 
 function initTheme() {
   const savedTheme = localStorage.getItem('bolech_theme');
@@ -282,7 +276,7 @@ function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
   kontejner.innerHTML = html;
 }
 
-// --- PARSOVÁNÍ STRUKTURY POZNÁMKY (HLAVNÍ TEXT, HARMONOGRAM, PROGRAM) ---
+// --- PARSOVÁNÍ STRUKTURY POZNÁMKY ---
 function parsovatPoznamku(rawNote) {
   let mainNote = rawNote || '';
   let schedData = '';
@@ -336,7 +330,7 @@ function formatHarmonogramHtml(sData) {
   return html;
 }
 
-// --- VYKRESLENÍ PROGRAMU NA ZADNÍ STRANĚ KARTY (ČÍSLO ZAROVNANÉ DOPRAVA) ---
+// --- VYKRESLENÍ PROGRAMU (ČÍSLO VPRAVO, AUTOR A DÍLO VLEVO) ---
 function formatProgramHtml(pData) {
   if (!pData) return '';
   let rows = '';
@@ -370,18 +364,13 @@ function formatProgramHtml(pData) {
   `;
 }
 
-// Funkce pro otočení karty
-// Globální proměnné pro řízení otočení karty
+// =====================================================
+// ŘÍZENÍ OTOČENÍ KARET
+// =====================================================
 let aktivniOtocenaKartaId = null;
-let isFlippingBusy = false; // Zámek proti vícenásobnému kliku na dotykovém displeji
 
 function flipCard(cardId) {
-  if (isFlippingBusy) return;
-  isFlippingBusy = true;
-  setTimeout(() => { isFlippingBusy = false; }, 320); // Uvolní zámek po doběhnutí animace
-
   const flipper = document.getElementById(cardId);
-  const backdrop = document.getElementById('card-backdrop');
   if (!flipper) {
     zavritOtocenouKartu();
     return;
@@ -391,61 +380,32 @@ function flipCard(cardId) {
   const isCurrentlyFlipped = flipper.classList.contains('is-flipped');
 
   if (!isCurrentlyFlipped) {
-    // Pokud je už jiná karta otočená, napřed ji zavřeme
-    if (aktivniOtocenaKartaId && aktivniOtocenaKartaId !== cardId) {
-      const oldFlipper = document.getElementById(aktivniOtocenaKartaId);
-      if (oldFlipper) {
-        oldFlipper.classList.remove('is-flipped');
-        const oldCont = oldFlipper.closest('.card-flip-container');
-        if (oldCont) oldCont.classList.remove('active-focus');
-      }
-    }
+    zavritOtocenouKartu();
     
     flipper.classList.add('is-flipped');
     if (container) container.classList.add('active-focus');
-    if (backdrop) backdrop.classList.add('active');
     document.body.classList.add('card-flipped-active');
     aktivniOtocenaKartaId = cardId;
   } else {
-    // Zavření aktuální karty
-    flipper.classList.remove('is-flipped');
-    if (container) container.classList.remove('active-focus');
-    if (backdrop) backdrop.classList.remove('active');
-    document.body.classList.remove('card-flipped-active');
-    aktivniOtocenaKartaId = null;
+    zavritOtocenouKartu();
   }
 }
 
-// Pojistná funkce pro zavření kliknutím na backdrop
 function zavritOtocenouKartu() {
-  // 1. Zrušíme ID aktivní karty i případný zámek
-  const cardId = aktivniOtocenaKartaId;
-  aktivniOtocenaKartaId = null;
-  isFlippingBusy = false;
-
-  // 2. Pokud máme ID, otočíme konkrétní kartu zpět
-  if (cardId) {
-    const flipper = document.getElementById(cardId);
-    if (flipper) {
-      flipper.classList.remove('is-flipped');
-      const container = flipper.closest('.card-flip-container');
-      if (container) container.classList.remove('active-focus');
-    }
+  if (!aktivniOtocenaKartaId && !document.body.classList.contains('card-flipped-active')) {
+    return;
   }
 
-  // 3. Pojistka: otočíme zpět všechny karty a sundáme focus kontejnery
+  aktivniOtocenaKartaId = null;
+  document.body.classList.remove('card-flipped-active');
+
   document.querySelectorAll('.card-flipper.is-flipped').forEach(f => f.classList.remove('is-flipped'));
   document.querySelectorAll('.card-flip-container.active-focus').forEach(c => c.classList.remove('active-focus'));
-
-  // 4. Bezpodmínečně vyčistíme clonu a rozmazání ze stránky
-  const backdrop = document.getElementById('card-backdrop');
-  if (backdrop) backdrop.classList.remove('active');
-  document.body.classList.remove('card-flipped-active');
 }
 
 function renderEvents() {
-  // POJISTKA: Pokud běží překreslení dat ze sítě, zrušíme rozmazání a resetujeme stav
   zavritOtocenouKartu();
+
   const cont = document.getElementById("eventsContainer"); cont.innerHTML = "";
   const archCont = document.getElementById("archiveContainer"); archCont.innerHTML = "";
   const userRole = String(user.role||"").trim().toLowerCase();
@@ -455,7 +415,7 @@ function renderEvents() {
   
   if (isVedení) {
     cont.innerHTML += `
-      <div style="display:flex; gap:12px; margin-bottom:16px;">
+      <div class="admin-actions" style="display:flex; gap:12px; margin-bottom:16px;">
         <button class="btn" style="background:var(--success); flex:1;" onclick="openAkceForm()">➕ Přidat akci</button>
         <button class="btn" style="background:var(--primary-light); flex:1;" onclick="openGuestManager()">👥 Správa hostů</button>
       </div>`;
@@ -487,7 +447,6 @@ function generateAkceHtml(akce, isVedení) {
   else if(akce.typ === 'Zkouška smyčců') barClass = 'bar-zkouska-smycce';
   else if(akce.typ === 'Zkouška dechů') barClass = 'bar-zkouska-dechy';
   
-  // Zastavíme propagaci, aby klik na ikonu tužky kartu neotočil
   let editBtn = isVedení ? `<button class="edit-btn" onclick='event.stopPropagation(); openAkceForm(${JSON.stringify(akce).replace(/'/g, "&#39;")})'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>` : "";
 
   const parsed = parsovatPoznamku(akce.poznamka);
@@ -503,7 +462,7 @@ function generateAkceHtml(akce, isVedení) {
         <div class="card-front">
           ${hasDetailsOnBack ? `<button type="button" class="corner-fold-btn" onclick="event.stopPropagation(); flipCard('${cardFlipperId}')" title="Zobrazit program a detaily"></button>` : ''}
           
-          <!-- Klikatelná horní zóna (vše nad tlačítky účasti) -->
+          <!-- Horní zóna: klepnutím se otočí -->
           <div class="${hasDetailsOnBack ? 'card-clickable-area' : ''}" ${hasDetailsOnBack ? `onclick="flipCard('${cardFlipperId}')"` : ''}>
             <div class="card-top-bar ${barClass}"><span>${akce.typ}</span><span>🗓️ ${akce.datum}</span></div>
             <div class="card-body" style="padding-bottom: 0;">
@@ -519,7 +478,7 @@ function generateAkceHtml(akce, isVedení) {
             </div>
           </div>
 
-          <!-- Neklikatelná spodní zóna s tlačítky účasti a přehledem docházky -->
+          <!-- Spodní zóna: docházka a přehled -->
           <div class="card-body" style="padding-top: 16px;">
             <div class="att-buttons">
               <button class="btn-att ${myVote?.stav==='Ano'?'selected-ano':''}" onclick="submitUcast('${akce.id}','${akce.datum}','Ano',this)">✓ Účastním se</button>
@@ -533,8 +492,8 @@ function generateAkceHtml(akce, isVedení) {
           </div>
         </div>
 
-        <!-- ZADNÍ STRANA KARTY (KLIKNUTÍM KAMKOLIV SE OTOČÍ ZPĚT) -->
-        <div class="card-back card-clickable-area" onclick="flipCard('${cardFlipperId}')" title="Klepnutím otočíte zpět">
+        <!-- ZADNÍ STRANA KARTY (Klepnutím kamkoliv se otočí zpět na líc) -->
+        <div class="card-back card-clickable-area" onclick="flipCard('${cardFlipperId}')" title="Klepnutím otočíte zpět na přehled">
           <div class="card-top-bar ${barClass}">
             <span>DETAILY & PROGRAM</span>
           </div>
@@ -665,7 +624,7 @@ function formatDateForSave(isoDate) {
   return isoDate;
 }
 
-// --- POHYBOVÉ A ČÍSLOVACÍ FUNKCE PROGRAMU ---
+// --- FUNKCE PRO PROGRAM (POSUN, PŘEČÍSLOVÁNÍ A SMAZÁNÍ) ---
 function moveProgramRow(btn, direction) {
   const row = btn.closest('.prog-item-row');
   if (!row) return;
@@ -687,7 +646,6 @@ function renumberProgramRows() {
   });
 }
 
-// Bezpečné smazání řádku skladby s pojistkou proti překlepu
 function removeProgramRow(btn) {
   if (confirm("Opravdu chcete tuto skladbu z programu odstranit?")) {
     const row = btn.closest('.prog-item-row');
@@ -698,10 +656,6 @@ function removeProgramRow(btn) {
   }
 }
 
-// Přidání řádku programu: 
-// 1. patro: Nástrojová lišta (posun ▲/▼ a smazání ✕ zarovnané doprava)
-// 2. patro: Pořadí + Autor na maximum šířky
-// 3. patro: Dílo / Skladba na celou šířku
 function addProgramRow(num = '', author = '', piece = '') {
   const cont = document.getElementById('program-rows');
   if (!cont) return;
@@ -715,14 +669,14 @@ function addProgramRow(num = '', author = '', piece = '') {
   div.style = 'border: 1px dashed var(--border); padding: 10px; margin-bottom: 10px; border-radius: 8px; background: var(--surface);';
   
   div.innerHTML = `
-    <!-- 1. patro: Ovládací tlačítka nahoře vpravo -->
+    <!-- 1. patro: Nástrojová lišta -->
     <div style="display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 6px;">
       <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); width: auto;" onclick="moveProgramRow(this, -1)" title="Posunout nahoru">▲</button>
       <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); width: auto;" onclick="moveProgramRow(this, 1)" title="Posunout dolů">▼</button>
       <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: transparent; color: var(--danger); border: 1px solid var(--danger); width: auto; margin-left: 6px;" onclick="removeProgramRow(this)" title="Smazat skladbu">✕</button>
     </div>
 
-    <!-- 2. patro: Pořadí a Autor (Autor má plnou šířku bez tlačítek) -->
+    <!-- 2. patro: Pořadí a Autor -->
     <div style="display: flex; gap: 8px; margin-bottom: 8px;">
       <div style="width: 52px; flex-shrink: 0;">
         <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 2px;">Pořadí:</label>
@@ -734,7 +688,7 @@ function addProgramRow(num = '', author = '', piece = '') {
       </div>
     </div>
     
-    <!-- 3. patro: Dílo / Skladba (víceřádkové pole s automatickým zalamováním) -->
+    <!-- 3. patro: Víceřádkové pole pro dílo -->
     <div>
       <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 2px;">Dílo / Skladba:</label>
       <textarea class="modal-input prog-piece" placeholder="např. Symfonie č. 9 e moll „Z Nového světa“, op. 95 (B. 178)" rows="2" style="padding: 8px 10px; font-size: 14px; min-height: 54px; resize: vertical; line-height: 1.4;">${escapeHtml(piece).replace(/\[BR\]/g, '\n')}</textarea>
@@ -743,7 +697,6 @@ function addProgramRow(num = '', author = '', piece = '') {
   cont.appendChild(div);
 }
 
-// --- PŘIDÁVÁNÍ ŘÁDKŮ HARMONOGRAMU DO FORMULÁŘE ---
 function addScheduleRow(time = '', desc = '') {
   const cont = document.getElementById('schedule-rows');
   if (!cont) return;
@@ -851,14 +804,13 @@ function openAkceForm(akce = null) {
           <label>Hlavní text (Poznámka / organizační info):</label>
           <textarea id="f_poznamka" class="modal-input" style="min-height:90px; resize:vertical;">${escapeHtml(parsed.mainNote)}</textarea>
 
-          <!-- Sekce pro Program -->
+          <!-- Sekce pro Program (umístěno PŘED časový plán se sticky hlavičkou) -->
           <div style="margin-top: 16px; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
-              <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+              <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; position: sticky; top: -12px; background: var(--bg); z-index: 5; padding: 6px 0; border-bottom: 1px solid var(--border);">
                   <span style="font-weight:bold; color:var(--text);">🎼 Program</span>
                   <button type="button" class="btn" style="padding:6px 12px; font-size:13px; background:var(--primary-light); width:auto;" onclick="addProgramRow()">➕ Přidat skladbu</button>
               </label>
               <div id="program-rows"></div>
-              <!-- Tlačítko dole pod seznamem skladeb -->
               <button type="button" class="btn" style="width:100%; margin-top:8px; padding:10px; font-size:14px; background:var(--primary-light);" onclick="addProgramRow()">➕ Přidat další skladbu</button>
           </div>
 
@@ -918,7 +870,6 @@ function submitAkceForm(e, akceId) {
   for(let i = 0; i < progPieces.length; i++) {
     let num = progNums[i].value.trim();
     let author = progAuthors[i].value.trim();
-    // Převedeme případné zalomení řádku uvnitř textarey na [BR]
     let piece = progPieces[i].value.trim().replace(/\n/g, '[BR]');
     if (author || piece) {
       progText += `\n${num}|${author}|${piece}`;
