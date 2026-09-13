@@ -18,9 +18,82 @@ let user = null;
 let appData = { akce: [], noty: [], ucast: [] };
 
 // =====================================================
+// GLOBÁLNÍ NASTAVENÍ VELIKOSTI PÍSMA
+// =====================================================
+const FONT_LEVELS = [
+  { id: 'small',  scale: 0.88, title: 'Malé',        sample: 'Kompaktní zobrazení' },
+  { id: 'normal', scale: 1.0,  title: 'Výchozí',     sample: 'Standardní čitelnost' },
+  { id: 'large',  scale: 1.15, title: 'Větší',       sample: 'Pohodlné čtení' },
+  { id: 'xlarge', scale: 1.3,  title: 'Extra velké', sample: 'Maximální čitelnost' }
+];
+
+function initFontSize() {
+  const savedScale = localStorage.getItem('bolech_font_scale') || '1';
+  document.documentElement.style.setProperty('--font-scale', savedScale);
+}
+initFontSize();
+
+function setAppFontSize(scaleValue) {
+  document.documentElement.style.setProperty('--font-scale', scaleValue);
+  localStorage.setItem('bolech_font_scale', String(scaleValue));
+  
+  document.querySelectorAll('.font-size-option').forEach(el => {
+    if (Math.abs(parseFloat(el.dataset.scale) - scaleValue) < 0.02) {
+      el.classList.add('active');
+      el.querySelector('.font-check').innerText = '✓';
+    } else {
+      el.classList.remove('active');
+      el.querySelector('.font-check').innerText = '';
+    }
+  });
+}
+
+function openFontSizeModal() {
+  const currentScale = parseFloat(localStorage.getItem('bolech_font_scale') || '1');
+
+  let optionsHtml = '';
+  FONT_LEVELS.forEach(lvl => {
+    const isActive = Math.abs(lvl.scale - currentScale) < 0.02;
+    optionsHtml += `
+      <div class="font-size-option ${isActive ? 'active' : ''}" data-scale="${lvl.scale}" onclick="setAppFontSize(${lvl.scale})">
+        <div>
+          <div style="font-size: 16px;">${lvl.title}</div>
+          <div style="font-size: 13px; color: var(--text-muted);">${lvl.sample}</div>
+        </div>
+        <div class="font-check" style="font-size: 18px; font-weight: bold; color: var(--primary-light);">${isActive ? '✓' : ''}</div>
+      </div>
+    `;
+  });
+
+  const modalHtml = `
+    <div id="fontModal" class="modal-overlay" onclick="if(event.target === this) document.getElementById('fontModal').remove()">
+      <div class="modal-box" style="max-width: 380px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+          <h3 style="margin:0; font-size: 19px; color: var(--text);">Velikost písma</h3>
+          <button type="button" style="background:transparent; border:none; font-size: 20px; color: var(--text-muted); cursor:pointer;" onclick="document.getElementById('fontModal').remove()">✕</button>
+        </div>
+        
+        <div style="margin-bottom: 16px;">
+          ${optionsHtml}
+        </div>
+
+        <div style="padding: 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); margin-bottom: 16px;">
+          <small style="color: var(--text-muted); display: block; margin-bottom: 4px;">Živý náhled:</small>
+          <div style="font-size: 1rem; font-weight: 600; color: var(--text);">Antonín Dvořák – Symfonie č. 9</div>
+          <div style="font-size: 0.85rem; color: var(--text-muted);">Sraz: 18:30 | Začátek: 19:00</div>
+        </div>
+
+        <button type="button" class="btn" onclick="document.getElementById('fontModal').remove()">Hotovo</button>
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+// =====================================================
 // DEFINICE NÁSTROJŮ A SKUPIN ORCHESTRU
 // =====================================================
-
 const ORCHESTR_SKUPINY = {
   "Smyčcové nástroje": ["1. Housle", "2. Housle", "Violy", "Violoncella", "Kontrabasy"],
   "Dechové nástroje": ["Flétny", "Hoboje", "Klarinety / Saxofony", "Fagoty", "Lesní rohy", "Trubky", "Trombóny a Tuba"],
@@ -669,7 +742,7 @@ function addProgramRow(num = '', author = '', piece = '') {
   div.style = 'border: 1px dashed var(--border); padding: 10px; margin-bottom: 10px; border-radius: 8px; background: var(--surface);';
   
   div.innerHTML = `
-    <!-- 1. patro: Nástrojová lišta -->
+    <!-- 1. patro: Ovládací tlačítka nahoře -->
     <div style="display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 6px;">
       <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); width: auto;" onclick="moveProgramRow(this, -1)" title="Posunout nahoru">▲</button>
       <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); width: auto;" onclick="moveProgramRow(this, 1)" title="Posunout dolů">▼</button>
