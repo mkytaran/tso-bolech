@@ -37,8 +37,27 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
 
-body { background: var(--bg); color: var(--text); padding-bottom: 100px; font-size: 17px; line-height: 1.6; -webkit-tap-highlight-color: transparent; transition: background-color 0.3s, color 0.3s; }
-input, select, textarea { background: var(--surface); color: var(--text); border: 1px solid var(--border); font-size: 17px; padding: 12px; border-radius: 8px; width: 100%; outline: none; transition: border-color 0.2s; }
+body { 
+  background: var(--bg); 
+  color: var(--text); 
+  padding-bottom: 100px; 
+  font-size: 17px; 
+  line-height: 1.6; 
+  -webkit-tap-highlight-color: transparent; 
+  transition: background-color 0.3s, color 0.3s; 
+}
+
+input, select, textarea { 
+  background: var(--surface); 
+  color: var(--text); 
+  border: 1px solid var(--border); 
+  font-size: 17px; 
+  padding: 12px; 
+  border-radius: 8px; 
+  width: 100%; 
+  outline: none; 
+  transition: border-color 0.2s; 
+}
 input:focus, select:focus, textarea:focus { border-color: var(--primary-light); }
 
 /* ZÁHLAVÍ APLIKACE (Kompaktní App Bar - zůstává VŽDY OSTRÉ) */
@@ -97,8 +116,25 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary-light); 
 .container { padding: 16px; max-width: 640px; margin: 0 auto; }
 
 /* KARTY */
-.card { background: var(--surface); border-radius: var(--radius); margin: 12px -4px; box-shadow: var(--shadow); border: 1px solid var(--border); overflow: hidden; transition: background-color 0.3s, border-color 0.3s; }
-.card-top-bar { padding: 8px 52px 8px 16px; font-size: 15px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; position: relative; }
+.card { 
+  background: var(--surface); 
+  border-radius: var(--radius); 
+  margin: 12px -4px; 
+  box-shadow: var(--shadow); 
+  border: 1px solid var(--border); 
+  overflow: hidden; 
+  transition: background-color 0.3s, border-color 0.3s, filter 0.4s ease, opacity 0.4s ease; 
+}
+
+.card-top-bar { 
+  padding: 8px 52px 8px 16px; 
+  font-size: 15px; 
+  font-weight: 700; 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  position: relative; 
+}
 
 /* BAREVNÉ ODLIŠENÍ TYPŮ AKCÍ */
 .bar-koncert { background: var(--primary); color: #ffffff; border-bottom: 3px solid #021118; }
@@ -149,7 +185,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary-light); 
 .roster-section-title { font-size: 14px; font-weight: 700; color: var(--primary-light); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
 .roster-members { font-size: 17px; margin-bottom: 4px; color: var(--text); padding-left: 8px; border-left: 2px solid var(--border); }
 
-/* SPODNÍ NAVIGACE */
+/* SPODNÍ NAVIGACE (PŘIDÁNA TRANSITION PRO OBOUSMĚRNÝ NÁBĚH I ÚSTUP FILTRU) */
 nav { 
   position: fixed; 
   bottom: 0; 
@@ -161,9 +197,15 @@ nav {
   border-top: 1px solid var(--border); 
   padding: 6px 0 calc(8px + env(safe-area-inset-bottom)) 0; 
   z-index: 100; 
+  transition: filter 0.4s ease, opacity 0.4s ease;
 }
 .nav-btn { background: none; border: none; font-size: 14px; color: var(--text-muted); cursor: pointer; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .nav-btn.active { color: var(--primary-light); }
+
+/* AKČNÍ LIŠTA SPRÁVCE (PŘIDÁNA TRANSITION) */
+.admin-actions {
+  transition: filter 0.4s ease, opacity 0.4s ease;
+}
 
 /* MODÁLNÍ OKNO PRO FORMULÁŘ */
 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.75); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 16px; backdrop-filter: blur(4px); }
@@ -203,6 +245,7 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
 .card-flip-container {
   perspective: 1000px;
   margin: 12px -4px;
+  transition: filter 0.4s ease, opacity 0.4s ease;
 }
 
 .card-flipper {
@@ -316,7 +359,7 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
 
 /* ===================================================== */
 /* SELEKTIVNÍ ROZOSTŘENÍ ŘÍZENÉ STAVEM NA BODY           */
-/* (Záhlaví .app-header zůstává plně ostré)              */
+/* (Záhlaví .app-header zůstává plně ostré a interaktivní)*/
 /* ===================================================== */
 
 body.card-flipped-active nav,
@@ -326,7 +369,6 @@ body.card-flipped-active .admin-actions {
   opacity: 0.5;
   pointer-events: none;
   user-select: none;
-  transition: filter 0.4s ease, opacity 0.4s ease;
 }
 
 body.card-flipped-active .card-flip-container:not(.active-focus),
@@ -336,7 +378,6 @@ body.card-flipped-active .card:not(.card-flip-container) {
   opacity: 0.45;
   pointer-events: none;
   user-select: none;
-  transition: filter 0.4s ease, opacity 0.4s ease;
 }
 
 .card-flip-container.active-focus {
