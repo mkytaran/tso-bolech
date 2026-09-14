@@ -341,13 +341,10 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
 .card-front, .card-back {
   grid-area: 1 / 1;
   width: 100%;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
   border-radius: 12px;
-  background: var(--surface);
+  background-color: var(--surface);
   border: 1px solid var(--border);
   box-sizing: border-box;
-  overflow: hidden;
   isolation: isolate;
 }
 
@@ -356,11 +353,21 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
   box-shadow: var(--shadow);
   transform: rotateY(0deg);
   z-index: 2;
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 /* Fyzický řez karty – POUZE pokud má tlačítko detailu (animuje se synchronně s cípem) */
 .card-front:has(.corner-fold-btn) {
   --fold-size: 28px;
+  -webkit-clip-path: polygon(
+    0 0,
+    calc(100% - var(--fold-size)) 0,
+    100% var(--fold-size),
+    100% 100%,
+    0 100%
+  );
   clip-path: polygon(
     0 0,
     calc(100% - var(--fold-size)) 0,
@@ -371,11 +378,15 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
   animation: naturalPaperFold 2.6s ease-in-out infinite;
 }
 
-/* Rub začíná na stejném horním okraji a přetéká dolů */
+/* Rub začíná nahoře, přetéká dolů a má backface-visibility: visible proti poloprůhlednosti */
 .card-back {
   transform: rotateY(180deg);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
   z-index: 1;
+  height: 0;           
+  overflow: visible;   
+  backface-visibility: visible;
+  -webkit-backface-visibility: visible;
 }
 
 .card-flipper.is-flipped .card-front {
