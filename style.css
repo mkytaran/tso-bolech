@@ -310,7 +310,7 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
 .folder-content { padding: 8px 8px 8px 24px; border-top: 1px solid var(--border); }
 
 /* ===================================================== */
-/* 3D KARTY – SPOLEČNÝ HORNÍ OKRAJ, RUB PŘETÉKÁ DOLŮ    */
+/* 3D KARTY – DYNAMICKY ODSUNUJÍCÍ SE RUB               */
 /* ===================================================== */
 
 .card-flip-container {
@@ -346,6 +346,8 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
   border: 1px solid var(--border);
   box-sizing: border-box;
   isolation: isolate;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 /* Líc karty */
@@ -354,11 +356,9 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
   transform: rotateY(0deg);
   z-index: 2;
   overflow: hidden;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
 }
 
-/* Fyzický řez karty – POUZE pokud má tlačítko detailu (animuje se synchronně s cípem) */
+/* Fyzický řez karty – POUZE pokud má tlačítko detailu */
 .card-front:has(.corner-fold-btn) {
   --fold-size: 28px;
   -webkit-clip-path: polygon(
@@ -378,15 +378,22 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
   animation: naturalPaperFold 2.6s ease-in-out infinite;
 }
 
-/* Rub začíná nahoře, přetéká dolů a má backface-visibility: visible proti poloprůhlednosti */
+/* 
+  Rubová strana:
+  - V zavřeném stavu (líc): absolutně skrytá nahoře, v toku stránky nezabírá žádné místo.
+  - V otočeném stavu (.is-flipped): vstoupí do mřížky, roztáhne se a dočasně odsunese kartu pod sebou.
+*/
 .card-back {
   transform: rotateY(180deg);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
   z-index: 1;
-  height: 0;           
-  overflow: visible;   
-  backface-visibility: visible;
-  -webkit-backface-visibility: visible;
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .card-flipper.is-flipped .card-front {
@@ -396,6 +403,10 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
 .card-flipper.is-flipped .card-back {
   z-index: 3;
   pointer-events: auto;
+  position: relative;
+  height: auto;
+  overflow: visible;
+  visibility: visible;
 }
 
 .card-clickable-area {
