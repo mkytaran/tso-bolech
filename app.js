@@ -1,10 +1,22 @@
-// Registrace Service Workeru pro PWA
+// Registrace a automatická aktualizace Service Workeru
 if ('serviceWorker' in navigator) {
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
+  });
+
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').then((registration) => {
-      console.log('ServiceWorker úspěšně zaregistrován.');
-    }).catch((error) => {
-      console.log('Registrace ServiceWorkeru selhala: ', error);
+    navigator.serviceWorker.register('./sw.js').then((reg) => {
+      reg.update(); // Zkontroluje novou verzi ihned po spuštění
+
+      setInterval(() => {
+        reg.update(); // Kontrola každých 30 minut
+      }, 30 * 60 * 1000);
+    }).catch((err) => {
+      console.warn('Registrace SW selhala:', err);
     });
   });
 }
