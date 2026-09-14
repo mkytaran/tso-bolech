@@ -1,3 +1,10 @@
+/* REGISTRACE PROMĚNNÉ PRO PLYNULOU INTERPOLACI ŘEZU */
+@property --fold-size {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 28px;
+}
+
 /* CSS PROMĚNNÉ PRO SVĚTLÝ REŽIM */
 :root {
   --font-scale: 1;
@@ -43,7 +50,7 @@
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
 }
 
-/* GLOBÁLNÍ VELIKOST PÍSMA ŘÍZENÁ PŘES ROOT */
+/* GLOBÁLNÍ VELIKOST PÍSMA */
 html {
   font-size: calc(16px * var(--font-scale));
 }
@@ -71,7 +78,7 @@ input, select, textarea {
 }
 input:focus, select:focus, textarea:focus { border-color: var(--primary-light); }
 
-/* ZÁHLAVÍ APLIKACE (Kompaktní profil bez overflow: hidden) */
+/* ZÁHLAVÍ APLIKACE */
 .app-header { 
   background: var(--primary); 
   box-shadow: 0 2px 10px rgba(0,0,0,0.3); 
@@ -85,7 +92,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary-light); 
   z-index: 100;
 }
 
-/* Logo s přesným limitem pro mobilní šířku */
 .header-logo {
   height: 34px; 
   max-width: 125px;
@@ -94,7 +100,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary-light); 
   flex-shrink: 0;
 }
 
-/* Pravá lišta tlačítek - nikdy se nesmí smrsknout */
 .header-actions {
   display: flex;
   align-items: center;
@@ -102,7 +107,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary-light); 
   flex-shrink: 0;
 }
 
-/* Tlačítko pro písmo v záhlaví */
 .font-toggle-btn {
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.25);
@@ -178,6 +182,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary-light); 
   justify-content: space-between; 
   align-items: center; 
   position: relative; 
+  border-top-left-radius: 11px;
+  border-top-right-radius: 11px;
 }
 
 /* BAREVNÉ ODLIŠENÍ TYPŮ AKCÍ */
@@ -304,19 +310,28 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
 .folder-content { padding: 8px 8px 8px 24px; border-top: 1px solid var(--border); }
 
 /* ===================================================== */
-/* 3D OBOUSTRANNÉ KARTY & OHNUTÝ ROH                     */
+/* 3D KARTY – SPOLEČNÝ HORNÍ OKRAJ, RUB PŘETÉKÁ DOLŮ    */
 /* ===================================================== */
 
 .card-flip-container {
   perspective: 1000px;
   margin: 12px -4px;
+  position: relative;
   transition: filter 0.4s ease, opacity 0.4s ease;
 }
 
+.card-flip-container.active-focus {
+  z-index: 50;
+}
+
 .card-flipper {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: start;
   position: relative;
-  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
   transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .card-flipper.is-flipped {
@@ -324,31 +339,52 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
 }
 
 .card-front, .card-back {
+  grid-area: 1 / 1;
   width: 100%;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   border-radius: 12px;
   background: var(--surface);
   border: 1px solid var(--border);
-  box-shadow: var(--shadow);
+  box-sizing: border-box;
   overflow: hidden;
+  isolation: isolate;
 }
 
+/* Líc karty */
+.card-front {
+  box-shadow: var(--shadow);
+  transform: rotateY(0deg);
+  z-index: 2;
+}
+
+/* Fyzický řez karty – POUZE pokud má tlačítko detailu (animuje se synchronně s cípem) */
+.card-front:has(.corner-fold-btn) {
+  --fold-size: 28px;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--fold-size)) 0,
+    100% var(--fold-size),
+    100% 100%,
+    0 100%
+  );
+  animation: naturalPaperFold 2.6s ease-in-out infinite;
+}
+
+/* Rub začíná na stejném horním okraji a přetéká dolů */
 .card-back {
-  position: absolute;
-  top: 0;
-  left: 0;
   transform: rotateY(180deg);
-  display: none; 
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+  z-index: 1;
 }
 
 .card-flipper.is-flipped .card-front {
-  display: none;
+  pointer-events: none;
 }
 
 .card-flipper.is-flipped .card-back {
-  position: relative;
-  display: block;
+  z-index: 3;
+  pointer-events: auto;
 }
 
 .card-clickable-area {
@@ -356,7 +392,10 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
   -webkit-tap-highlight-color: transparent;
 }
 
-/* OHNUTÝ ROH S IKONOU „i“ */
+/* ===================================================== */
+/* VARIANTA A: PLYNULÁ ANIMACE CELÉHO ROHU PAPÍRU        */
+/* ===================================================== */
+
 .corner-fold-btn {
   position: absolute;
   top: 0;
@@ -364,67 +403,69 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
   width: 48px;
   height: 48px;
   cursor: pointer;
-  z-index: 10;
+  z-index: 20;
   background: transparent;
   border: none;
   padding: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
+/* 1. Odhalený prostor pod ohybem – kopíruje proměnnou --fold-size */
 .corner-fold-btn::before {
-  content: "i";
+  content: "";
   position: absolute;
   top: 0;
   right: 0;
-  width: 44px;
-  height: 44px;
+  width: var(--fold-size);
+  height: var(--fold-size);
   clip-path: polygon(100% 0, 0 0, 100% 100%);
   background-color: var(--bg);
-  color: var(--primary-light);
-  font-size: 13px;
-  font-weight: 800;
-  font-family: serif;
-  font-style: italic;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  padding-top: 7px;
-  padding-right: 11px;
-  box-sizing: border-box;
-  transition: all 0.2s ease;
-  line-height: 1;
+  animation: naturalPaperFold 2.6s ease-in-out infinite;
 }
 
+/* 2. Ohnutý cíp papíru se stínem – kopíruje proměnnou --fold-size */
 .corner-fold-btn::after {
   content: "";
   position: absolute;
   top: 0;
   right: 0;
-  width: 42px;
-  height: 42px;
+  width: var(--fold-size);
+  height: var(--fold-size);
   clip-path: polygon(0 0, 0 100%, 100% 100%);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.15) 100%);
-  filter: drop-shadow(-3px 3px 4px rgba(0, 0, 0, 0.35));
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0.15) 100%);
+  filter: drop-shadow(-2px 2px 3px rgba(0, 0, 0, 0.35));
   backdrop-filter: blur(2px);
-  transition: all 0.2s ease;
-}
-
-.dark-mode .corner-fold-btn::before {
-  color: var(--primary-light);
+  animation: naturalPaperFold 2.6s ease-in-out infinite;
 }
 
 .dark-mode .corner-fold-btn::after {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.1) 100%);
-  filter: drop-shadow(-3px 3px 5px rgba(0, 0, 0, 0.6));
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.08) 100%);
+  filter: drop-shadow(-3px 3px 5px rgba(0, 0, 0, 0.7));
 }
 
-.corner-fold-btn:hover::after {
-  width: 45px;
-  height: 45px;
+/* Zastavení animace při dotyku / najetí a pevné poodhrnutí */
+.card-front:has(.corner-fold-btn:hover),
+.card-front:has(.corner-fold-btn:active),
+.corner-fold-btn:hover::before,
+.corner-fold-btn:hover::after,
+.corner-fold-btn:active::before,
+.corner-fold-btn:active::after {
+  animation: none;
+  --fold-size: 40px;
+}
+
+/* Plynulá interpolace rozměru ohybu pro kartu, díru i cíp současně */
+@keyframes naturalPaperFold {
+  0%, 60%, 100% {
+    --fold-size: 28px;
+  }
+  75% {
+    --fold-size: 38px;
+  }
 }
 
 /* ===================================================== */
 /* SELEKTIVNÍ ROZOSTŘENÍ ŘÍZENÉ STAVEM NA BODY           */
-/* (.app-header zůstává vždy ostré a interaktivní)       */
 /* ===================================================== */
 
 body.card-flipped-active nav,
@@ -443,15 +484,6 @@ body.card-flipped-active .card:not(.card-flip-container) {
   opacity: 0.45;
   pointer-events: none;
   user-select: none;
-}
-
-.card-flip-container.active-focus {
-  position: relative;
-  z-index: 10;
-}
-
-.card-flipper.is-flipped .card-back {
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
 }
 
 /* ===================================================== */
