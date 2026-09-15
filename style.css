@@ -310,7 +310,7 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
 .folder-content { padding: 8px 8px 8px 24px; border-top: 1px solid var(--border); }
 
 /* ===================================================== */
-/* 3D KARTY – DYNAMICKY ODSUNUJÍCÍ SE RUB               */
+/* 3D KARTY – ABSOLUTNÍ RUB BEZ POSUNU DALŠÍCH KARET    */
 /* ===================================================== */
 
 .card-flip-container {
@@ -318,16 +318,14 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
   margin: 12px -4px;
   position: relative;
   transition: filter 0.4s ease, opacity 0.4s ease;
+  z-index: 10;
 }
 
 .card-flip-container.active-focus {
-  z-index: 50;
+  z-index: 200; /* Zvedne otočenou kartu bezpečně nad okolní obsah */
 }
 
 .card-flipper {
-  display: grid;
-  grid-template-columns: 1fr;
-  align-items: start;
   position: relative;
   width: 100%;
   transform-style: preserve-3d;
@@ -338,8 +336,8 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
   transform: rotateY(180deg);
 }
 
+/* Společný základ pro obě strany */
 .card-front, .card-back {
-  grid-area: 1 / 1;
   width: 100%;
   border-radius: 12px;
   background-color: var(--surface);
@@ -350,8 +348,9 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
   -webkit-backface-visibility: hidden;
 }
 
-/* Líc karty */
+/* LÍC: Zůstává v toku dokumentu a určuje standardní rozteč */
 .card-front {
+  position: relative;
   box-shadow: var(--shadow);
   transform: rotateY(0deg);
   z-index: 2;
@@ -378,21 +377,19 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
   animation: naturalPaperFold 2.6s ease-in-out infinite;
 }
 
-/* 
-  Rubová strana:
-  - V zavřeném stavu (líc): absolutně skrytá nahoře, v toku stránky nezabírá žádné místo.
-  - V otočeném stavu (.is-flipped): vstoupí do mřížky, roztáhne se a dočasně odsunese kartu pod sebou.
-*/
+/* Rub je stoprocentně neprůhledný s plnou barvou povrchu */
 .card-back {
-  transform: rotateY(180deg);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
-  z-index: 1;
   position: absolute;
   top: 0;
   left: 0;
-  height: 0;
-  overflow: hidden;
-  visibility: hidden;
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+  transform: rotateY(180deg);
+  background-color: var(--surface) !important;
+  opacity: 1 !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+  z-index: 1;
   pointer-events: none;
 }
 
@@ -403,10 +400,6 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
 .card-flipper.is-flipped .card-back {
   z-index: 3;
   pointer-events: auto;
-  position: relative;
-  height: auto;
-  overflow: visible;
-  visibility: visible;
 }
 
 .card-clickable-area {
