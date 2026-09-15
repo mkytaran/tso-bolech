@@ -10,10 +10,9 @@ if ('serviceWorker' in navigator) {
 
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').then((reg) => {
-      reg.update(); // Zkontroluje novou verzi ihned po spuštění
-
+      reg.update();
       setInterval(() => {
-        reg.update(); // Kontrola každých 30 minut
+        reg.update();
       }, 30 * 60 * 1000);
     }).catch((err) => {
       console.warn('Registrace SW selhala:', err);
@@ -27,7 +26,39 @@ if ('serviceWorker' in navigator) {
 const API_URL = "https://script.google.com/macros/s/AKfycbwVHLODjApvEPwE4RQo5nQxdr9Y8Ng-EoWTGGsH3l45L174huUMCh_99edIV-cbXQVHQQ/exec";
 
 let user = null; 
-let appData = { akce: [], noty: [], ucast: [] };
+let appData = { akce: [], noty: [], ucast: [], clenove: [], zadosti: [] };
+
+// =====================================================
+// DEFINICE NÁSTROJOVÝCH SKUPIN A PEVNÝCH ŽIDLÍ ORCHESTRU
+// =====================================================
+const PARTITURA_SECTIONS = [
+  "1. Housle", "2. Housle", "Violy", "Violoncella", "Kontrabasy", 
+  "Flétny", "Hoboje", "Klarinety / Saxofony", "Fagoty", "Lesní rohy", 
+  "Trubky", "Trombóny a Tuba", "Bicí nástroje", "Klávesy", "Kytary", "Zpěv", 
+  "Smyčce", "Dechy", "Dřeva", "Žestě", "Hosté"
+];
+
+// Pevné mapování ID bodů v SVG na židle sekce
+const ORCHESTRA_SEATS = {
+  "1. Housle": ["spot-vl1-1", "spot-vl1-2", "spot-vl1-3", "spot-vl1-4", "spot-vl1-5", "spot-vl1-6"],
+  "2. Housle": ["spot-vl2-1", "spot-vl2-2", "spot-vl2-3", "spot-vl2-4", "spot-vl2-5", "spot-vl2-6"],
+  "Violy": ["spot-vla-1", "spot-vla-2", "spot-vla-3", "spot-vla-4", "spot-vla-5", "spot-vla-6"],
+  "Violoncella": ["spot-vc-1", "spot-vc-2", "spot-vc-3", "spot-vc-4", "spot-vc-5", "spot-vc-6"],
+  "Kontrabasy": ["spot-cb-1", "spot-cb-2", "spot-cb-3"],
+  "Flétny": ["spot-fl-1", "spot-fl-2"],
+  "Hoboje": ["spot-ob-1", "spot-ob-2"],
+  "Klarinety / Saxofony": ["spot-kl-1", "spot-kl-2"],
+  "Fagoty": ["spot-fg-1", "spot-fg-2"],
+  "Lesní rohy": ["spot-horn-1", "spot-horn-2", "spot-horn-3"],
+  "Trubky": ["spot-trp-1", "spot-trp-2"],
+  "Trombóny a Tuba": ["spot-trb-1", "spot-trb-2", "spot-tuba-1"],
+  "Bicí nástroje": ["spot-bici-1", "spot-bici-2"],
+  "Klávesy": ["spot-keys-1"],
+  "Kytary": ["spot-guit-1"]
+};
+
+const SMYCKE_SECTIONS = ["housl", "viol", "cell", "kontrabas", "smyčce", "smycce"];
+const DECHOVE_SECTIONS = ["flétn", "hoboj", "klarinet", "saxofon", "fagot", "roh", "trubk", "trubc", "trombón", "trombon", "tuba", "tuby", "tubě", "tubou", "dech", "dřev", "žest"];
 
 // =====================================================
 // GLOBÁLNÍ NASTAVENÍ VELIKOSTI PÍSMA
@@ -102,27 +133,6 @@ function openFontSizeModal() {
 
   document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
-
-// =====================================================
-// DEFINICE NÁSTROJŮ A SKUPIN ORCHESTRU
-// =====================================================
-const ORCHESTR_SKUPINY = {
-  "Smyčcové nástroje": ["1. Housle", "2. Housle", "Violy", "Violoncella", "Kontrabasy"],
-  "Dechové nástroje": ["Flétny", "Hoboje", "Klarinety / Saxofony", "Fagoty", "Lesní rohy", "Trubky", "Trombóny a Tuba"],
-  "Ostatní nástroje a zpěv": ["Bicí nástroje", "Klávesy", "Kytary", "Zpěv"],
-  "Společné party": ["Smyčce", "Dechy", "Dřeva", "Žestě"],
-  "Hosté": ["Hosté"]
-};
-
-const PARTITURA_SECTIONS = [
-  "1. Housle", "2. Housle", "Violy", "Violoncella", "Kontrabasy", 
-  "Flétny", "Hoboje", "Klarinety / Saxofony", "Fagoty", "Lesní rohy", 
-  "Trubky", "Trombóny a Tuba", "Bicí nástroje", "Klávesy", "Kytary", "Zpěv", 
-  "Smyčce", "Dechy", "Dřeva", "Žestě", "Hosté"
-];
-
-const SMYCKE_SECTIONS = ["housl", "viol", "cell", "kontrabas", "smyčce", "smycce"];
-const DECHOVE_SECTIONS = ["flétn", "hoboj", "klarinet", "saxofon", "fagot", "roh", "trubk", "trubc", "trombón", "trombon", "tuba", "tuby", "tubě", "tubou", "dech", "dřev", "žest"];
 
 function initTheme() {
   const savedTheme = localStorage.getItem('bolech_theme');
@@ -261,194 +271,6 @@ function isEventVisibleForUser(akce) {
   return true; 
 }
 
-function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
-  const kontejner = document.getElementById('notyContainer');
-  const infoText = document.getElementById('notyNastrojInfo');
-  
-  if (!kontejner) return;
-
-  const userRole = String(user.role || "").trim().toLowerCase();
-  const isVedení = ['admin', 'dirigent', 'vedení', 'vedeni'].includes(userRole);
-
-  if (infoText) {
-    infoText.textContent = jeDirigent ? "Režim partitury" : `Zobrazený part: ${nastrojUzivatele}`;
-  }
-
-  let htmlDropdown = '';
-  if (isVedení) {
-    htmlDropdown = `
-      <div style="margin-bottom: 20px; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
-        <label style="font-size: 13px; font-weight: bold; display: block; margin-bottom: 8px; color: var(--text);">👀 Náhled partů (pouze pro vedení):</label>
-        <select class="modal-input" onchange="zmenitPohledNot(this.value)" style="margin-bottom:0; font-size:14px; background: var(--surface);">
-          <option value="Vlastní part" ${nastrojUzivatele === user.section ? 'selected' : ''}>Můj nástroj / Výchozí pohled (${user.section})</option>
-          ${PARTITURA_SECTIONS.map(s => `<option value="${s}" ${nastrojUzivatele === s && nastrojUzivatele !== user.section ? 'selected' : ''}>${s}</option>`).join('')}
-        </select>
-      </div>
-    `;
-  }
-
-  const relevantniNoty = dataNoty.filter(nota => {
-    let aktivni = String(nota.aktivni || '').toUpperCase().trim();
-    if (aktivni !== 'TRUE' && aktivni !== 'ANO' && aktivni !== '1') return false;
-    if (jeDirigent && nota.sekce === 'Partitura') return true;
-    if (nota.sekce === nastrojUzivatele) return true;
-    
-    if (nota.sekce === 'Housle' && (nastrojUzivatele === '1. Housle' || nastrojUzivatele === '2. Housle')) return true;
-    if (nota.sekce === 'Smyčce' && ['1. Housle', '2. Housle', 'Violy', 'Violoncella', 'Kontrabasy'].includes(nastrojUzivatele)) return true;
-    if (nota.sekce === 'Dechy' && ['Flétny', 'Hoboje', 'Klarinety / Saxofony', 'Fagoty', 'Lesní rohy', 'Trubky', 'Trombóny a Tuba'].includes(nastrojUzivatele)) return true;
-    if (nota.sekce === 'Dřeva' && ['Flétny', 'Hoboje', 'Klarinety / Saxofony', 'Fagoty'].includes(nastrojUzivatele)) return true;
-    if (nota.sekce === 'Žestě' && ['Lesní rohy', 'Trubky', 'Trombóny a Tuba'].includes(nastrojUzivatele)) return true;
-    return false;
-  });
-
-  let html = htmlDropdown;
-
-  if (relevantniNoty.length === 0) {
-    kontejner.innerHTML = html + '<p style="color: var(--text-muted); text-align: center; margin-top: 40px; padding: 20px;">Pro tento part aktuálně nejsou k dispozici žádné noty na repertoáru.</p>';
-    return;
-  }
-
-  const notyPodleProgramu = {};
-  relevantniNoty.forEach(nota => {
-    const program = nota.program || 'Ostatní repertoár';
-    if (!notyPodleProgramu[program]) notyPodleProgramu[program] = [];
-    notyPodleProgramu[program].push(nota);
-  });
-
-  for (const [program, noty] of Object.entries(notyPodleProgramu)) {
-    let mujEmail = user.email || '';
-    if (!mujEmail && appData.clenove) {
-      const ja = appData.clenove.find(c => c.jmeno === user.name || c.name === user.name);
-      if (ja && ja.email) mujEmail = ja.email.trim();
-    }
-    
-    let emailPredmet = encodeURIComponent(`Noty TSO Bolech - ${program}`);
-    let emailTelo = `Dobrý den,\n\nzasílám odkazy pro přímé stažení not (Program: ${program}, Part: ${nastrojUzivatele}).\n\n`;
-    noty.forEach(n => {
-      let stahovaciOdkaz = n.odkaz.replace(/.*\/d\/([a-zA-Z0-9_-]+).*/, 'https://drive.google.com/uc?export=download&id=$1');
-      emailTelo += `- ${n.skladba}:\n  ${stahovaciOdkaz}\n\n`;
-    });
-    emailTelo += `Portál TSO Bolech`;
-    let mailtoOdkaz = `mailto:${mujEmail}?subject=${emailPredmet}&body=${encodeURIComponent(emailTelo)}`;
-
-    html += `
-      <div class="program-header">
-        <h3 class="program-title">${program}</h3>
-        <a href="${mailtoOdkaz}" class="email-btn" title="Přeposlat odkazy na svůj e-mail">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
-          Přeposlat sobě
-        </a>
-      </div>`;
-      
-    noty.forEach(nota => {
-      html += `
-        <div class="nota-card">
-          <div class="nota-info">
-            <h4>${nota.skladba}</h4>
-            <span>${nota.sekce}</span>
-          </div>
-          <a href="${nota.odkaz.replace(/.*\/d\/([a-zA-Z0-9_-]+).*/, 'https://drive.google.com/uc?export=download&id=$1')}" target="_blank" class="nota-down-btn" title="Stáhnout">
-            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-          </a>
-        </div>`;
-    });
-  }
-  
-  kontejner.innerHTML = html;
-}
-
-// --- PARSOVÁNÍ STRUKTURY POZNÁMKY ---
-function parsovatPoznamku(rawNote) {
-  let mainNote = rawNote || '';
-  let schedData = '';
-  let progData = '';
-
-  if (mainNote.includes('===HARMONOGRAM===')) {
-    let partsH = mainNote.split('===HARMONOGRAM===');
-    mainNote = partsH[0].trim();
-    let rest = partsH[1].trim();
-    if (rest.includes('===PROGRAM===')) {
-      let partsP = rest.split('===PROGRAM===');
-      schedData = partsP[0].trim();
-      progData = partsP[1].trim();
-    } else {
-      schedData = rest;
-    }
-  } else if (mainNote.includes('===PROGRAM===')) {
-    let partsP = mainNote.split('===PROGRAM===');
-    mainNote = partsP[0].trim();
-    let rest = partsP[1].trim();
-    if (rest.includes('===HARMONOGRAM===')) {
-      let partsH = rest.split('===HARMONOGRAM===');
-      progData = partsH[0].trim();
-      schedData = partsH[1].trim();
-    } else {
-      progData = rest;
-    }
-  }
-
-  return { mainNote, schedData, progData };
-}
-
-// --- VYKRESLENÍ HARMONOGRAMU ---
-function formatHarmonogramHtml(sData) {
-  if (!sData) return '';
-  let html = `<div style="margin-top:20px; padding-top:16px; border-top: 1px dashed var(--border);">
-      <h4 style="margin-top:0; margin-bottom:12px; font-size:18px; color:var(--text);">⏱️ Časový plán</h4>
-      <table style="width:100%; border-collapse: collapse; font-size:16px;">`;
-  sData.split('\n').forEach((line, index, arr) => {
-      let p = line.split('|');
-      let time = escapeHtml(p[0]||'').trim();
-      let desc = escapeHtml(p[1]||'').trim().replace(/\[BR\]/g, '<br>');
-      let borderObj = (index === arr.length - 1) ? 'none' : '1px solid var(--border)';
-      
-      html += `<tr>
-          <td style="padding:8px 12px 8px 0; vertical-align:top; text-align:right; border-bottom:${borderObj}; white-space:nowrap; font-weight:bold; width:1%; color:var(--text);">${time}</td>
-          <td style="padding:8px 0; vertical-align:top; border-bottom:${borderObj}; color:var(--text);">${desc}</td>
-      </tr>`;
-  });
-  html += `</table></div>`;
-  return html;
-}
-
-// --- VYKRESLENÍ PROGRAMU (ČÍSLO VPRAVO, AUTOR A DÍLO VLEVO) ---
-function formatProgramHtml(pData) {
-  if (!pData) return '';
-  let rows = '';
-  pData.split('\n').forEach(line => {
-    let parts = line.split('|');
-    if (parts.length >= 2) {
-      let num = escapeHtml(parts[0] || '').trim();
-      let author = escapeHtml(parts[1] || '').trim();
-      let piece = escapeHtml(parts[2] || '').trim().replace(/\[BR\]/g, '<br>');
-      rows += `
-        <tr>
-          <td class="col-num">${num ? num + '.' : ''}</td>
-          <td class="col-author">${author}</td>
-          <td class="col-piece">${piece}</td>
-        </tr>
-      `;
-    }
-  });
-
-  if (!rows) return '';
-
-  return `
-    <div style="margin-top: 10px;">
-      <h4 style="margin-bottom: 8px; font-size: 16px; color: var(--text);">🎼 Program</h4>
-      <table class="program-table">
-        <tbody>
-          ${rows}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
 // =====================================================
 // ŘÍZENÍ OTOČENÍ KARET
 // =====================================================
@@ -466,7 +288,6 @@ function flipCard(cardId) {
 
   if (!isCurrentlyFlipped) {
     zavritOtocenouKartu();
-    
     flipper.classList.add('is-flipped');
     if (container) container.classList.add('active-focus');
     document.body.classList.add('card-flipped-active');
@@ -480,14 +301,15 @@ function zavritOtocenouKartu() {
   if (!aktivniOtocenaKartaId && !document.body.classList.contains('card-flipped-active')) {
     return;
   }
-
   aktivniOtocenaKartaId = null;
   document.body.classList.remove('card-flipped-active');
-
   document.querySelectorAll('.card-flipper.is-flipped').forEach(f => f.classList.remove('is-flipped'));
   document.querySelectorAll('.card-flip-container.active-focus').forEach(c => c.classList.remove('active-focus'));
 }
 
+// =====================================================
+// VYKRESLENÍ AKCÍ (HLAVNÍ STRÁNKA S 3 TLAČÍTKY PRO VEDENÍ)
+// =====================================================
 function renderEvents() {
   zavritOtocenouKartu();
 
@@ -500,9 +322,10 @@ function renderEvents() {
   
   if (isVedení) {
     cont.innerHTML += `
-      <div class="admin-actions" style="display:flex; gap:12px; margin-bottom:16px;">
-        <button class="btn" style="background:var(--success); flex:1;" onclick="openAkceForm()">➕ Přidat akci</button>
-        <button class="btn" style="background:var(--primary-light); flex:1;" onclick="openGuestManager()">👥 Správa hostů</button>
+      <div class="admin-actions" style="display:flex; gap:8px; margin-bottom:16px;">
+        <button class="btn" style="background:var(--success); flex:1; padding:12px 6px; font-size:14px;" onclick="openAkceForm()">➕ Přidat</button>
+        <button class="btn" style="background:var(--primary); flex:1; padding:12px 6px; font-size:14px;" onclick="openOrchestrModal()">🎼 Orchestr</button>
+        <button class="btn" style="background:var(--primary-light); flex:1; padding:12px 6px; font-size:14px;" onclick="openGuestManager()">👥 Hosté</button>
       </div>`;
   }
 
@@ -547,7 +370,6 @@ function generateAkceHtml(akce, isVedení) {
         <div class="card-front">
           ${hasDetailsOnBack ? `<button type="button" class="corner-fold-btn" onclick="event.stopPropagation(); flipCard('${cardFlipperId}')" title="Zobrazit program a detaily"></button>` : ''}
           
-          <!-- Horní zóna: klepnutím se otočí -->
           <div class="${hasDetailsOnBack ? 'card-clickable-area' : ''}" ${hasDetailsOnBack ? `onclick="flipCard('${cardFlipperId}')"` : ''}>
             <div class="card-top-bar ${barClass}"><span>${akce.typ}</span><span>🗓️ ${akce.datum}</span></div>
             <div class="card-body" style="padding-bottom: 0;">
@@ -577,7 +399,7 @@ function generateAkceHtml(akce, isVedení) {
           </div>
         </div>
 
-        <!-- ZADNÍ STRANA KARTY (Klepnutím kamkoliv se otočí zpět na líc) -->
+        <!-- ZADNÍ STRANA KARTY -->
         <div class="card-back card-clickable-area" onclick="flipCard('${cardFlipperId}')" title="Klepnutím otočíte zpět na přehled">
           <div class="card-top-bar ${barClass}">
             <span>DETAILY & PROGRAM</span>
@@ -592,53 +414,6 @@ function generateAkceHtml(akce, isVedení) {
     </div>`;
 }
 
-function generateOznameniHtml(akce, isVedení, isArchiv = false) {
-  let editBtn = isVedení ? `<button class="edit-btn" onclick='openAkceForm(${JSON.stringify(akce).replace(/'/g, "&#39;")})'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>` : "";
-  
-  let akceBtn = "";
-  if (isVedení) {
-    if (!isArchiv) {
-      akceBtn = `<button class="btn" style="background:transparent; color:var(--text-muted); border:1px solid var(--border); padding:8px; margin-top:16px; font-size:14px;" onclick="archivovatOznameni('${akce.id}')">🗃️ Přesunout do infoarchivu</button>`;
-    } else {
-      akceBtn = `<button class="btn" style="background:transparent; color:var(--primary-light); border:1px solid var(--primary-light); padding:8px; margin-top:16px; font-size:14px;" onclick="obnovitOznameni('${akce.id}')">↩️ Vrátit zpět na hlavní stránku</button>`;
-    }
-  }
-
-  const parsed = parsovatPoznamku(akce.poznamka);
-  
-  return `
-    <div class="card card-oznameni">
-      <div class="card-top-bar bar-oznameni"><span>💡 Informace</span><span>🗓️ ${akce.datum}</span></div>
-      <div class="card-body" style="padding-top:12px;">
-        <div class="card-title-row" style="margin-bottom:4px;"><div class="card-title" style="font-size:20px;">${akce.nazev}</div>${editBtn}</div>
-        ${parsed.mainNote ? `<div class="oznameni-text" style="margin-top:12px;">${escapeHtml(parsed.mainNote)}</div>` : ''}
-        ${formatHarmonogramHtml(parsed.schedData)}
-        ${formatProgramHtml(parsed.progData)}
-        ${akceBtn}
-      </div>
-    </div>`;
-}
-
-function archivovatOznameni(akceId) {
-  if(confirm("Přesunout tuto informaci do infoarchivu? Zmizí z hlavní stránky.")) {
-    const akce = appData.akce.find(a => String(a.id) === String(akceId));
-    if(!akce) return;
-    akce.typ = 'Informace (Infoarchiv)';
-    runGoogleScript("saveAkce", akce).then(res => {
-      if(res.success) { localStorage.setItem("bolech_data_cache", JSON.stringify(appData)); renderEvents(); }
-    });
-  }
-}
-
-function obnovitOznameni(akceId) {
-  const akce = appData.akce.find(a => String(a.id) === String(akceId));
-  if(!akce) return;
-  akce.typ = 'Informace';
-  runGoogleScript("saveAkce", akce).then(res => {
-    if(res.success) { localStorage.setItem("bolech_data_cache", JSON.stringify(appData)); renderEvents(); }
-  });
-}
-
 function generateRosterHtml(akceId) {
   const potvrdili = (appData.ucast || []).filter(u => String(u.akceId) === String(akceId) && u.stav === 'Ano');
   const grouped = {};
@@ -648,8 +423,22 @@ function generateRosterHtml(akceId) {
     if (!grouped[nalezenaSekce]) grouped[nalezenaSekce] = [];
     grouped[nalezenaSekce].push(p.jmeno);
   });
-  let html = `<button class="roster-toggle" onclick="toggleRoster('${akceId}')"><span>👥 Přihlášeno (${potvrdili.length})</span><span id="arrow-${akceId}">▼</span></button><div id="content-${akceId}" class="roster-content">`;
-  PARTITURA_SECTIONS.forEach(s => { if (grouped[s]) html += `<div class="roster-section"><div class="roster-section-title">${s}</div><div class="roster-members">${grouped[s].join(', ')}</div></div>`; });
+
+  // TLAČÍTKO PRO ROZVRŽENÍ PÓDIA JE PRVNÍ POLOŽKOU V ROLETCE
+  let html = `
+    <button class="roster-toggle" onclick="toggleRoster('${akceId}')">
+      <span>👥 Přihlášeno (${potvrdili.length})</span>
+      <span id="arrow-${akceId}">▼</span>
+    </button>
+    <div id="content-${akceId}" class="roster-content">
+      <button type="button" class="btn-stage-toggle" onclick="openStageModalForAkce('${akceId}')">
+        🗺️ Zobrazit rozesazení orchestru
+      </button>
+  `;
+
+  PARTITURA_SECTIONS.forEach(s => { 
+    if (grouped[s]) html += `<div class="roster-section"><div class="roster-section-title">${s}</div><div class="roster-members">${grouped[s].join(', ')}</div></div>`; 
+  });
   if (grouped["Ostatní / Hosté"]) html += `<div class="roster-section"><div class="roster-section-title">Ostatní / Hosté</div><div class="roster-members">${grouped["Ostatní / Hosté"].join(', ')}</div></div>`;
   if (potvrdili.length === 0) html += '<div style="font-size:15px; color:var(--text-muted); font-style:italic; padding:8px 0;">Zatím nikdo nepotvrdil účast.</div>';
   return html + '</div>';
@@ -662,6 +451,339 @@ function toggleRoster(id) {
   else { content.style.display = 'block'; arrow.innerText = '▲'; }
 }
 
+// =========================================================================
+// ŠABLONA SVG PÓDIA A JEHO NAPLNĚNÍ DATY
+// =========================================================================
+function getOrchestraSvgHtml(prefix = "stage") {
+  return `
+  <div class="stage-wrapper">
+    <div class="stage-legend">
+      <span class="stage-legend-item"><span class="stage-dot ano"></span> Hraje</span>
+      <span class="stage-legend-item"><span class="stage-dot ne"></span> Omluven</span>
+      <span class="stage-legend-item"><span class="stage-dot neodpovedel"></span> Neodp.</span>
+    </div>
+
+    <svg viewBox="0 0 500 520" id="${prefix}-svg" style="width:100%; height:auto; display:block; user-select:none;">
+      <!-- Zóny podkresu -->
+      <rect x="160" y="10" width="180" height="50" rx="8" fill="var(--sec-bg, rgba(5,38,52,0.035))"/>
+      <rect x="50" y="68" width="400" height="58" rx="8" fill="var(--sec-bg, rgba(5,38,52,0.035))"/>
+      <rect x="25" y="134" width="450" height="116" rx="8" fill="var(--sec-bg, rgba(5,38,52,0.035))"/>
+      <rect x="15" y="260" width="470" height="250" rx="10" fill="var(--sec-bg, rgba(5,38,52,0.035))"/>
+
+      <!-- 4. PATRO: BICÍ -->
+      <text x="250" y="24" class="sec-label">Bicí nástroje</text>
+      <g class="player-spot" id="${prefix}-spot-bici-1" transform="translate(230, 42)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-bici-2" transform="translate(270, 42)"><circle r="10.5"/></g>
+
+      <!-- 3. PATRO: ŽESTĚ -->
+      <text x="120" y="83" class="sec-label">Lesní rohy</text>
+      <g class="player-spot" id="${prefix}-spot-horn-1" transform="translate(95, 102)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-horn-2" transform="translate(120, 102)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-horn-3" transform="translate(145, 102)"><circle r="10.5"/></g>
+
+      <text x="250" y="83" class="sec-label">Trubky</text>
+      <g class="player-spot" id="${prefix}-spot-trp-1" transform="translate(235, 102)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-trp-2" transform="translate(265, 102)"><circle r="10.5"/></g>
+
+      <text x="375" y="83" class="sec-label">Pozouny / Tuba</text>
+      <g class="player-spot" id="${prefix}-spot-trb-1" transform="translate(345, 102)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-trb-2" transform="translate(372, 102)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-tuba-1" transform="translate(402, 102)"><circle r="10.5"/></g>
+
+      <!-- 2. PATRO: DŘEVA A DOPROVOD -->
+      <text x="85" y="148" class="sec-label">Klarinety</text>
+      <g class="player-spot" id="${prefix}-spot-kl-1" transform="translate(70, 166)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-kl-2" transform="translate(98, 166)"><circle r="10.5"/></g>
+
+      <text x="195" y="148" class="sec-label">Fagoty</text>
+      <g class="player-spot" id="${prefix}-spot-fg-1" transform="translate(180, 166)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-fg-2" transform="translate(208, 166)"><circle r="10.5"/></g>
+
+      <text x="310" y="148" class="sec-label">Klávesy</text>
+      <g class="player-spot" id="${prefix}-spot-keys-1" transform="translate(310, 166)"><circle r="10.5"/></g>
+
+      <text x="415" y="148" class="sec-label">Kytara</text>
+      <g class="player-spot" id="${prefix}-spot-guit-1" transform="translate(415, 166)"><circle r="10.5"/></g>
+
+      <text x="140" y="202" class="sec-label">Flétny</text>
+      <g class="player-spot" id="${prefix}-spot-fl-1" transform="translate(125, 222)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-fl-2" transform="translate(155, 222)"><circle r="10.5"/></g>
+
+      <text x="340" y="202" class="sec-label">Hoboje</text>
+      <g class="player-spot" id="${prefix}-spot-ob-1" transform="translate(325, 222)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-ob-2" transform="translate(355, 222)"><circle r="10.5"/></g>
+
+      <!-- 1. PATRO: KONTRABASY VZADU -->
+      <text x="250" y="278" class="sec-label">Kontrabasy</text>
+      <g class="player-spot" id="${prefix}-spot-cb-1" transform="translate(205, 296)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-cb-2" transform="translate(250, 296)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-cb-3" transform="translate(295, 296)"><circle r="10.5"/></g>
+
+      <!-- SMYČCE ČELNĚ (STEJNÉ ROZESTUPY ŘAD: Y = 370, 406, 442) -->
+      <!-- 1. Housle -->
+      <text x="75" y="348" class="sec-label">1. Housle</text>
+      <g class="player-spot" id="${prefix}-spot-vl1-5" transform="translate(61, 370)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-vl1-6" transform="translate(89, 370)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-vl1-3" transform="translate(61, 406)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-vl1-4" transform="translate(89, 406)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-vl1-1" transform="translate(61, 442)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-vl1-2" transform="translate(89, 442)"><circle r="10.5"/></g>
+
+      <!-- 2. Housle -->
+      <text x="190" y="348" class="sec-label">2. Housle</text>
+      <g class="player-spot" id="${prefix}-spot-vl2-5" transform="translate(176, 370)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-vl2-6" transform="translate(204, 370)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-vl2-3" transform="translate(176, 406)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-vl2-4" transform="translate(204, 406)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-vl2-1" transform="translate(176, 442)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-vl2-2" transform="translate(204, 442)"><circle r="10.5"/></g>
+
+      <!-- Violy -->
+      <text x="310" y="348" class="sec-label">Violy</text>
+      <g class="player-spot" id="${prefix}-spot-vla-5" transform="translate(296, 370)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-vla-6" transform="translate(324, 370)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-vla-3" transform="translate(296, 406)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-vla-4" transform="translate(324, 406)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-vla-1" transform="translate(296, 442)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-vla-2" transform="translate(324, 442)"><circle r="10.5"/></g>
+
+      <!-- Violoncella -->
+      <text x="425" y="348" class="sec-label">Violoncella</text>
+      <g class="player-spot" id="${prefix}-spot-vc-5" transform="translate(411, 370)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-vc-6" transform="translate(439, 370)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-vc-3" transform="translate(411, 406)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-vc-4" transform="translate(439, 406)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-vc-1" transform="translate(411, 442)"><circle r="10.5"/></g>
+      <g class="player-spot" id="${prefix}-spot-vc-2" transform="translate(439, 442)"><circle r="10.5"/></g>
+
+      <!-- Tooltip přímo v SVG -->
+      <g id="${prefix}-tooltip" opacity="0" pointer-events="none" style="transition: opacity 0.15s ease;">
+        <rect id="${prefix}-tt-bg" x="0" y="0" width="100" height="24" rx="5" fill="#052634"/>
+        <text id="${prefix}-tt-text" x="50" y="16" fill="#ffffff" font-size="10" font-weight="700" text-anchor="middle">Jméno</text>
+      </g>
+    </svg>
+  </div>`;
+}
+
+function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}) {
+  const ucastAkce = (appData.ucast || []).filter(u => String(u.akceId) === String(akceId));
+  
+  // Získání konfigurace akce z úložiště
+  const savedCfg = JSON.parse(localStorage.getItem(`bolech_orch_${akceId}`) || "{}");
+  const kmName = cfgKM !== null ? cfgKM : (savedCfg.km || "");
+  const limits = Object.keys(cfgLimits).length > 0 ? cfgLimits : (savedCfg.limits || {});
+
+  Object.keys(ORCHESTRA_SEATS).forEach(sec => {
+    let players = (appData.clenove || []).filter(c => c.sekce === sec);
+
+    // Pokud je vybrán KM, posuneme ho na 1. židli
+    if (sec === "1. Housle" && kmName) {
+      players.sort((a, b) => (a.celeJmeno === kmName ? -1 : b.celeJmeno === kmName ? 1 : 0));
+    }
+
+    const seatIds = ORCHESTRA_SEATS[sec];
+    const maxCapacity = limits[sec] !== undefined ? parseInt(limits[sec], 10) : seatIds.length;
+
+    seatIds.forEach((sid, idx) => {
+      const spotEl = document.getElementById(`${prefix}-${sid}`);
+      if (!spotEl) return;
+
+      spotEl.className.baseVal = "player-spot";
+      spotEl.style.display = "";
+
+      // Pokud kapacita sálu tuto židli škrtá
+      if (idx >= maxCapacity) {
+        spotEl.classList.add("seat-disabled");
+        spotEl.onmouseenter = null;
+        return;
+      }
+
+      if (idx < players.length) {
+        const p = players[idx];
+        const u = ucastAkce.find(item => item.jmeno === p.celeJmeno);
+        const stav = u ? u.stav : "neodpovedel";
+
+        spotEl.classList.add(`att-${stav.toLowerCase()}`);
+
+        const isKm = (sec === "1. Housle" && p.celeJmeno === kmName);
+        const titleText = `${p.celeJmeno}${isKm ? " (Koncertní mistr)" : ""}: ${stav === "Ano" ? "Přítomen" : (stav === "Ne" ? "Omluven" : "Neodpověděl")}`;
+
+        spotEl.onmouseenter = (e) => showOrchestraTooltip(e, prefix, titleText);
+        spotEl.onmouseleave = () => hideOrchestraTooltip(prefix);
+      } else {
+        // Prázdná volná židle
+        spotEl.style.opacity = "0.2";
+        spotEl.onmouseenter = (e) => showOrchestraTooltip(e, prefix, "Volné místo");
+        spotEl.onmouseleave = () => hideOrchestraTooltip(prefix);
+      }
+    });
+  });
+}
+
+function showOrchestraTooltip(e, prefix, text) {
+  const tt = document.getElementById(`${prefix}-tooltip`);
+  const ttText = document.getElementById(`${prefix}-tt-text`);
+  const ttBg = document.getElementById(`${prefix}-tt-bg`);
+  if (!tt || !ttText || !ttBg) return;
+
+  ttText.textContent = text;
+  const bbox = ttText.getBBox();
+  const pad = 16;
+  ttBg.setAttribute("width", bbox.width + pad);
+  ttBg.setAttribute("x", bbox.x - (pad / 2));
+  ttBg.setAttribute("y", bbox.y - 4);
+  ttBg.setAttribute("height", bbox.height + 8);
+
+  const pt = e.target.getBoundingClientRect();
+  const svg = document.getElementById(`${prefix}-svg`).getBoundingClientRect();
+  
+  const x = pt.left - svg.left + (pt.width / 2);
+  const y = pt.top - svg.top - 12;
+
+  tt.setAttribute("transform", `translate(${x - (bbox.width + pad) / 2}, ${y})`);
+  tt.setAttribute("opacity", "1");
+}
+
+function hideOrchestraTooltip(prefix) {
+  const tt = document.getElementById(`${prefix}-tooltip`);
+  if (tt) tt.setAttribute("opacity", "0");
+}
+
+// Otevření pódia z roletky přihlášených
+function openStageModalForAkce(akceId) {
+  const akce = appData.akce.find(a => String(a.id) === String(akceId));
+  const html = `
+    <div id="viewStageModal" class="modal-overlay" onclick="if(event.target===this) document.getElementById('viewStageModal').remove()">
+      <div class="modal-box" style="max-width: 500px; padding: 14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+          <div>
+            <h3 style="margin:0; font-size:1.05rem; color:var(--primary);">${escapeHtml(akce ? akce.nazev : "Rozesazení orchestru")}</h3>
+            <span style="font-size:0.8rem; color:var(--text-muted);">${escapeHtml(akce ? akce.datum : "")}</span>
+          </div>
+          <button type="button" style="background:transparent; border:none; font-size:20px; color:var(--text-muted); cursor:pointer;" onclick="document.getElementById('viewStageModal').remove()">✕</button>
+        </div>
+        
+        ${getOrchestraSvgHtml("view")}
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', html);
+  bindOrchestraSvgData("view", akceId);
+}
+
+// =========================================================================
+// MODÁL: SPRÁVA ORCHESTRU (PROJEKT, KONCERTNÍ MISTR, KAPACITA ŽIDLÍ)
+// =========================================================================
+function openOrchestrModal() {
+  const akceList = appData.akce.filter(a => !a.typ.includes("Oznámení") && !a.typ.includes("Informace"));
+  if (akceList.length === 0) {
+    alert("Zatím nemáte vytvořeny žádné akce.");
+    return;
+  }
+
+  const selectedAkce = akceList[0];
+  const vl1Players = (appData.clenove || []).filter(c => c.sekce === "1. Housle");
+
+  let akceOptions = akceList.map(a => `<option value="${a.id}">${escapeHtml(a.nazev)} (${a.datum})</option>`).join('');
+  let kmOptions = `<option value="">-- Vyberte koncertního mistra --</option>` + 
+    vl1Players.map(p => `<option value="${escapeHtml(p.celeJmeno)}">${escapeHtml(p.celeJmeno)}</option>`).join('');
+
+  // Generování nastavení kapacity sálu pro jednotlivé sekce
+  let limitsHtml = '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:8px;">';
+  Object.keys(ORCHESTRA_SEATS).forEach(sec => {
+    const total = ORCHESTRA_SEATS[sec].length;
+    limitsHtml += `
+      <div style="font-size:0.82rem; background:var(--bg); padding:6px 8px; border-radius:6px; border:1px solid var(--border);">
+        <label style="display:block; font-weight:700; margin-bottom:2px;">${sec}:</label>
+        <select class="modal-input sec-limit-input" data-sec="${sec}" style="padding:4px; font-size:0.85rem; height:32px;">
+          ${Array.from({length: total}, (_, i) => i + 1).map(n => `<option value="${n}" ${n === total ? 'selected' : ''}>${n} židlí</option>`).join('')}
+        </select>
+      </div>
+    `;
+  });
+  limitsHtml += '</div>';
+
+  const html = `
+    <div id="orchestrModal" class="modal-overlay">
+      <div class="modal-box" style="max-height: 92vh; max-width: 520px; overflow-y: auto; padding: 16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+          <h3 style="margin:0; font-size:1.15rem; color:var(--text);">🎼 Rozesazení orchestru</h3>
+          <button type="button" style="background:transparent; border:none; font-size:20px; color:var(--text-muted); cursor:pointer;" onclick="document.getElementById('orchestrModal').remove()">✕</button>
+        </div>
+
+        <div style="margin-bottom:12px;">
+          <label style="font-size:0.82rem; font-weight:700;">Vyberte akci / projekt:</label>
+          <select id="orch_modal_akce" class="modal-input" onchange="onOrchModalAkceChange()" style="margin-top:2px;">
+            ${akceOptions}
+          </select>
+        </div>
+
+        <div style="margin-bottom:12px; background:var(--bg); padding:10px; border-radius:8px; border:1px solid var(--border);">
+          <label style="font-size:0.82rem; font-weight:800; color:var(--primary-light);">🎻 Koncertní mistr (1. židle):</label>
+          <select id="orch_modal_km" class="modal-input" style="margin-top:4px;">
+            ${kmOptions}
+          </select>
+        </div>
+
+        <details style="margin-bottom:14px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:6px 10px;">
+          <summary style="cursor:pointer; font-weight:700; font-size:0.85rem; color:var(--text);">🏛️ Kapacita židlí v sále (redukce)</summary>
+          ${limitsHtml}
+        </details>
+
+        <!-- Živý grafický náhled pódia -->
+        <div id="orch_preview_wrapper" style="margin-bottom: 14px;">
+          ${getOrchestraSvgHtml("manage")}
+        </div>
+
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn" style="background:var(--success); flex:1;" onclick="saveOrchestrSettings()">💾 Uložit rozesazení</button>
+          <button type="button" class="btn" style="background:var(--border); color:var(--text); width:auto;" onclick="document.getElementById('orchestrModal').remove()">Zavřít</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML('beforeend', html);
+  onOrchModalAkceChange();
+}
+
+function onOrchModalAkceChange() {
+  const akceId = document.getElementById("orch_modal_akce").value;
+  const savedCfg = JSON.parse(localStorage.getItem(`bolech_orch_${akceId}`) || "{}");
+
+  const kmSelect = document.getElementById("orch_modal_km");
+  if (kmSelect) kmSelect.value = savedCfg.km || "";
+
+  // Nastavení limitů židlí podle uložených dat
+  const limits = savedCfg.limits || {};
+  document.querySelectorAll(".sec-limit-input").forEach(sel => {
+    const sec = sel.dataset.sec;
+    if (limits[sec]) sel.value = limits[sec];
+  });
+
+  bindOrchestraSvgData("manage", akceId, savedCfg.km || "", limits);
+}
+
+function saveOrchestrSettings() {
+  const akceId = document.getElementById("orch_modal_akce").value;
+  const km = document.getElementById("orch_modal_km").value;
+
+  const limits = {};
+  document.querySelectorAll(".sec-limit-input").forEach(sel => {
+    limits[sel.dataset.sec] = parseInt(sel.value, 10);
+  });
+
+  const payload = { km: km, limits: limits };
+  localStorage.setItem(`bolech_orch_${akceId}`, JSON.stringify(payload));
+
+  // Překreslení živého pódia přímo nad formulářem
+  bindOrchestraSvgData("manage", akceId, km, limits);
+  alert("Rozesazení orchestru pro projekt bylo úspěšně uloženo a aktualizováno!");
+}
+
+// =========================================================================
+// STANDARDNÍ OVLÁDÁNÍ AKCÍ, OZNÁMENÍ A HOSTŮ
+// =========================================================================
 function submitUcast(id, datum, stav, btn) { 
   const origText = btn.innerText; btn.innerText = "Ukládám...";
   runGoogleScript("saveUcast", {akceId: id, datumAkce: datum, jmeno: user.name, sekce: user.section, stav: stav})
@@ -709,7 +831,91 @@ function formatDateForSave(isoDate) {
   return isoDate;
 }
 
-// --- FUNKCE PRO PROGRAM (POSUN, PŘEČÍSLOVÁNÍ A SMAZÁNÍ) ---
+function parsovatPoznamku(rawNote) {
+  let mainNote = rawNote || '';
+  let schedData = '';
+  let progData = '';
+
+  if (mainNote.includes('===HARMONOGRAM===')) {
+    let partsH = mainNote.split('===HARMONOGRAM===');
+    mainNote = partsH[0].trim();
+    let rest = partsH[1].trim();
+    if (rest.includes('===PROGRAM===')) {
+      let partsP = rest.split('===PROGRAM===');
+      schedData = partsP[0].trim();
+      progData = partsP[1].trim();
+    } else {
+      schedData = rest;
+    }
+  } else if (mainNote.includes('===PROGRAM===')) {
+    let partsP = mainNote.split('===PROGRAM===');
+    mainNote = partsP[0].trim();
+    let rest = partsP[1].trim();
+    if (rest.includes('===HARMONOGRAM===')) {
+      let partsH = rest.split('===HARMONOGRAM===');
+      progData = partsH[0].trim();
+      schedData = partsH[1].trim();
+    } else {
+      progData = rest;
+    }
+  }
+
+  return { mainNote, schedData, progData };
+}
+
+function formatHarmonogramHtml(sData) {
+  if (!sData) return '';
+  let html = `<div style="margin-top:20px; padding-top:16px; border-top: 1px dashed var(--border);">
+      <h4 style="margin-top:0; margin-bottom:12px; font-size:18px; color:var(--text);">⏱️ Časový plán</h4>
+      <table style="width:100%; border-collapse: collapse; font-size:16px;">`;
+  sData.split('\n').forEach((line, index, arr) => {
+      let p = line.split('|');
+      let time = escapeHtml(p[0]||'').trim();
+      let desc = escapeHtml(p[1]||'').trim().replace(/\[BR\]/g, '<br>');
+      let borderObj = (index === arr.length - 1) ? 'none' : '1px solid var(--border)';
+      
+      html += `<tr>
+          <td style="padding:8px 12px 8px 0; vertical-align:top; text-align:right; border-bottom:${borderObj}; white-space:nowrap; font-weight:bold; width:1%; color:var(--text);">${time}</td>
+          <td style="padding:8px 0; vertical-align:top; border-bottom:${borderObj}; color:var(--text);">${desc}</td>
+      </tr>`;
+  });
+  html += `</table></div>`;
+  return html;
+}
+
+function formatProgramHtml(pData) {
+  if (!pData) return '';
+  let rows = '';
+  pData.split('\n').forEach(line => {
+    let parts = line.split('|');
+    if (parts.length >= 2) {
+      let num = escapeHtml(parts[0] || '').trim();
+      let author = escapeHtml(parts[1] || '').trim();
+      let piece = escapeHtml(parts[2] || '').trim().replace(/\[BR\]/g, '<br>');
+      rows += `
+        <tr>
+          <td class="col-num">${num ? num + '.' : ''}</td>
+          <td class="col-author">${author}</td>
+          <td class="col-piece">${piece}</td>
+        </tr>
+      `;
+    }
+  });
+
+  if (!rows) return '';
+
+  return `
+    <div style="margin-top: 10px;">
+      <h4 style="margin-bottom: 8px; font-size: 16px; color: var(--text);">🎼 Program</h4>
+      <table class="program-table">
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 function moveProgramRow(btn, direction) {
   const row = btn.closest('.prog-item-row');
   if (!row) return;
@@ -754,14 +960,12 @@ function addProgramRow(num = '', author = '', piece = '') {
   div.style = 'border: 1px dashed var(--border); padding: 10px; margin-bottom: 10px; border-radius: 8px; background: var(--surface);';
   
   div.innerHTML = `
-    <!-- 1. patro: Ovládací tlačítka nahoře -->
     <div style="display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 6px;">
       <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); width: auto;" onclick="moveProgramRow(this, -1)" title="Posunout nahoru">▲</button>
       <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); width: auto;" onclick="moveProgramRow(this, 1)" title="Posunout dolů">▼</button>
       <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: transparent; color: var(--danger); border: 1px solid var(--danger); width: auto; margin-left: 6px;" onclick="removeProgramRow(this)" title="Smazat skladbu">✕</button>
     </div>
 
-    <!-- 2. patro: Pořadí a Autor -->
     <div style="display: flex; gap: 8px; margin-bottom: 8px;">
       <div style="width: 52px; flex-shrink: 0;">
         <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 2px;">Pořadí:</label>
@@ -773,10 +977,9 @@ function addProgramRow(num = '', author = '', piece = '') {
       </div>
     </div>
     
-    <!-- 3. patro: Víceřádkové pole pro dílo -->
     <div>
       <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 2px;">Dílo / Skladba:</label>
-      <textarea class="modal-input prog-piece" placeholder="např. Symfonie č. 9 e moll „Z Nového světa“, op. 95 (B. 178)" rows="2" style="padding: 8px 10px; font-size: 14px; min-height: 54px; resize: vertical; line-height: 1.4;">${escapeHtml(piece).replace(/\[BR\]/g, '\n')}</textarea>
+      <textarea class="modal-input prog-piece" placeholder="např. Symfonie č. 9 e moll „Z Nového světa“, op. 95" rows="2" style="padding: 8px 10px; font-size: 14px; min-height: 54px; resize: vertical; line-height: 1.4;">${escapeHtml(piece).replace(/\[BR\]/g, '\n')}</textarea>
     </div>
   `;
   cont.appendChild(div);
@@ -823,17 +1026,17 @@ function openAkceForm(akce = null) {
   }
 
   const html = `
-        <div id="akceModal" class="modal-overlay">
-          <div class="modal-box" style="max-height: 90vh; overflow-y: auto;">
-            
-            <div style="display:flex; align-items:center; margin-bottom: 20px;">
-              <button type="button" style="background:transparent; border:none; font-size:16px; color:var(--text); padding:8px 16px 8px 0; margin-right:8px; cursor:pointer; display:flex; align-items:center; gap:6px;" onclick="document.getElementById('akceModal').remove()">
-                <span style="font-size:24px; line-height:1;">←</span> Zpět
-              </button>
-              <h3 style="margin:0; font-size:20px;">${isEdit ? 'Úprava položky' : 'Nová položka'}</h3>
-            </div>
-            
-            <form id="editAkceForm" onsubmit="submitAkceForm(event, '${isEdit ? escapeHtml(akce.id) : ''}')"> 
+    <div id="akceModal" class="modal-overlay">
+      <div class="modal-box" style="max-height: 90vh; overflow-y: auto;">
+        
+        <div style="display:flex; align-items:center; margin-bottom: 20px;">
+          <button type="button" style="background:transparent; border:none; font-size:16px; color:var(--text); padding:8px 16px 8px 0; margin-right:8px; cursor:pointer; display:flex; align-items:center; gap:6px;" onclick="document.getElementById('akceModal').remove()">
+            <span style="font-size:24px; line-height:1;">←</span> Zpět
+          </button>
+          <h3 style="margin:0; font-size:20px;">${isEdit ? 'Úprava položky' : 'Nová položka'}</h3>
+        </div>
+        
+        <form id="editAkceForm" onsubmit="submitAkceForm(event, '${isEdit ? escapeHtml(akce.id) : ''}')"> 
           <label>Typ:</label>
           <select id="f_typ" class="modal-input" onchange="toggleAkceFields()" ${selectDisabledAttr}>
             <option value="Tutti zkouška" ${akce?.typ==='Tutti zkouška'?'selected':''}>Tutti zkouška</option>
@@ -889,7 +1092,6 @@ function openAkceForm(akce = null) {
           <label>Hlavní text (Poznámka / organizační info):</label>
           <textarea id="f_poznamka" class="modal-input" style="min-height:90px; resize:vertical;">${escapeHtml(parsed.mainNote)}</textarea>
 
-          <!-- Sekce pro Program (umístěno PŘED časový plán se sticky hlavičkou) -->
           <div style="margin-top: 16px; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
               <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; position: sticky; top: -12px; background: var(--bg); z-index: 5; padding: 6px 0; border-bottom: 1px solid var(--border);">
                   <span style="font-weight:bold; color:var(--text);">🎼 Program</span>
@@ -899,7 +1101,6 @@ function openAkceForm(akce = null) {
               <button type="button" class="btn" style="width:100%; margin-top:8px; padding:10px; font-size:14px; background:var(--primary-light);" onclick="addProgramRow()">➕ Přidat další skladbu</button>
           </div>
 
-          <!-- Sekce pro harmonogram -->
           <div style="margin-top: 16px; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
               <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
                   <span style="font-weight:bold; color:var(--text);">⏱️ Připojit časový plán</span>
@@ -947,7 +1148,6 @@ function submitAkceForm(e, akceId) {
 
   let finalPoznamka = document.getElementById('f_poznamka').value.trim();
   
-  // 1. Program skladeb
   const progNums = document.querySelectorAll('.prog-num');
   const progAuthors = document.querySelectorAll('.prog-author');
   const progPieces = document.querySelectorAll('.prog-piece');
@@ -964,7 +1164,6 @@ function submitAkceForm(e, akceId) {
     finalPoznamka += `\n\n===PROGRAM===${progText}`;
   }
 
-  // 2. Harmonogram
   const schedTimes = document.querySelectorAll('.sched-time');
   const schedDescs = document.querySelectorAll('.sched-desc');
   let schedText = "";
@@ -1011,249 +1210,50 @@ function deleteAkcePrompt(akceId) {
   }
 }
 
-window.maNeulozeneZmeny = false;
-
-function oznacNeulozeneZmeny() {
-  window.maNeulozeneZmeny = true;
-  const btn = document.getElementById('btnUlozitNoty');
-  if(btn) {
-    btn.style.background = 'var(--danger)';
-    btn.innerHTML = "⚠️ ULOŽIT ZMĚNY (neuloženo)";
-  }
-}
-
-window.addEventListener('beforeunload', (e) => {
-  if (window.maNeulozeneZmeny) {
-    e.preventDefault();
-    e.returnValue = ''; 
-  }
-});
-
-function switchTab(t, b) { 
-  if (window.maNeulozeneZmeny && t !== 'admin-noty') {
-    if (!confirm("⚠️ Ve Správě not máte NEULOŽENÉ ZMĚNY!\n\nOpravdu chcete odejít bez uložení? Změny se nenávratně smažou.")) {
-      return; 
-    }
-    window.maNeulozeneZmeny = false; 
-  }
-
-  document.getElementById('tab-events').style.display = t === 'events' ? 'block' : 'none'; 
-  document.getElementById('tab-archive').style.display = t === 'archive' ? 'block' : 'none'; 
-  document.getElementById('tab-admin-noty').style.display = t === 'admin-noty' ? 'block' : 'none';
-
-  const tabNoty = document.getElementById('tab-sheetmusic');
-  if (tabNoty) tabNoty.style.display = t === 'sheetmusic' ? 'block' : 'none'; 
+function generateOznameniHtml(akce, isVedení, isArchiv = false) {
+  let editBtn = isVedení ? `<button class="edit-btn" onclick='openAkceForm(${JSON.stringify(akce).replace(/'/g, "&#39;")})'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>` : "";
   
-  document.querySelectorAll('.nav-btn').forEach(btn => {
-    btn.classList.remove('active'); 
-    btn.style.color = ''; 
-  }); 
-  
-  if (b) { 
-    b.classList.add('active'); 
-    if (t === 'events') b.style.color = '#3b82f6';
-    else if (t === 'sheetmusic') b.style.color = 'var(--success)';
-    else if (t === 'admin-noty') b.style.color = '#06b6d4';
-  } 
-  
-  if (t === 'archive') document.body.classList.add('archive-open');
-  else document.body.classList.remove('archive-open');
-}
-
-window.stromSlozek = []; 
-
-function vykresliAdminNoty() {
-  const cont = document.getElementById('adminNotyContainer');
-  if (!cont) return;
-
-  cont.style.padding = "0";
-  cont.style.margin = "0"; 
-  cont.style.width = "100%";
-
-  try {
-    const slozkyMap = {};
-
-    if (!appData.noty || appData.noty.length === 0) {
-      cont.innerHTML = '<p style="text-align:center; color:var(--text-muted);">Archiv je zatím prázdný.</p>';
-      return;
-    }
-
-    appData.noty.forEach(nota => {
-      let skladbaText = String(nota.skladba || '').trim();
-      if (!skladbaText) return;
-
-      let lastDash = skladbaText.lastIndexOf(' - ');
-      let cesta = lastDash !== -1 ? skladbaText.substring(0, lastDash).trim() : 'Základní složka';
-      let soubor = lastDash !== -1 ? skladbaText.substring(lastDash + 3).trim() : skladbaText;
-
-      if (!slozkyMap[cesta]) slozkyMap[cesta] = { cesta: cesta, soubory: [], program: '', aktivni: false };
-
-      slozkyMap[cesta].soubory.push({ ...nota, kratkyNazev: soubor });
-
-      let aktivniHodnota = String(nota.aktivni || '').toUpperCase().trim();
-      if (aktivniHodnota === 'ANO' || aktivniHodnota === 'TRUE' || aktivniHodnota === '1') {
-        slozkyMap[cesta].aktivni = true;
-        if (nota.program) slozkyMap[cesta].program = nota.program;
-      }
-    });
-
-    window.stromSlozek = Object.values(slozkyMap).sort((a, b) => {
-      if (a.aktivni && !b.aktivni) return -1;
-      if (!a.aktivni && b.aktivni) return 1;
-      return a.cesta.localeCompare(b.cesta);
-    });
-
-    let html = `
-      <style>
-        details.folder-inactive:not([open]) .folder-controls {
-          display: none !important;
-        }
-      </style>
-    `;
-
-    window.stromSlozek.forEach((s, index) => {
-      const zobrazenyNazev = escapeHtml(s.cesta).replace(/\//g, '<span style="color:var(--text-muted); margin:0 4px;">❯</span>');
-      const checkBg = s.aktivni ? 'var(--success)' : 'transparent';
-      const stavTrida = s.aktivni ? 'folder-active' : 'folder-inactive';
-
-      html += `
-        <details class="card ${stavTrida}" style="margin-bottom: 8px; margin-left: 0; margin-right: 0; padding: 0; overflow: hidden; width: 100%; border: 1px solid var(--border);">
-          
-          <summary style="padding: 10px 14px; cursor: pointer; list-style: none; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--border);">
-            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: bold; color: var(--text);">
-              <span style="word-break: break-word; line-height: 1.3;">📁 ${zobrazenyNazev} <small style="font-weight:normal; opacity:0.6;">(${s.soubory.length})</small></span>
-              <span style="opacity: 0.4; font-size: 14px; padding-left: 8px;">▼</span>
-            </div>
-
-            <div class="folder-controls" onclick="event.stopPropagation();" style="display: flex; gap: 8px; align-items: center; width: 100%;">
-              
-              <input type="text" id="prog_${index}" class="modal-input" placeholder="Název programu..." value="${escapeHtml(s.program)}" style="flex: 1; margin: 0; padding: 10px; font-size: 14px; border-radius: 6px;" oninput="oznacNeulozeneZmeny()">  
-
-              <label style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; background: ${checkBg}; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: background 0.2s;" title="Aktivní">
-                <input type="checkbox" id="chk_${index}" ${s.aktivni ? 'checked' : ''} style="transform: scale(1.4); margin: 0; cursor: pointer;" 
-                       onchange="
-                         oznacNeulozeneZmeny();
-                         this.parentElement.style.background = this.checked ? 'var(--success)' : 'transparent';
-                         const det = this.closest('details');
-                         if(this.checked) { det.classList.remove('folder-inactive'); det.classList.add('folder-active'); }
-                         else { det.classList.add('folder-inactive'); det.classList.remove('folder-active'); }
-                       ">
-              </label>
-
-            </div>
-          </summary>
-          
-          <div class="folder-content" style="padding: 12px; display: flex; flex-direction: column; gap: 6px; background: var(--bg);">
-            ${s.soubory.map(soub => {
-              return `
-              <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card, transparent); gap: 8px;">
-                <a href="${soub.odkaz.replace(/\/view.*/, '/preview')}" target="_blank" style="font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; color: var(--primary); text-decoration: none; font-weight: 600; cursor: pointer;">
-                  📄 <span style="text-decoration: underline;">${escapeHtml(soub.kratkyNazev)}</span>
-                </a>
-                <span style="font-size: 11px; opacity: 0.8; white-space: nowrap; background: var(--border); padding: 4px 6px; border-radius: 4px; color: var(--text);">${escapeHtml(String(soub.sekce||''))}</span>
-                <button type="button" onclick="pridatDoFrontyNot('${encodeURIComponent(soub.kratkyNazev)}', '${soub.odkaz}')" style="display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; min-width: 34px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text-muted); cursor: pointer; transition: background 0.2s;" title="Přidat do fronty k odeslání">
-                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-                </button>
-              </div>
-              `;
-            }).join('')}
-          </div>
-
-        </details>
-      `;
-    });
-
-    cont.innerHTML = html;
-
-  } catch (error) {
-    cont.innerHTML = `<p style="color:var(--danger); padding:16px;">Chyba: ${error.message}</p>`;
-  }
-}
-
-function ulozitZmenyNot(e) {
-  const eventObj = e || window.event;
-  if (eventObj && eventObj.preventDefault) {
-    eventObj.preventDefault();
-  }
-
-  const button = eventObj ? (eventObj.currentTarget || eventObj.target) : null;
-  if (button) {
-    button.innerText = "⏳ Ukládám změny...";
-    button.disabled = true;
-  }
-
-  const zmeny = [];
-
-  window.stromSlozek.forEach((s, index) => {
-    const chk = document.getElementById('chk_' + index);
-    const inputProg = document.getElementById('prog_' + index);
-
-    if (chk && inputProg) {
-      const novaAktivni = chk.checked;
-      const novyProgram = inputProg.value.trim();
-
-      if (s.aktivni !== novaAktivni || s.program !== novyProgram) {
-        const stavText = novaAktivni ? 'ANO' : '';
-
-        s.soubory.forEach(soubor => {
-          zmeny.push({
-            odkaz: soubor.odkaz,
-            aktivni: stavText,
-            program: novyProgram
-          });
-        });
-      }
-    }
-  });
-
-  if (zmeny.length === 0) {
-    alert("Nebyly provedeny žádné změny.");
-    if (button) {
-      button.disabled = false;
-      button.innerText = "💾 Uložit všechny změny";
-    }
-    return;
-  }
-
-  runGoogleScript("updateNotyHromadne", { zmeny: zmeny }).then(res => {
-    if (button) {
-      button.disabled = false;
-      button.innerHTML = "💾 Uložit všechny změny";
-      button.style.background = "var(--success)";
-    }
-    if (res.success) {
-      window.maNeulozeneZmeny = false;
-      alert("Změny v archivu byly úspěšně uloženy.");
-      localStorage.removeItem("bolech_data_cache");
-      initApp(); 
+  let akceBtn = "";
+  if (isVedení) {
+    if (!isArchiv) {
+      akceBtn = `<button class="btn" style="background:transparent; color:var(--text-muted); border:1px solid var(--border); padding:8px; margin-top:16px; font-size:14px;" onclick="archivovatOznameni('${akce.id}')">🗃️ Přesunout do infoarchivu</button>`;
     } else {
-      alert("Chyba při ukládání: " + res.error);
+      akceBtn = `<button class="btn" style="background:transparent; color:var(--primary-light); border:1px solid var(--primary-light); padding:8px; margin-top:16px; font-size:14px;" onclick="obnovitOznameni('${akce.id}')">↩️ Vrátit zpět na hlavní stránku</button>`;
     }
-  });
+  }
+
+  const parsed = parsovatPoznamku(akce.poznamka);
+  
+  return `
+    <div class="card card-oznameni">
+      <div class="card-top-bar bar-oznameni"><span>💡 Informace</span><span>🗓️ ${akce.datum}</span></div>
+      <div class="card-body" style="padding-top:12px;">
+        <div class="card-title-row" style="margin-bottom:4px;"><div class="card-title" style="font-size:20px;">${akce.nazev}</div>${editBtn}</div>
+        ${parsed.mainNote ? `<div class="oznameni-text" style="margin-top:12px;">${escapeHtml(parsed.mainNote)}</div>` : ''}
+        ${formatHarmonogramHtml(parsed.schedData)}
+        ${formatProgramHtml(parsed.progData)}
+        ${akceBtn}
+      </div>
+    </div>`;
 }
 
-function odeslatZadostHosta(e) {
-  e.preventDefault();
-  const btn = document.getElementById('guestReqBtn');
-  const puvodniText = btn.innerText;
-  btn.innerText = "Odesílám..."; btn.disabled = true;
+function archivovatOznameni(akceId) {
+  if(confirm("Přesunout tuto informaci do infoarchivu? Zmizí z hlavní stránky.")) {
+    const akce = appData.akce.find(a => String(a.id) === String(akceId));
+    if(!akce) return;
+    akce.typ = 'Informace (Infoarchiv)';
+    runGoogleScript("saveAkce", akce).then(res => {
+      if(res.success) { localStorage.setItem("bolech_data_cache", JSON.stringify(appData)); renderEvents(); }
+    });
+  }
+}
 
-  const payload = {
-    jmeno: document.getElementById('guestName').value,
-    nastroj: document.getElementById('guestInstrument').value,
-    email: document.getElementById('guestEmail').value,
-    telefon: document.getElementById('guestPhone').value
-  };
-
-  runGoogleScript("requestGuestAccount", payload).then(res => {
-    btn.innerText = puvodniText; btn.disabled = false;
-    if (res.success) {
-      alert("Žádost byla úspěšně odeslána vedení! Jakmile ji schválí, přijde vám PIN na e-mail.");
-      document.getElementById('guestRequestCard').style.display = 'none'; 
-      document.getElementById('loginFormCard').style.display = 'block';
-    } else {
-      alert("Chyba při odesílání: " + res.error);
-    }
+function obnovitOznameni(akceId) {
+  const akce = appData.akce.find(a => String(a.id) === String(akceId));
+  if(!akce) return;
+  akce.typ = 'Informace';
+  runGoogleScript("saveAkce", akce).then(res => {
+    if(res.success) { localStorage.setItem("bolech_data_cache", JSON.stringify(appData)); renderEvents(); }
   });
 }
 
@@ -1402,77 +1402,353 @@ function pridatHostaNaprimo(e) {
   });
 }
 
+function odeslatZadostHosta(e) {
+  e.preventDefault();
+  const btn = document.getElementById('guestReqBtn');
+  const puvodniText = btn.innerText;
+  btn.innerText = "Odesílám..."; btn.disabled = true;
+
+  const payload = {
+    jmeno: document.getElementById('guestName').value,
+    nastroj: document.getElementById('guestInstrument').value,
+    email: document.getElementById('guestEmail').value,
+    telefon: document.getElementById('guestPhone').value
+  };
+
+  runGoogleScript("requestGuestAccount", payload).then(res => {
+    btn.innerText = puvodniText; btn.disabled = false;
+    if (res.success) {
+      alert("Žádost byla úspěšně odeslána vedení! Jakmile ji schválí, přijde vám PIN na e-mail.");
+      document.getElementById('guestRequestCard').style.display = 'none'; 
+      document.getElementById('loginFormCard').style.display = 'block';
+    } else {
+      alert("Chyba při odesílání: " + res.error);
+    }
+  });
+}
+
 function confirmLogout() { 
   if(confirm("Opravdu se chcete odhlásit?")) { localStorage.removeItem('bolech_auth_member'); localStorage.removeItem('bolech_data_cache'); location.reload(); } 
 }
 
-window.emailFrontaNot = [];
+// =========================================================================
+// NOTOVÝ ARCHIV A JEHO SPRÁVA
+// =========================================================================
+function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
+  const kontejner = document.getElementById('notyContainer');
+  const infoText = document.getElementById('notyNastrojInfo');
+  
+  if (!kontejner) return;
 
-function pridatDoFrontyNot(kratkyNazev, odkaz) {
-  const dekodovanyNazev = decodeURIComponent(kratkyNazev);
-  if (!window.emailFrontaNot.find(n => n.odkaz === odkaz)) {
-    window.emailFrontaNot.push({ nazev: dekodovanyNazev, odkaz: odkaz });
-    vykresliFrontuNot();
+  const userRole = String(user.role || "").trim().toLowerCase();
+  const isVedení = ['admin', 'dirigent', 'vedení', 'vedeni'].includes(userRole);
+
+  if (infoText) {
+    infoText.textContent = jeDirigent ? "Režim partitury" : `Zobrazený part: ${nastrojUzivatele}`;
   }
-}
 
-function odebratZFrontyNot(odkaz) {
-  window.emailFrontaNot = window.emailFrontaNot.filter(n => n.odkaz !== odkaz);
-  vykresliFrontuNot();
-}
+  let htmlDropdown = '';
+  if (isVedení) {
+    htmlDropdown = `
+      <div style="margin-bottom: 20px; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+        <label style="font-size: 13px; font-weight: bold; display: block; margin-bottom: 8px; color: var(--text);">👀 Náhled partů (pouze pro vedení):</label>
+        <select class="modal-input" onchange="zmenitPohledNot(this.value)" style="margin-bottom:0; font-size:14px; background: var(--surface);">
+          <option value="Vlastní part" ${nastrojUzivatele === user.section ? 'selected' : ''}>Můj nástroj / Výchozí pohled (${user.section})</option>
+          ${PARTITURA_SECTIONS.map(s => `<option value="${s}" ${nastrojUzivatele === s && nastrojUzivatele !== user.section ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    `;
+  }
 
-function vymazatFrontuNot() {
-  window.emailFrontaNot = [];
-  vykresliFrontuNot();
-}
-
-function odeslatFrontuMailem() {
-  if (window.emailFrontaNot.length === 0) return;
-  
-  let emailTelo = "Dobrý den,\n\nzasílám odkazy pro přímé stažení vybraných not:\n\n";
-  window.emailFrontaNot.forEach(n => {
-    let downloadOdkaz = n.odkaz.replace(/.*\/d\/([a-zA-Z0-9_-]+).*/, 'https://drive.google.com/uc?export=download&id=$1');
-    emailTelo += `- ${n.nazev}:\n  ${downloadOdkaz}\n\n`;
+  const relevantniNoty = dataNoty.filter(nota => {
+    let aktivni = String(nota.aktivni || '').toUpperCase().trim();
+    if (aktivni !== 'TRUE' && aktivni !== 'ANO' && aktivni !== '1') return false;
+    if (jeDirigent && nota.sekce === 'Partitura') return true;
+    if (nota.sekce === nastrojUzivatele) return true;
+    
+    if (nota.sekce === 'Housle' && (nastrojUzivatele === '1. Housle' || nastrojUzivatele === '2. Housle')) return true;
+    if (nota.sekce === 'Smyčce' && ['1. Housle', '2. Housle', 'Violy', 'Violoncella', 'Kontrabasy'].includes(nastrojUzivatele)) return true;
+    if (nota.sekce === 'Dechy' && ['Flétny', 'Hoboje', 'Klarinety / Saxofony', 'Fagoty', 'Lesní rohy', 'Trubky', 'Trombóny a Tuba'].includes(nastrojUzivatele)) return true;
+    if (nota.sekce === 'Dřeva' && ['Flétny', 'Hoboje', 'Klarinety / Saxofony', 'Fagoty'].includes(nastrojUzivatele)) return true;
+    if (nota.sekce === 'Žestě' && ['Lesní rohy', 'Trubky', 'Trombóny a Tuba'].includes(nastrojUzivatele)) return true;
+    return false;
   });
-  
-  let mailtoOdkaz = `mailto:?subject=${encodeURIComponent("Vybrané noty - TSO Bolech")}&body=${encodeURIComponent(emailTelo)}`;
-  window.location.href = mailtoOdkaz;
-  vymazatFrontuNot();
-}
 
-function vykresliFrontuNot() {
-  let widget = document.getElementById('emailFrontaWidget');
-  
-  if (window.emailFrontaNot.length === 0) {
-    if (widget) widget.style.display = 'none';
+  let html = htmlDropdown;
+
+  if (relevantniNoty.length === 0) {
+    kontejner.innerHTML = html + '<p style="color: var(--text-muted); text-align: center; margin-top: 40px; padding: 20px;">Pro tento part aktuálně nejsou k dispozici žádné noty na repertoáru.</p>';
     return;
   }
 
-  if (!widget) {
-    widget = document.createElement('div');
-    widget.id = 'emailFrontaWidget';
-    widget.style = "position: fixed; bottom: 85px; left: 10px; right: 10px; background: var(--surface); border: 2px solid var(--primary); border-radius: 12px; padding: 12px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.3);";
-    document.body.appendChild(widget);
+  const notyPodleProgramu = {};
+  relevantniNoty.forEach(nota => {
+    const program = nota.program || 'Ostatní repertoár';
+    if (!notyPodleProgramu[program]) notyPodleProgramu[program] = [];
+    notyPodleProgramu[program].push(nota);
+  });
+
+  for (const [program, noty] of Object.entries(notyPodleProgramu)) {
+    let mujEmail = user.email || '';
+    if (!mujEmail && appData.clenove) {
+      const ja = appData.clenove.find(c => c.jmeno === user.name || c.name === user.name);
+      if (ja && ja.email) mujEmail = ja.email.trim();
+    }
+    
+    let emailPredmet = encodeURIComponent(`Noty TSO Bolech - ${program}`);
+    let emailTelo = `Dobrý den,\n\nzasílám odkazy pro přímé stažení not (Program: ${program}, Part: ${nastrojUzivatele}).\n\n`;
+    noty.forEach(n => {
+      let stahovaciOdkaz = n.odkaz.replace(/.*\/d\/([a-zA-Z0-9_-]+).*/, 'https://drive.google.com/uc?export=download&id=$1');
+      emailTelo += `- ${n.skladba}:\n  ${stahovaciOdkaz}\n\n`;
+    });
+    emailTelo += `Portál TSO Bolech`;
+    let mailtoOdkaz = `mailto:${mujEmail}?subject=${emailPredmet}&body=${encodeURIComponent(emailTelo)}`;
+
+    html += `
+      <div class="program-header">
+        <h3 class="program-title">${program}</h3>
+        <a href="${mailtoOdkaz}" class="email-btn" title="Přeposlat odkazy na svůj e-mail">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
+          Přeposlat sobě
+        </a>
+      </div>`;
+      
+    noty.forEach(nota => {
+      html += `
+        <div class="nota-card">
+          <div class="nota-info">
+            <h4>${nota.skladba}</h4>
+            <span>${nota.sekce}</span>
+          </div>
+          <a href="${nota.odkaz.replace(/.*\/d\/([a-zA-Z0-9_-]+).*/, 'https://drive.google.com/uc?export=download&id=$1')}" target="_blank" class="nota-down-btn" title="Stáhnout">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </a>
+        </div>`;
+    });
   }
   
-  widget.style.display = 'block';
+  kontejner.innerHTML = html;
+}
+
+window.maNeulozeneZmeny = false;
+
+function oznacNeulozeneZmeny() {
+  window.maNeulozeneZmeny = true;
+  const btn = document.getElementById('btnUlozitNoty');
+  if(btn) {
+    btn.style.background = 'var(--danger)';
+    btn.innerHTML = "⚠️ ULOŽIT ZMĚNY (neuloženo)";
+  }
+}
+
+window.addEventListener('beforeunload', (e) => {
+  if (window.maNeulozeneZmeny) {
+    e.preventDefault();
+    e.returnValue = ''; 
+  }
+});
+
+function switchTab(t, b) { 
+  if (window.maNeulozeneZmeny && t !== 'admin-noty') {
+    if (!confirm("⚠️ Ve Správě not máte NEULOŽENÉ ZMĚNY!\n\nOpravdu chcete odejít bez uložení? Změny se nenávratně smažou.")) {
+      return; 
+    }
+    window.maNeulozeneZmeny = false; 
+  }
+
+  document.getElementById('tab-events').style.display = t === 'events' ? 'block' : 'none'; 
+  document.getElementById('tab-archive').style.display = t === 'archive' ? 'block' : 'none'; 
+  document.getElementById('tab-admin-noty').style.display = t === 'admin-noty' ? 'block' : 'none';
+
+  const tabNoty = document.getElementById('tab-sheetmusic');
+  if (tabNoty) tabNoty.style.display = t === 'sheetmusic' ? 'block' : 'none'; 
   
-  let html = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-      <strong style="color:var(--text);">📨 Připraveno k odeslání (${window.emailFrontaNot.length})</strong>
-      <button type="button" onclick="vymazatFrontuNot()" style="background:transparent; border:none; color:var(--danger); font-size:12px; padding:4px;">Vymazat frontu</button>
-    </div>
-    <div style="max-height: 100px; overflow-y:auto; margin-bottom:12px; font-size:13px; color:var(--text-muted);">
-      ${window.emailFrontaNot.map(n => `
-        <div style="display:flex; justify-content:space-between; margin-bottom:6px; padding-bottom:6px; border-bottom:1px dashed var(--border);">
-          <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:85%;">${escapeHtml(n.nazev)}</span>
-          <button onclick="odebratZFrontyNot('${n.odkaz}')" style="background:transparent; border:none; color:var(--danger); padding:0 4px; cursor:pointer;">✕</button>
-        </div>
-      `).join('')}
-    </div>
-    <button onclick="odeslatFrontuMailem()" class="btn" style="width:100%; background:var(--primary); padding:10px;">Odeslat vše e-mailem</button>
-  `;
-  widget.innerHTML = html;
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.classList.remove('active'); 
+    btn.style.color = ''; 
+  }); 
+  
+  if (b) { 
+    b.classList.add('active'); 
+    if (t === 'events') b.style.color = '#3b82f6';
+    else if (t === 'sheetmusic') b.style.color = 'var(--success)';
+    else if (t === 'admin-noty') b.style.color = '#06b6d4';
+  } 
+  
+  if (t === 'archive') document.body.classList.add('archive-open');
+  else document.body.classList.remove('archive-open');
+}
+
+window.stromSlozek = []; 
+
+function vykresliAdminNoty() {
+  const cont = document.getElementById('adminNotyContainer');
+  if (!cont) return;
+
+  cont.style.padding = "0";
+  cont.style.margin = "0"; 
+  cont.style.width = "100%";
+
+  try {
+    const slozkyMap = {};
+
+    if (!appData.noty || appData.noty.length === 0) {
+      cont.innerHTML = '<p style="text-align:center; color:var(--text-muted);">Archiv je zatím prázdný.</p>';
+      return;
+    }
+
+    appData.noty.forEach(nota => {
+      let skladbaText = String(nota.skladba || '').trim();
+      if (!skladbaText) return;
+
+      let lastDash = skladbaText.lastIndexOf(' - ');
+      let cesta = lastDash !== -1 ? skladbaText.substring(0, lastDash).trim() : 'Základní složka';
+      let soubor = lastDash !== -1 ? skladbaText.substring(lastDash + 3).trim() : skladbaText;
+
+      if (!slozkyMap[cesta]) slozkyMap[cesta] = { cesta: cesta, soubory: [], program: '', aktivni: false };
+
+      slozkyMap[cesta].soubory.push({ ...nota, kratkyNazev: soubor });
+
+      let aktivniHodnota = String(nota.aktivni || '').toUpperCase().trim();
+      if (aktivniHodnota === 'ANO' || aktivniHodnota === 'TRUE' || aktivniHodnota === '1') {
+        slozkyMap[cesta].aktivni = true;
+        if (nota.program) slozkyMap[cesta].program = nota.program;
+      }
+    });
+
+    window.stromSlozek = Object.values(slozkyMap).sort((a, b) => {
+      if (a.aktivni && !b.aktivni) return -1;
+      if (!a.aktivni && b.aktivni) return 1;
+      return a.cesta.localeCompare(b.cesta);
+    });
+
+    let html = `
+      <style>
+        details.folder-inactive:not([open]) .folder-controls {
+          display: none !important;
+        }
+      </style>
+    `;
+
+    window.stromSlozek.forEach((s, index) => {
+      const zobrazenyNazev = escapeHtml(s.cesta).replace(/\//g, '<span style="color:var(--text-muted); margin:0 4px;">❯</span>');
+      const checkBg = s.aktivni ? 'var(--success)' : 'transparent';
+      const stavTrida = s.aktivni ? 'folder-active' : 'folder-inactive';
+
+      html += `
+        <details class="card ${stavTrida}" style="margin-bottom: 8px; margin-left: 0; margin-right: 0; padding: 0; overflow: hidden; width: 100%; border: 1px solid var(--border);">
+          
+          <summary style="padding: 10px 14px; cursor: pointer; list-style: none; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: bold; color: var(--text);">
+              <span style="word-break: break-word; line-height: 1.3;">📁 ${zobrazenyNazev} <small style="font-weight:normal; opacity:0.6;">(${s.soubory.length})</small></span>
+              <span style="opacity: 0.4; font-size: 14px; padding-left: 8px;">▼</span>
+            </div>
+
+            <div class="folder-controls" onclick="event.stopPropagation();" style="display: flex; gap: 8px; align-items: center; width: 100%;">
+              <input type="text" id="prog_${index}" class="modal-input" placeholder="Název programu..." value="${escapeHtml(s.program)}" style="flex: 1; margin: 0; padding: 10px; font-size: 14px; border-radius: 6px;" oninput="oznacNeulozeneZmeny()">  
+
+              <label style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; background: ${checkBg}; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: background 0.2s;" title="Aktivní">
+                <input type="checkbox" id="chk_${index}" ${s.aktivni ? 'checked' : ''} style="transform: scale(1.4); margin: 0; cursor: pointer;" 
+                       onchange="
+                         oznacNeulozeneZmeny();
+                         this.parentElement.style.background = this.checked ? 'var(--success)' : 'transparent';
+                         const det = this.closest('details');
+                         if(this.checked) { det.classList.remove('folder-inactive'); det.classList.add('folder-active'); }
+                         else { det.classList.add('folder-inactive'); det.classList.remove('folder-active'); }
+                       ">
+              </label>
+
+            </div>
+          </summary>
+          
+          <div class="folder-content" style="padding: 12px; display: flex; flex-direction: column; gap: 6px; background: var(--bg);">
+            ${s.soubory.map(soub => {
+              return `
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card, transparent); gap: 8px;">
+                <a href="${soub.odkaz.replace(/\/view.*/, '/preview')}" target="_blank" style="font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; color: var(--primary); text-decoration: none; font-weight: 600; cursor: pointer;">
+                  📄 <span style="text-decoration: underline;">${escapeHtml(soub.kratkyNazev)}</span>
+                </a>
+                <span style="font-size: 11px; opacity: 0.8; white-space: nowrap; background: var(--border); padding: 4px 6px; border-radius: 4px; color: var(--text);">${escapeHtml(String(soub.sekce||''))}</span>
+              </div>
+              `;
+            }).join('')}
+          </div>
+
+        </details>
+      `;
+    });
+
+    cont.innerHTML = html;
+
+  } catch (error) {
+    cont.innerHTML = `<p style="color:var(--danger); padding:16px;">Chyba: ${error.message}</p>`;
+  }
+}
+
+function ulozitZmenyNot(e) {
+  const eventObj = e || window.event;
+  if (eventObj && eventObj.preventDefault) {
+    eventObj.preventDefault();
+  }
+
+  const button = eventObj ? (eventObj.currentTarget || eventObj.target) : null;
+  if (button) {
+    button.innerText = "⏳ Ukládám změny...";
+    button.disabled = true;
+  }
+
+  const zmeny = [];
+
+  window.stromSlozek.forEach((s, index) => {
+    const chk = document.getElementById('chk_' + index);
+    const inputProg = document.getElementById('prog_' + index);
+
+    if (chk && inputProg) {
+      const novaAktivni = chk.checked;
+      const novyProgram = inputProg.value.trim();
+
+      if (s.aktivni !== novaAktivni || s.program !== novyProgram) {
+        const stavText = novaAktivni ? 'ANO' : '';
+
+        s.soubory.forEach(soubor => {
+          zmeny.push({
+            odkaz: soubor.odkaz,
+            aktivni: stavText,
+            program: novyProgram
+          });
+        });
+      }
+    }
+  });
+
+  if (zmeny.length === 0) {
+    alert("Nebyly provedeny žádné změny.");
+    if (button) {
+      button.disabled = false;
+      button.innerText = "💾 Uložit všechny změny";
+    }
+    return;
+  }
+
+  runGoogleScript("updateNotyHromadne", { zmeny: zmeny }).then(res => {
+    if (button) {
+      button.disabled = false;
+      button.innerHTML = "💾 Uložit všechny změny";
+      button.style.background = "var(--success)";
+    }
+    if (res.success) {
+      window.maNeulozeneZmeny = false;
+      alert("Změny v archivu byly úspěšně uloženy.");
+      localStorage.removeItem("bolech_data_cache");
+      initApp(); 
+    } else {
+      alert("Chyba při ukládání: " + res.error);
+    }
+  });
 }
 
 function zmenitPohledNot(novyNastroj) {

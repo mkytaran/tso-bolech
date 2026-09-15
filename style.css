@@ -541,3 +541,117 @@ body.card-flipped-active .card:not(.card-flip-container) {
   vertical-align: top;
   border-bottom: 1px solid var(--border);
 }
+
+/* ===================================================== */
+/* ROZESAZENÍ ORCHESTRU (PÓDIUM A KŘESLA)                */
+/* ===================================================== */
+
+.stage-wrapper {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 6px 12px 6px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.stage-legend {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  padding: 0 4px;
+}
+
+.stage-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stage-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.stage-dot.ano { background: var(--success); }
+.stage-dot.ne { background: #94a3b8; }
+.stage-dot.neodpovedel { background: #f59e0b; }
+
+/* SVG kroužky hráčů */
+.player-spot circle {
+  fill: #cbd5e1; /* Neobsazená židle */
+  stroke: none;
+  cursor: pointer;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+/* Přítomen */
+.player-spot.att-ano circle {
+  fill: var(--success);
+}
+
+/* Omluven: Žádné zvětšující ohraničení, pouze tlumená šedá */
+.player-spot.att-ne circle {
+  fill: #94a3b8;
+  opacity: 0.45;
+}
+
+/* Bez odpovědi */
+.player-spot.att-neodpovedel circle {
+  fill: #f59e0b;
+}
+
+/* Skrytá židle (omezená kapacita sálu) */
+.player-spot.seat-disabled {
+  display: none;
+}
+
+.player-spot:hover circle {
+  transform: scale(1.22);
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,0.35));
+}
+
+.sec-label {
+  font-size: 9px;
+  font-weight: 800;
+  fill: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.dark-mode .sec-label {
+  fill: #84a1ae;
+}
+
+/* Tlačítko zobrazení rozesazení v roletce */
+.btn-stage-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--primary-light);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-stage-toggle:active {
+  background: var(--bg);
+}
