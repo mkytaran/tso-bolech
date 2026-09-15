@@ -23,6 +23,8 @@
   --warning-text: #92400e;
   --radius: 16px;
   --shadow: 0 4px 12px rgba(5, 38, 52, 0.08);
+  --sec-bg: rgba(5, 38, 52, 0.035);
+  --status-neodpovedel: #f59e0b;
 }
 
 /* CSS PROMĚNNÉ PRO TMAVÝ REŽIM */
@@ -41,6 +43,8 @@
   --warning-bg: #522406;
   --warning-text: #fde68a;
   --shadow: 0 4px 12px rgba(0,0,0,0.5);
+  --sec-bg: rgba(255, 255, 255, 0.04);
+  --status-neodpovedel: #f59e0b;
 }
 
 * { 
@@ -322,7 +326,7 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
 }
 
 .card-flip-container.active-focus {
-  z-index: 200; /* Zvedne otočenou kartu bezpečně nad okolní obsah */
+  z-index: 200;
 }
 
 .card-flipper {
@@ -336,7 +340,6 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
   transform: rotateY(180deg);
 }
 
-/* Společný základ pro obě strany */
 .card-front, .card-back {
   width: 100%;
   border-radius: 12px;
@@ -348,7 +351,6 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
   -webkit-backface-visibility: hidden;
 }
 
-/* LÍC: Zůstává v toku dokumentu a určuje standardní rozteč */
 .card-front {
   position: relative;
   box-shadow: var(--shadow);
@@ -357,7 +359,6 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
   overflow: hidden;
 }
 
-/* Fyzický řez karty – POUZE pokud má tlačítko detailu */
 .card-front:has(.corner-fold-btn) {
   --fold-size: 28px;
   -webkit-clip-path: polygon(
@@ -377,7 +378,6 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
   animation: naturalPaperFold 2.6s ease-in-out infinite;
 }
 
-/* Rub je stoprocentně neprůhledný s plnou barvou povrchu */
 .card-back {
   position: absolute;
   top: 0;
@@ -408,7 +408,7 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
 }
 
 /* ===================================================== */
-/* VARIANTA A: PLYNULÁ ANIMACE CELÉHO ROHU PAPÍRU        */
+/* ANIMACE OHYBU ROHU KARTY                              */
 /* ===================================================== */
 
 .corner-fold-btn {
@@ -425,7 +425,6 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
   -webkit-tap-highlight-color: transparent;
 }
 
-/* 1. Odhalený prostor pod ohybem – kopíruje proměnnou --fold-size */
 .corner-fold-btn::before {
   content: "";
   position: absolute;
@@ -438,7 +437,6 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
   animation: naturalPaperFold 2.6s ease-in-out infinite;
 }
 
-/* 2. Ohnutý cíp papíru se stínem – kopíruje proměnnou --fold-size */
 .corner-fold-btn::after {
   content: "";
   position: absolute;
@@ -458,7 +456,6 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
   filter: drop-shadow(-3px 3px 5px rgba(0, 0, 0, 0.7));
 }
 
-/* Zastavení animace při dotyku / najetí a pevné poodhrnutí */
 .card-front:has(.corner-fold-btn:hover),
 .card-front:has(.corner-fold-btn:active),
 .corner-fold-btn:hover::before,
@@ -469,7 +466,6 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
   --fold-size: 40px;
 }
 
-/* Plynulá interpolace rozměru ohybu pro kartu, díru i cíp současně */
 @keyframes naturalPaperFold {
   0%, 60%, 100% {
     --fold-size: 28px;
@@ -479,10 +475,7 @@ details.folder-tree > summary::-webkit-details-marker { display: none; }
   }
 }
 
-/* ===================================================== */
-/* SELEKTIVNÍ ROZOSTŘENÍ ŘÍZENÉ STAVEM NA BODY           */
-/* ===================================================== */
-
+/* ROZOSTŘENÍ OKOLÍ PŘI OTOČENÉ KARTĚ */
 body.card-flipped-active nav,
 body.card-flipped-active .admin-actions {
   filter: blur(4px);
@@ -501,10 +494,7 @@ body.card-flipped-active .card:not(.card-flip-container) {
   user-select: none;
 }
 
-/* ===================================================== */
-/* ŠABLONA PROGRAMU V DETAILU AKCE                       */
-/* ===================================================== */
-
+/* TABULKA PROGRAMU */
 .program-table {
   width: 100%;
   border-collapse: collapse;
@@ -543,7 +533,7 @@ body.card-flipped-active .card:not(.card-flip-container) {
 }
 
 /* ===================================================== */
-/* ROZESAZENÍ ORCHESTRU (PÓDIUM A KŘESLA)                */
+/* ROZESAZENÍ ORCHESTRU (PÓDIUM, ŽIDLE A DETAIL)         */
 /* ===================================================== */
 
 .stage-wrapper {
@@ -581,35 +571,50 @@ body.card-flipped-active .card:not(.card-flip-container) {
 
 .stage-dot.ano { background: var(--success); }
 .stage-dot.ne { background: #94a3b8; }
-.stage-dot.neodpovedel { background: #f59e0b; }
+.stage-dot.neodpovedel { background: var(--status-neodpovedel); }
 
 /* SVG kroužky hráčů */
 .player-spot circle {
-  fill: #cbd5e1; /* Neobsazená židle */
-  stroke: none;
+  fill: #94a3b8;
+  stroke: rgba(0, 0, 0, 0.12);
+  stroke-width: 1px;
   cursor: pointer;
   transform-box: fill-box;
   transform-origin: center;
   transition: transform 0.15s ease, filter 0.15s ease;
 }
 
-/* Přítomen */
-.player-spot.att-ano circle {
-  fill: var(--success);
+.dark-mode .player-spot circle {
+  stroke: rgba(255, 255, 255, 0.2);
 }
 
-/* Omluven: Žádné zvětšující ohraničení, pouze tlumená šedá */
+/* Přítomen / Hraje */
+.player-spot.att-ano circle {
+  fill: var(--success);
+  stroke: none;
+}
+
+/* Omluven: Zřetelná plná barva bez nadměrného vyblednutí */
 .player-spot.att-ne circle {
   fill: #94a3b8;
-  opacity: 0.45;
+  opacity: 0.95;
+  stroke: rgba(5, 38, 52, 0.25);
+  stroke-width: 1px;
+}
+
+.dark-mode .player-spot.att-ne circle {
+  fill: #64748b;
+  opacity: 0.95;
+  stroke: rgba(255, 255, 255, 0.3);
 }
 
 /* Bez odpovědi */
 .player-spot.att-neodpovedel circle {
-  fill: #f59e0b;
+  fill: var(--status-neodpovedel);
+  stroke: none;
 }
 
-/* Skrytá židle (omezená kapacita sálu) */
+/* Skrytá židle (při nastavené kapacitě 0) */
 .player-spot.seat-disabled {
   display: none;
 }
@@ -617,6 +622,17 @@ body.card-flipped-active .card:not(.card-flip-container) {
 .player-spot:hover circle {
   transform: scale(1.22);
   filter: drop-shadow(0 2px 5px rgba(0,0,0,0.35));
+}
+
+.player-spot.is-selected circle {
+  stroke: var(--primary);
+  stroke-width: 3px;
+  transform: scale(1.3);
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.45));
+}
+
+.dark-mode .player-spot.is-selected circle {
+  stroke: #ffffff;
 }
 
 .sec-label {
@@ -633,7 +649,6 @@ body.card-flipped-active .card:not(.card-flip-container) {
   fill: #84a1ae;
 }
 
-/* Tlačítko zobrazení rozesazení v roletce */
 .btn-stage-toggle {
   display: flex;
   align-items: center;
@@ -654,4 +669,106 @@ body.card-flipped-active .card:not(.card-flip-container) {
 
 .btn-stage-toggle:active {
   background: var(--bg);
+}
+
+/* Mobilní detailní infobox pod pódiem */
+.stage-player-detail {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-align: center;
+  min-height: 52px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.stage-player-detail .detail-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.stage-player-detail .detail-status {
+  font-size: 0.92rem;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+/* Zarovnaný seznam výběru hráčů v modálu */
+.roster-select-group {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+.roster-select-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.roster-select-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.roster-player-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  font-size: 0.92rem;
+  color: var(--text);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  text-align: left;
+  user-select: none;
+}
+
+.roster-player-row:hover {
+  background: var(--bg);
+}
+
+.roster-player-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.roster-player-name {
+  flex: 1;
+  text-align: left;
+  line-height: 1.3;
+}
+
+.km-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  border-radius: 4px;
+  background: var(--primary-light);
+  color: #ffffff;
+  vertical-align: middle;
 }
