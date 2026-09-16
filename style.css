@@ -533,120 +533,138 @@ body.card-flipped-active .card:not(.card-flip-container) {
 }
 
 /* ===================================================== */
-/* ROZESAZENÍ ORCHESTRU (PÓDIUM, ŽIDLE A DETAIL)         */
+/* OBSAZENÍ ORCHESTRU (PLÁSTVOVÉ ŠESTIÚHELNÍKY)         */
 /* ===================================================== */
 
 .stage-wrapper {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 8px 6px 12px 6px;
+  border-radius: 14px;
+  padding: 10px 8px 14px 8px;
   box-sizing: border-box;
   width: 100%;
 }
 
-.stage-legend {
+.stage-header-info {
   display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  font-size: 0.75rem;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 4px 8px 4px;
+  border-bottom: 1px dashed var(--border);
+  margin-bottom: 8px;
+  font-size: 0.82rem;
   font-weight: 700;
   color: var(--text-muted);
-  margin-bottom: 6px;
-  padding: 0 4px;
 }
 
-.stage-legend-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.stage-count-badge {
+  background: var(--success-bg);
+  color: var(--success);
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 800;
 }
 
-.stage-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-.stage-dot.ano { background: var(--success); }
-.stage-dot.ne { background: #94a3b8; }
-.stage-dot.neodpovedel { background: var(--status-neodpovedel); }
-
-/* SVG kroužky hráčů */
-.player-spot circle {
-  fill: #94a3b8;
-  stroke: rgba(0, 0, 0, 0.12);
-  stroke-width: 1px;
+/* Hexagon buňka hráče */
+.hex-spot polygon {
+  fill: #16a34a;
+  stroke: #ffffff;
+  stroke-width: 1.8px;
   cursor: pointer;
   transform-box: fill-box;
   transform-origin: center;
-  transition: transform 0.15s ease, filter 0.15s ease;
+  transition: transform 0.15s ease, filter 0.15s ease, fill 0.15s ease;
 }
 
-.dark-mode .player-spot circle {
-  stroke: rgba(255, 255, 255, 0.2);
+.dark-mode .hex-spot polygon {
+  stroke: #031a24;
 }
 
-/* Přítomen / Hraje */
-.player-spot.att-ano circle {
-  fill: var(--success);
-  stroke: none;
+/* Koncertní mistr: zlatý rámeček */
+.hex-spot.is-km polygon {
+  fill: #0a4b66;
+  stroke: #f59e0b;
+  stroke-width: 2.5px;
 }
 
-/* Omluven: Zřetelná plná barva bez nadměrného vyblednutí */
-.player-spot.att-ne circle {
-  fill: #94a3b8;
-  opacity: 0.95;
-  stroke: rgba(5, 38, 52, 0.25);
-  stroke-width: 1px;
+.dark-mode .hex-spot.is-km polygon {
+  fill: #14749c;
+  stroke: #fde68a;
+  stroke-width: 2.5px;
 }
 
-.dark-mode .player-spot.att-ne circle {
-  fill: #64748b;
-  opacity: 0.95;
-  stroke: rgba(255, 255, 255, 0.3);
+.hex-spot text {
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 8px;
+  fill: #ffffff;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+  letter-spacing: 0.2px;
 }
 
-/* Bez odpovědi */
-.player-spot.att-neodpovedel circle {
-  fill: var(--status-neodpovedel);
-  stroke: none;
+.hex-spot:hover polygon,
+.hex-spot:active polygon {
+  transform: scale(1.18);
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.35));
 }
 
-/* Skrytá židle (při nastavené kapacitě 0) */
-.player-spot.seat-disabled {
-  display: none;
-}
-
-.player-spot:hover circle {
-  transform: scale(1.22);
-  filter: drop-shadow(0 2px 5px rgba(0,0,0,0.35));
-}
-
-.player-spot.is-selected circle {
+.hex-spot.is-selected polygon {
   stroke: var(--primary);
   stroke-width: 3px;
-  transform: scale(1.3);
-  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.45));
+  transform: scale(1.22);
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.45));
 }
 
-.dark-mode .player-spot.is-selected circle {
-  stroke: #ffffff;
+.dark-mode .hex-spot.is-selected polygon {
+  stroke: #38a0c2;
 }
 
+/* Větší a kontrastnější nápisy sekcí */
 .sec-label {
-  font-size: 9px;
-  font-weight: 800;
-  fill: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  fill: var(--primary-light);
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.5px;
   text-anchor: middle;
   pointer-events: none;
 }
 
 .dark-mode .sec-label {
-  fill: #84a1ae;
+  fill: var(--primary-light);
+}
+
+/* Mobilní infobox pod pódiem */
+.stage-player-detail {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-align: center;
+  min-height: 54px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.stage-player-detail .detail-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.stage-player-detail .detail-status {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--success);
+  margin-top: 2px;
 }
 
 .btn-stage-toggle {
@@ -664,41 +682,6 @@ body.card-flipped-active .card:not(.card-flip-container) {
   font-weight: 700;
   color: var(--primary-light);
   cursor: pointer;
-  transition: background 0.2s;
-}
-
-.btn-stage-toggle:active {
-  background: var(--bg);
-}
-
-/* Mobilní detailní infobox pod pódiem */
-.stage-player-detail {
-  margin-top: 10px;
-  padding: 10px 14px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  text-align: center;
-  min-height: 52px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  transition: all 0.2s ease;
-}
-
-.stage-player-detail .detail-name {
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: var(--text);
-  line-height: 1.3;
-  word-break: break-word;
-}
-
-.stage-player-detail .detail-status {
-  font-size: 0.92rem;
-  font-weight: 700;
-  margin-top: 2px;
 }
 
 /* Zarovnaný seznam výběru hráčů v modálu */

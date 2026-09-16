@@ -20,17 +20,11 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// =========================================================================
-// URL Z GOOGLE APPS SCRIPTU
-// ========================================================================= 
 const API_URL = "https://script.google.com/macros/s/AKfycbwVHLODjApvEPwE4RQo5nQxdr9Y8Ng-EoWTGGsH3l45L174huUMCh_99edIV-cbXQVHQQ/exec";
 
 let user = null; 
 let appData = { akce: [], noty: [], ucast: [], clenove: [], zadosti: [], orchestraConfig: {} };
 
-// =====================================================
-// DEFINICE NÁSTROJOVÝCH SKUPIN A DYNAMICKÉHO PŮDORYSU
-// =====================================================
 const PARTITURA_SECTIONS = [
   "1. Housle", "2. Housle", "Violy", "Violoncella", "Kontrabasy", 
   "Flétny", "Hoboje", "Klarinety / Saxofony", "Fagoty", "Lesní rohy", 
@@ -38,36 +32,37 @@ const PARTITURA_SECTIONS = [
   "Smyčce", "Dechy", "Dřeva", "Žestě", "Hosté"
 ];
 
+// Kompaktní vertikální uspořádání pódia (výška zredukována na 420 px)
 const ORCHESTRA_LAYOUT_CFG = {
-  // Smyčce (sloupce pultových dvojic – pulty rostou od dirigenta z Y=480 směrem nahoru)
-  "1. Housle": { type: "string_col", x1: 66, x2: 94, yBase: 480, yStep: 32, defaultCap: 8 },
-  "2. Housle": { type: "string_col", x1: 181, x2: 209, yBase: 480, yStep: 32, defaultCap: 8 },
-  "Violy":      { type: "string_col", x1: 311, x2: 339, yBase: 480, yStep: 32, defaultCap: 6 },
-  "Violoncella":{ type: "string_col", x1: 426, x2: 454, yBase: 480, yStep: 32, defaultCap: 6 },
+  // Smyčce: 1. řada začíná na Y=360, řady po 3 rostou nahoru
+  "1. Housle": { type: "honeycomb_strings", centerX: 80,  yStart: 360, perRow: 3, defaultCap: 10 },
+  "2. Housle": { type: "honeycomb_strings", centerX: 195, yStart: 360, perRow: 3, defaultCap: 10 },
+  "Violy":      { type: "honeycomb_strings", centerX: 325, yStart: 360, perRow: 3, defaultCap: 8 },
+  "Violoncella":{ type: "honeycomb_strings", centerX: 440, yStart: 360, perRow: 3, defaultCap: 8 },
 
-  // Kontrabasy (vycentrováno za smyčci)
-  "Kontrabasy": { type: "compact_row", y: 260, centerX: 260, spacing: 27, defaultCap: 4 },
+  // Kontrabasy za smyčci
+  "Kontrabasy": { type: "honeycomb_row", centerX: 260, y: 244, spacing: 38, defaultCap: 4 },
 
-  // Dřeva a doprovod – kompaktní pultové rozestupy
-  "Flétny":              { type: "compact_row", y: 195, centerX: 145, spacing: 25, defaultCap: 4 },
-  "Hoboje":              { type: "compact_row", y: 195, centerX: 365, spacing: 25, defaultCap: 3 },
-  "Klarinety / Saxofony":{ type: "compact_row", y: 148, centerX: 80,  spacing: 25, defaultCap: 4 },
-  "Fagoty":              { type: "compact_row", y: 148, centerX: 210, spacing: 25, defaultCap: 3 },
-  "Klávesy":             { type: "compact_row", y: 148, centerX: 325, spacing: 26, defaultCap: 2 },
-  "Kytary":              { type: "compact_row", y: 148, centerX: 430, spacing: 26, defaultCap: 2 },
+  // Dřeva a doprovod
+  "Flétny":              { type: "honeycomb_row", centerX: 145, y: 186, spacing: 36, defaultCap: 4 },
+  "Hoboje":              { type: "honeycomb_row", centerX: 365, y: 186, spacing: 36, defaultCap: 3 },
+  "Klarinety / Saxofony":{ type: "honeycomb_row", centerX: 80,  y: 140, spacing: 36, defaultCap: 4 },
+  "Fagoty":              { type: "honeycomb_row", centerX: 210, y: 140, spacing: 36, defaultCap: 3 },
+  "Klávesy":             { type: "honeycomb_row", centerX: 325, y: 140, spacing: 36, defaultCap: 2 },
+  "Kytary":              { type: "honeycomb_row", centerX: 430, y: 140, spacing: 36, defaultCap: 0, dynamicLabel: true, labelY: 122 },
 
   // Žestě a bicí
-  "Lesní rohy":     { type: "compact_row", y: 92, centerX: 110, spacing: 26, defaultCap: 4 },
-  "Trubky":         { type: "compact_row", y: 92, centerX: 260, spacing: 26, defaultCap: 4 },
-  "Trombóny a Tuba":{ type: "compact_row", y: 92, centerX: 415, spacing: 26, defaultCap: 4 },
-  "Bicí nástroje":   { type: "compact_row", y: 38, centerX: 260, spacing: 28, defaultCap: 4 }
+  "Lesní rohy":     { type: "honeycomb_row", centerX: 110, y: 86, spacing: 36, defaultCap: 4 },
+  "Trubky":         { type: "honeycomb_row", centerX: 260, y: 86, spacing: 36, defaultCap: 4 },
+  "Trombóny a Tuba":{ type: "honeycomb_row", centerX: 415, y: 86, spacing: 36, defaultCap: 4 },
+  "Bicí nástroje":   { type: "honeycomb_row", centerX: 260, y: 36, spacing: 38, defaultCap: 4 }
 };
 
 const SMYCKE_SECTIONS = ["housl", "viol", "cell", "kontrabas", "smyčce", "smycce"];
 const DECHOVE_SECTIONS = ["flétn", "hoboj", "klarinet", "saxofon", "fagot", "roh", "trubk", "trubc", "trombón", "trombon", "tuba", "tuby", "tubě", "tubou", "dech", "dřev", "žest"];
 
 // =====================================================
-// GLOBÁLNÍ NASTAVENÍ VELIKOSTI PÍSMA
+// GLOBÁLNÍ NASTAVENÍ PÍSMA A TÉMATU
 // =====================================================
 const FONT_LEVELS = [
   { id: 'small',  scale: 0.88, title: 'Malé',        sample: 'Kompaktní zobrazení' },
@@ -99,7 +94,6 @@ function setAppFontSize(scaleValue) {
 
 function openFontSizeModal() {
   const currentScale = parseFloat(localStorage.getItem('bolech_font_scale') || '1');
-
   let optionsHtml = '';
   FONT_LEVELS.forEach(lvl => {
     const isActive = Math.abs(lvl.scale - currentScale) < 0.02;
@@ -121,22 +115,11 @@ function openFontSizeModal() {
           <h3 style="margin:0; font-size: 19px; color: var(--text);">Velikost písma</h3>
           <button type="button" style="background:transparent; border:none; font-size: 20px; color: var(--text-muted); cursor:pointer;" onclick="document.getElementById('fontModal').remove()">✕</button>
         </div>
-        
-        <div style="margin-bottom: 16px;">
-          ${optionsHtml}
-        </div>
-
-        <div style="padding: 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); margin-bottom: 16px;">
-          <small style="color: var(--text-muted); display: block; margin-bottom: 4px;">Živý náhled:</small>
-          <div style="font-size: 1rem; font-weight: 600; color: var(--text);">Antonín Dvořák – Symfonie č. 9</div>
-          <div style="font-size: 0.85rem; color: var(--text-muted);">Sraz: 18:30 | Začátek: 19:00</div>
-        </div>
-
+        <div style="margin-bottom: 16px;">${optionsHtml}</div>
         <button type="button" class="btn" onclick="document.getElementById('fontModal').remove()">Hotovo</button>
       </div>
     </div>
   `;
-
   document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
@@ -164,7 +147,6 @@ async function runGoogleScript(action, payload = {}) {
       body: JSON.stringify({ action: action, payload: payload }),
       redirect: 'follow'
     });
-    
     if (!response.ok) throw new Error('Chyba serveru: ' + response.status);
     return await response.json();
   } catch (error) {
@@ -188,16 +170,12 @@ function handleLoginSubmit(e) {
     btn.innerText = "Vstoupit"; btn.disabled = false;
     if(res.success) { 
       user = res.member; 
-      
       const jmeno = String(user.name || "").toLowerCase();
       const sekce = String(user.section || "").toLowerCase();
       const role = String(user.role || "").toLowerCase();
-      
       if (sekce.includes('host') || jmeno.includes('host') || role === 'host') {
-        const pocetDni = 14; 
-        user.platnostDo = Date.now() + (pocetDni * 24 * 60 * 60 * 1000); 
+        user.platnostDo = Date.now() + (14 * 24 * 60 * 60 * 1000); 
       }
-
       localStorage.setItem('bolech_auth_member', JSON.stringify(user)); 
       document.getElementById('loginScreen').style.display = 'none'; 
       initApp(); 
@@ -249,7 +227,6 @@ function escapeHtml(str) { return String(str||'').replace(/[&<>'"]/g, tag => ({'
 function generovatIdAkce(typ) {
   let prefix = 'akce_';
   const t = String(typ).toLowerCase();
-  
   if (t.includes('koncert')) prefix = 'kon_';
   else if (t.includes('generálka')) prefix = 'gen_';
   else if (t.includes('zkouška') || t.includes('zkouska')) prefix = 'zk_'; 
@@ -287,8 +264,31 @@ function isMemberEligibleForAkce(clen, datumAkceText) {
     const akceTime = parseDate(datumAkceText);
     return (expTime + 86399000) >= akceTime;
   }
-
   return (aktivni === 'ANO' || aktivni === 'TRUE' || aktivni === '1');
+}
+
+function getPlayerDisplayLabel(fullName, isKm) {
+  if (isKm) return "★ KM";
+  const parts = String(fullName || "").trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].substring(0, 5);
+  const first = parts[0];
+  const last = parts[parts.length - 1];
+  
+  if (first.length <= 4) {
+    return `${first} ${last[0]}.`;
+  }
+  return `${first[0]}${last[0]}`.toUpperCase();
+}
+
+function getHexPoints(cx, cy, r = 17) {
+  const pts = [];
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i + (Math.PI / 6);
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle);
+    pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+  }
+  return pts.join(" ");
 }
 
 // =====================================================
@@ -298,10 +298,7 @@ let aktivniOtocenaKartaId = null;
 
 function flipCard(cardId) {
   const flipper = document.getElementById(cardId);
-  if (!flipper) {
-    zavritOtocenouKartu();
-    return;
-  }
+  if (!flipper) { zavritOtocenouKartu(); return; }
 
   const container = flipper.closest('.card-flip-container');
   const isCurrentlyFlipped = flipper.classList.contains('is-flipped');
@@ -318,9 +315,7 @@ function flipCard(cardId) {
 }
 
 function zavritOtocenouKartu() {
-  if (!aktivniOtocenaKartaId && !document.body.classList.contains('card-flipped-active')) {
-    return;
-  }
+  if (!aktivniOtocenaKartaId && !document.body.classList.contains('card-flipped-active')) return;
   aktivniOtocenaKartaId = null;
   document.body.classList.remove('card-flipped-active');
   document.querySelectorAll('.card-flipper.is-flipped').forEach(f => f.classList.remove('is-flipped'));
@@ -344,7 +339,7 @@ function renderEvents() {
     cont.innerHTML += `
       <div class="admin-actions" style="display:flex; gap:8px; margin-bottom:16px;">
         <button class="btn" style="background:var(--success); flex:1; padding:12px 6px; font-size:14px;" onclick="openAkceForm()">➕ Přidat</button>
-        <button class="btn" style="background:var(--primary); flex:1; padding:12px 6px; font-size:14px;" onclick="openOrchestrModal()">🎼 Orchestr</button>
+        <button class="btn" style="background:var(--primary); flex:1; padding:12px 6px; font-size:14px;" onclick="openOrchestrModal()">🎼 Obsazení</button>
         <button class="btn" style="background:var(--primary-light); flex:1; padding:12px 6px; font-size:14px;" onclick="openGuestManager()">👥 Hosté</button>
       </div>`;
   }
@@ -386,7 +381,6 @@ function generateAkceHtml(akce, isVedení) {
     <div class="card-flip-container">
       <div class="card-flipper" id="${cardFlipperId}">
         
-        <!-- PŘEDNÍ STRANA KARTY -->
         <div class="card-front">
           ${hasDetailsOnBack ? `<button type="button" class="corner-fold-btn" onclick="event.stopPropagation(); flipCard('${cardFlipperId}')" title="Zobrazit program a detaily"></button>` : ''}
           
@@ -405,7 +399,6 @@ function generateAkceHtml(akce, isVedení) {
             </div>
           </div>
 
-          <!-- Spodní zóna: docházka a přehled -->
           <div class="card-body" style="padding-top: 16px;">
             <div class="att-buttons">
               <button class="btn-att ${myVote?.stav==='Ano'?'selected-ano':''}" onclick="submitUcast('${akce.id}','${akce.datum}','Ano',this)">✓ Účastním se</button>
@@ -419,11 +412,8 @@ function generateAkceHtml(akce, isVedení) {
           </div>
         </div>
 
-        <!-- ZADNÍ STRANA KARTY -->
         <div class="card-back card-clickable-area" onclick="flipCard('${cardFlipperId}')" title="Klepnutím otočíte zpět na přehled">
-          <div class="card-top-bar ${barClass}">
-            <span>DETAILY & PROGRAM</span>
-          </div>
+          <div class="card-top-bar ${barClass}"><span>DETAILY & PROGRAM</span></div>
           <div class="card-body">
             ${parsed.mainNote ? `<div class="oznameni-text" style="margin-bottom: 16px;">${escapeHtml(parsed.mainNote)}</div>` : ''}
             ${formatProgramHtml(parsed.progData)}
@@ -451,7 +441,7 @@ function generateRosterHtml(akceId) {
     </button>
     <div id="content-${akceId}" class="roster-content">
       <button type="button" class="btn-stage-toggle" onclick="openStageModalForAkce('${akceId}')">
-        🗺️ Zobrazit rozesazení orchestru
+        🗺️ Zobrazit obsazení orchestru (${potvrdili.length})
       </button>
   `;
 
@@ -471,58 +461,57 @@ function toggleRoster(id) {
 }
 
 // =========================================================================
-// ŠABLONA SVG PÓDIA S NÁPISY SMYČCŮ DOLE A INFOBOXEM
+// ŠABLONA PÓDIA: KOMPAKTNÍ VÝŠKA 420px (HEXAGONY PO 3 VEDLE SEBE)
 // =========================================================================
 function getOrchestraSvgHtml(prefix = "stage") {
   return `
   <div class="stage-wrapper">
-    <div class="stage-legend">
-      <span class="stage-legend-item"><span class="stage-dot ano"></span> Hraje</span>
-      <span class="stage-legend-item"><span class="stage-dot ne"></span> Omluven</span>
-      <span class="stage-legend-item"><span class="stage-dot neodpovedel"></span> Neodp.</span>
+    <div class="stage-header-info">
+      <span>Obsazení přihlášených</span>
+      <span class="stage-count-badge" id="${prefix}-total-count">0 hraje</span>
     </div>
 
-    <svg viewBox="0 0 520 535" id="${prefix}-svg" style="width:100%; height:auto; display:block; user-select:none;">
-      <!-- Půdorysné zóny -->
-      <rect x="130" y="6" width="260" height="48" rx="8" fill="var(--sec-bg, rgba(5,38,52,0.035))"/>
-      <rect x="35" y="62" width="450" height="52" rx="8" fill="var(--sec-bg, rgba(5,38,52,0.035))"/>
-      <rect x="20" y="122" width="480" height="98" rx="8" fill="var(--sec-bg, rgba(5,38,52,0.035))"/>
-      <rect x="10" y="228" width="500" height="295" rx="10" fill="var(--sec-bg, rgba(5,38,52,0.035))"/>
+    <svg viewBox="0 0 520 420" id="${prefix}-svg" style="width:100%; height:auto; display:block; user-select:none;">
+      <!-- Kompaktní podkresové zóny -->
+      <rect x="130" y="6" width="260" height="46" rx="8" fill="var(--sec-bg, rgba(5,38,52,0.035))"/>
+      <rect x="35" y="58" width="450" height="50" rx="8" fill="var(--sec-bg, rgba(5,38,52,0.035))"/>
+      <rect x="20" y="114" width="480" height="96" rx="8" fill="var(--sec-bg, rgba(5,38,52,0.035))"/>
+      <rect x="10" y="216" width="500" height="196" rx="10" fill="var(--sec-bg, rgba(5,38,52,0.035))"/>
 
       <!-- Názvy sekcí nahoře -->
-      <text x="260" y="20" class="sec-label">Bicí nástroje</text>
+      <text x="260" y="18" class="sec-label">Bicí nástroje</text>
       
-      <text x="110" y="76" class="sec-label">Lesní rohy</text>
-      <text x="260" y="76" class="sec-label">Trubky</text>
-      <text x="415" y="76" class="sec-label">Pozouny / Tuba</text>
+      <text x="110" y="70" class="sec-label">Lesní rohy</text>
+      <text x="260" y="70" class="sec-label">Trubky</text>
+      <text x="415" y="70" class="sec-label">Trombóny / Tuba</text>
 
-      <text x="80" y="136" class="sec-label">Klarinety</text>
-      <text x="210" y="136" class="sec-label">Fagoty</text>
-      <text x="325" y="136" class="sec-label">Klávesy</text>
-      <text x="430" y="136" class="sec-label">Kytara</text>
+      <text x="80" y="124" class="sec-label">Klarinety</text>
+      <text x="210" y="124" class="sec-label">Fagoty</text>
+      <text x="325" y="124" class="sec-label">Klávesy</text>
+      <g id="${prefix}-dynamic-labels"></g>
 
-      <text x="145" y="180" class="sec-label">Flétny</text>
-      <text x="365" y="180" class="sec-label">Hoboje</text>
+      <text x="145" y="170" class="sec-label">Flétny</text>
+      <text x="365" y="170" class="sec-label">Hoboje</text>
 
-      <text x="260" y="244" class="sec-label">Kontrabasy</text>
+      <text x="260" y="230" class="sec-label">Kontrabasy</text>
 
-      <!-- Dynamická vrstva pro generované židle -->
+      <!-- Dynamická vrstva pro přihlášené hráče -->
       <g id="${prefix}-dynamic-spots"></g>
 
-      <!-- NÁPISY SMYČCŮ DOLE U 1. ŘADY (DIRIGENTA) -->
-      <text x="80" y="508" class="sec-label" style="font-size:10px;">1. Housle</text>
-      <text x="195" y="508" class="sec-label" style="font-size:10px;">2. Housle</text>
-      <text x="325" y="508" class="sec-label" style="font-size:10px;">Violy</text>
-      <text x="440" y="508" class="sec-label" style="font-size:10px;">Violoncella</text>
+      <!-- NÁPISY SMYČCŮ DOLE U DIRIGENTA -->
+      <text x="80" y="405" class="sec-label">1. Housle</text>
+      <text x="195" y="405" class="sec-label">2. Housle</text>
+      <text x="325" y="405" class="sec-label">Violy</text>
+      <text x="440" y="405" class="sec-label">Violoncella</text>
     </svg>
 
-    <!-- Dvouřádkový mobilní infobox pod pódiem -->
+    <!-- Detailní infobox s celým jménem hráče -->
     <div id="${prefix}-detail-box" class="stage-player-detail">
       <div class="detail-name" style="font-size:0.95rem; font-weight:normal; color:var(--text-muted);">
-        👆 Klepněte na židli v orchestru
+        👆 Klepněte na hráče pro celé jméno
       </div>
       <div class="detail-status" style="color:var(--text-muted); font-size:0.8rem;">
-        Zde se zobrazí jméno a docházka hráče
+        Zobrazují se pouze ti, kteří potvrdili účast
       </div>
     </div>
   </div>`;
@@ -540,8 +529,12 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
   const activeRoster = cfgRoster !== null ? cfgRoster : (savedCfg.roster || {});
 
   const dynamicGroup = document.getElementById(`${prefix}-dynamic-spots`);
+  const dynamicLabelsGroup = document.getElementById(`${prefix}-dynamic-labels`);
   if (!dynamicGroup) return;
   dynamicGroup.innerHTML = "";
+  if (dynamicLabelsGroup) dynamicLabelsGroup.innerHTML = "";
+
+  let celkemHraje = 0;
 
   Object.keys(ORCHESTRA_LAYOUT_CFG).forEach(sec => {
     const cfg = ORCHESTRA_LAYOUT_CFG[sec];
@@ -564,64 +557,82 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
       chosenPlayers.sort((a, b) => (a.celeJmeno === kmName ? -1 : b.celeJmeno === kmName ? 1 : 0));
     }
 
-    for (let idx = 0; idx < capacity; idx++) {
-      let x = 0, y = 0;
+    chosenPlayers = chosenPlayers.slice(0, capacity);
 
-      if (cfg.type === "string_col") {
-        const row = Math.floor(idx / 2);
-        x = (idx % 2 === 0) ? cfg.x1 : cfg.x2;
-        y = cfg.yBase - (row * cfg.yStep);
+    // Filtr pouze na přihlášené hráče
+    const attendingPlayers = chosenPlayers.filter(p => {
+      const u = ucastAkce.find(item => item.jmeno === p.celeJmeno);
+      return u && u.stav === "Ano";
+    });
+
+    if (cfg.dynamicLabel && attendingPlayers.length > 0 && dynamicLabelsGroup) {
+      const labelEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      labelEl.setAttribute("x", cfg.centerX);
+      labelEl.setAttribute("y", cfg.labelY || (cfg.y - 16));
+      labelEl.setAttribute("class", "sec-label");
+      labelEl.textContent = sec === "Kytary" ? "Kytara" : sec;
+      dynamicLabelsGroup.appendChild(labelEl);
+    }
+
+    celkemHraje += attendingPlayers.length;
+
+    attendingPlayers.forEach((p, idx) => {
+      let x = 0, y = 0;
+      const hexRadius = 17;
+
+      if (cfg.type === "honeycomb_strings") {
+        // SMYČCE: 3 VEDLE SEBE (rozteč 29 px), ŘADY SMĚREM NAHORU (rozteč 25 px)
+        const perRow = cfg.perRow || 3;
+        const row = Math.floor(idx / perRow);
+        const col = idx % perRow;
+        
+        const rowOffsetX = (row % 2 === 1) ? 14 : 0;
+        const colPitch = 29;
+        const rowPitch = 25;
+
+        x = (cfg.centerX - ((perRow - 1) * colPitch) / 2) + (col * colPitch) + rowOffsetX;
+        y = cfg.yStart - (row * rowPitch);
       } else {
-        y = cfg.y;
-        const offset = (idx - (capacity - 1) / 2) * cfg.spacing;
+        const count = attendingPlayers.length;
+        const spacing = cfg.spacing || 36;
+        const offset = (idx - (count - 1) / 2) * spacing;
         x = cfg.centerX + offset;
+        y = cfg.y;
       }
+
+      const isKm = (sec === "1. Housle" && p.celeJmeno === kmName);
 
       const spot = document.createElementNS("http://www.w3.org/2000/svg", "g");
-      spot.setAttribute("class", "player-spot");
-      spot.setAttribute("transform", `translate(${x}, ${y})`);
+      spot.setAttribute("class", `hex-spot ${isKm ? 'is-km' : ''}`);
 
-      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      circle.setAttribute("r", "11");
-      spot.appendChild(circle);
+      const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+      polygon.setAttribute("points", getHexPoints(x, y, hexRadius));
+      spot.appendChild(polygon);
 
-      if (idx < chosenPlayers.length) {
-        const p = chosenPlayers[idx];
-        const u = ucastAkce.find(item => item.jmeno === p.celeJmeno);
-        const stav = u ? u.stav : "neodpovedel";
+      const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      label.setAttribute("x", x);
+      label.setAttribute("y", y);
+      label.textContent = getPlayerDisplayLabel(p.celeJmeno, isKm);
+      spot.appendChild(label);
 
-        spot.classList.add(`att-${stav.toLowerCase()}`);
+      const playerLabel = `${p.celeJmeno}${isKm ? " 🎻 (Koncertní mistr)" : ""}`;
+      const statusText = `✓ Potvrzena účast – ${sec}`;
+      const statusColor = "var(--success)";
 
-        const isKm = (sec === "1. Housle" && p.celeJmeno === kmName);
-        const playerLabel = `${p.celeJmeno}${isKm ? " 🎻 (Koncertní mistr)" : ""} – ${sec}`;
-        
-        let statusText = "🟢 Účastní se (Přítomen)";
-        let statusColor = "var(--success)";
-        if (stav === "Ne") {
-          statusText = "⚪ Omluven" + (u && u.duvod ? ` (${u.duvod})` : "");
-          statusColor = "#94a3b8";
-        } else if (stav === "neodpovedel") {
-          statusText = "🟠 Bez odpovědi (Zatím nepotvrzeno)";
-          statusColor = "var(--status-neodpovedel)";
-        }
-
-        spot.onclick = () => {
-          document.querySelectorAll(`#${prefix}-svg .player-spot`).forEach(el => el.classList.remove("is-selected"));
-          spot.classList.add("is-selected");
-          showPlayerDetailBox(prefix, playerLabel, statusText, statusColor);
-        };
-      } else {
-        spot.style.opacity = "0.55";
-        spot.onclick = () => {
-          document.querySelectorAll(`#${prefix}-svg .player-spot`).forEach(el => el.classList.remove("is-selected"));
-          spot.classList.add("is-selected");
-          showPlayerDetailBox(prefix, `Volná židle č. ${idx + 1} (${sec})`, "Neobsazené místo v obsazení", "var(--text-muted)");
-        };
-      }
+      spot.onclick = () => {
+        document.querySelectorAll(`#${prefix}-svg .hex-spot`).forEach(el => el.classList.remove("is-selected"));
+        spot.classList.add("is-selected");
+        showPlayerDetailBox(prefix, playerLabel, statusText, statusColor);
+      };
 
       dynamicGroup.appendChild(spot);
-    }
+    });
   });
+
+  const countBadge = document.getElementById(`${prefix}-total-count`);
+  if (countBadge) {
+    countBadge.textContent = `${celkemHraje} ${celkemHraje === 1 ? 'hráč' : (celkemHraje >= 2 && celkemHraje <= 4 ? 'hráči' : 'hráčů')}`;
+  }
 }
 
 function showPlayerDetailBox(prefix, name, status, color) {
@@ -637,10 +648,10 @@ function openStageModalForAkce(akceId) {
   const akce = (appData.akce || []).find(a => String(a.id) === String(akceId));
   const html = `
     <div id="viewStageModal" class="modal-overlay" onclick="if(event.target===this) document.getElementById('viewStageModal').remove()">
-      <div class="modal-box" style="max-width: 520px; padding: 14px;">
+      <div class="modal-box" style="max-width: 530px; padding: 14px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
           <div>
-            <h3 style="margin:0; font-size:1.05rem; color:var(--primary);">${escapeHtml(akce ? akce.nazev : "Rozesazení orchestru")}</h3>
+            <h3 style="margin:0; font-size:1.05rem; color:var(--primary);">${escapeHtml(akce ? akce.nazev : "Obsazení orchestru")}</h3>
             <span style="font-size:0.8rem; color:var(--text-muted);">${escapeHtml(akce ? akce.datum : "")}</span>
           </div>
           <button type="button" style="background:transparent; border:none; font-size:20px; color:var(--text-muted); cursor:pointer;" onclick="document.getElementById('viewStageModal').remove()">✕</button>
@@ -655,7 +666,7 @@ function openStageModalForAkce(akceId) {
 }
 
 // =========================================================================
-// MODÁL: SPRÁVA ORCHESTRU (PROJEKT, KM, KAPACITA ŽIDLÍ A VÝBĚR HRÁČŮ)
+// MODÁL: SPRÁVA OBSAZENÍ ORCHESTRU
 // =========================================================================
 function openOrchestrModal() {
   const akceList = (appData.akce || []).filter(a => !a.typ.includes("Oznámení") && !a.typ.includes("Informace"));
@@ -685,7 +696,7 @@ function openOrchestrModal() {
     <div id="orchestrModal" class="modal-overlay">
       <div class="modal-box" style="max-height: 92vh; max-width: 530px; overflow-y: auto; padding: 16px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
-          <h3 style="margin:0; font-size:1.15rem; color:var(--text);">🎼 Rozesazení orchestru</h3>
+          <h3 style="margin:0; font-size:1.15rem; color:var(--text);">🎼 Obsazení orchestru</h3>
           <button type="button" style="background:transparent; border:none; font-size:20px; color:var(--text-muted); cursor:pointer;" onclick="document.getElementById('orchestrModal').remove()">✕</button>
         </div>
 
@@ -703,7 +714,7 @@ function openOrchestrModal() {
         </div>
 
         <details style="margin-bottom:12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:6px 10px;">
-          <summary style="cursor:pointer; font-weight:700; font-size:0.85rem; color:var(--text);">🏛️ Kapacita židlí v sále (nastavení počtu)</summary>
+          <summary style="cursor:pointer; font-weight:700; font-size:0.85rem; color:var(--text);">🏛️ Nastavení kapacity sekcí v sále</summary>
           ${limitsHtml}
         </details>
 
@@ -717,7 +728,7 @@ function openOrchestrModal() {
         </div>
 
         <div style="display:flex; gap:8px;">
-          <button type="button" class="btn" style="background:var(--success); flex:1;" onclick="saveOrchestrSettings()">💾 Uložit rozesazení</button>
+          <button type="button" class="btn" style="background:var(--success); flex:1;" onclick="saveOrchestrSettings()">💾 Uložit obsazení</button>
           <button type="button" class="btn" style="background:var(--border); color:var(--text); width:auto;" onclick="document.getElementById('orchestrModal').remove()">Zavřít</button>
         </div>
       </div>
@@ -838,7 +849,7 @@ function renderRosterSelectionInputs() {
   });
 
   if (!anyReduction) {
-    html = `<p style="font-size:0.82rem; color:var(--text-muted); margin:0; text-align:left;">Kapacita židlí pokrývá všechny aktivní hráče v orchestru. Není nutné nikoho vyřazovat.</p>`;
+    html = `<p style="font-size:0.82rem; color:var(--text-muted); margin:0; text-align:left;">Kapacita sekcí pokrývá všechny aktivní hráče. Není nutné nikoho vyřazovat.</p>`;
   }
 
   container.innerHTML = html;
@@ -848,7 +859,7 @@ function renderRosterSelectionInputs() {
 function validateRosterSelection(sec, maxCapacity, changedInput) {
   const checkedBoxes = Array.from(document.querySelectorAll(`.roster-checkbox[data-sec="${sec}"]:checked`));
   if (checkedBoxes.length > maxCapacity) {
-    alert(`Pro sekci ${sec} je povoleno vybrat maximálně ${maxCapacity} hráčů podle nastavené kapacity židlí.`);
+    alert(`Pro sekci ${sec} je povoleno vybrat maximálně ${maxCapacity} hráčů podle nastavené kapacity.`);
     changedInput.checked = false;
     return;
   }
@@ -906,7 +917,7 @@ function saveOrchestrSettings() {
 
   runGoogleScript("saveOrchestraConfig", payload).then(res => {
     if (res.success) {
-      alert("Rozesazení orchestru a jmenný výběr hráčů pro projekt byly úspěšně uloženy!");
+      alert("Obsazení orchestru a jmenný výběr hráčů pro projekt byly úspěšně uloženy!");
     } else {
       alert("Uloženo lokálně, ale zápis do tabulky selhal: " + res.error);
     }
@@ -1773,7 +1784,6 @@ function vykresliAdminNoty() {
 
       html += `
         <details class="card ${stavTrida}" style="margin-bottom: 8px; margin-left: 0; margin-right: 0; padding: 0; overflow: hidden; width: 100%; border: 1px solid var(--border);">
-          
           <summary style="padding: 10px 14px; cursor: pointer; list-style: none; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--border);">
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: bold; color: var(--text);">
               <span style="word-break: break-word; line-height: 1.3;">📁 ${zobrazenyNazev} <small style="font-weight:normal; opacity:0.6;">(${s.soubory.length})</small></span>
@@ -1823,9 +1833,7 @@ function vykresliAdminNoty() {
 
 function ulozitZmenyNot(e) {
   const eventObj = e || window.event;
-  if (eventObj && eventObj.preventDefault) {
-    eventObj.preventDefault();
-  }
+  if (eventObj && eventObj.preventDefault) eventObj.preventDefault();
 
   const button = eventObj ? (eventObj.currentTarget || eventObj.target) : null;
   if (button) {
@@ -1834,7 +1842,6 @@ function ulozitZmenyNot(e) {
   }
 
   const zmeny = [];
-
   window.stromSlozek.forEach((s, index) => {
     const chk = document.getElementById('chk_' + index);
     const inputProg = document.getElementById('prog_' + index);
@@ -1845,7 +1852,6 @@ function ulozitZmenyNot(e) {
 
       if (s.aktivni !== novaAktivni || s.program !== novyProgram) {
         const stavText = novaAktivni ? 'ANO' : '';
-
         s.soubory.forEach(soubor => {
           zmeny.push({
             odkaz: soubor.odkaz,
