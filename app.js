@@ -32,7 +32,7 @@ const PARTITURA_SECTIONS = [
   "Smyčce", "Dechy", "Dřeva", "Žestě", "Hosté"
 ];
 
-// Široké rozvržení pódia (viewBox 660 x 380)
+// Široké rozvržení pódia (viewBox 660 x 375)
 const ORCHESTRA_LAYOUT_CFG = {
   // Smyčce v přední části: řady po 3 vedle sebe
   "1. Housle": { type: "strings", centerX: 100, yStart: 320, defaultCap: 10 },
@@ -169,7 +169,6 @@ function handleLoginSubmit(e) {
   const queryVal = document.getElementById('loginQuery').value;
   const pinVal = document.getElementById('loginPin').value;
 
-  // Zobrazení elegantního načítacího stavu
   loginCard.innerHTML = `
     <div class="welcome-loader-card">
       <div class="welcome-clef-icon">🎼</div>
@@ -186,48 +185,56 @@ function handleLoginSubmit(e) {
     </div>
   `;
 
-  // Časovač, který plynule mění zprávy a hýbe ukazatelem
   let progress = 15;
   const bar = document.getElementById('loaderProgressBar');
   const msg = document.getElementById('loaderStatusMsg');
-  
-  bar.style.width = progress + "%";
+  if (bar) bar.style.width = progress + "%";
 
   const progressInterval = setInterval(() => {
-    progress += Math.floor(Math.random() * 8) + 4;
-    if (progress > 92) progress = 92; // Zastaví těsně před koncem, dokud nepřijdou data
-    bar.style.width = progress + "%";
+    progress += Math.floor(Math.random() * 6) + 3;
+    if (progress > 90) progress = 90;
+    if (bar) bar.style.width = progress + "%";
 
-    if (progress > 30 && progress < 60) {
-      msg.textContent = "Ladíme nástroje a stahujeme rozpis akcí...";
-    } else if (progress >= 60 && progress < 80) {
-      msg.textContent = "Připravujeme pódium a obsazení...";
-    } else if (progress >= 80) {
-      msg.textContent = "Už jen okamžik, otevíráme pult...";
+    if (progress > 25 && progress < 55) {
+      if (msg) msg.textContent = "Ladíme nástroje a stahujeme rozpis akcí...";
+    } else if (progress >= 55 && progress < 78) {
+      if (msg) msg.textContent = "Připravujeme pódium a obsazení...";
+    } else if (progress >= 78) {
+      if (msg) msg.textContent = "Už jen okamžik, otevíráme pult...";
     }
-  }, 400);
+  }, 450);
 
-  // Volání ověření
   runGoogleScript("authenticateMember", { query: queryVal, pin: pinVal })
   .then(res => { 
     if (res.success) { 
       user = res.member; 
-      localStorage.setItem('bolech_auth_member', JSON.stringify(user)); 
 
-      // Dokončení progress baru na 100 %
+      const jmeno = String(user.name || "").toLowerCase();
+      const sekce = String(user.section || "").toLowerCase();
+      const role = String(user.role || "").toLowerCase();
+      if (sekce.includes('host') || jmeno.includes('host') || role === 'host') {
+        user.platnostDo = Date.now() + (14 * 24 * 60 * 60 * 1000); 
+      }
+      localStorage.setItem('bolech_auth_member', JSON.stringify(user));
+
+      if (res.initialData) {
+        appData = res.initialData;
+        localStorage.setItem("bolech_data_cache", JSON.stringify(appData));
+      }
+
       clearInterval(progressInterval);
-      bar.style.width = "100%";
-      msg.textContent = "Připraveno!";
+      if (bar) bar.style.width = "100%";
+      if (msg) msg.textContent = "Připraveno!";
 
       setTimeout(() => {
         document.getElementById('loginScreen').style.display = 'none'; 
         initApp(); 
-      }, 300);
+      }, 350);
 
     } else { 
       clearInterval(progressInterval);
       alert(res.error); 
-      location.reload(); // Při chybě vrátí čistý formulář
+      location.reload(); 
     } 
   }).catch(err => {
     clearInterval(progressInterval);
@@ -255,10 +262,14 @@ function initApp() {
     renderEvents(); 
     vykresliNoty(appData.noty || [], user.section, jeDirigent);
     if (isVedení) vykresliAdminNoty();
+  } else if (appData && appData.akce && appData.akce.length > 0) {
+    renderEvents();
+    vykresliNoty(appData.noty || [], user.section, jeDirigent);
+    if (isVedení) vykresliAdminNoty();
   }
 
   runGoogleScript("getInitialData").then(d => { 
-    if(d.akce) {
+    if(d && d.akce) {
       appData = d; 
       localStorage.setItem("bolech_data_cache", JSON.stringify(appData));
       renderEvents(); 
@@ -514,7 +525,7 @@ function toggleRoster(id) {
 }
 
 // =========================================================================
-// ŠABLONA PÓDIA: ŠIROKÁ VERZE 660 x 380 S VELKÝMI PLÁSTVEMI
+// ŠABLONA PÓDIA: ŠIROKÁ VERZE 660 x 375 (MINIMÁLNÍ OKRAJE)
 // =========================================================================
 function getOrchestraSvgHtml(prefix = "stage") {
   return `
@@ -624,7 +635,6 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
     attendingBySec[sec] = attending.slice(0, capacity);
   });
 
-  // Pomocné vykreslení hex-spotu
   function renderHexSpot(x, y, p, isKm, secName) {
     celkemHraje++;
     const spot = document.createElementNS("http://www.w3.org/2000/svg", "g");
