@@ -262,8 +262,8 @@ nav {
 }
 
 /* MODÁLNÍ OKNA */
-.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.75); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 16px; backdrop-filter: blur(4px); }
-.modal-box { background: var(--surface); padding: 24px; border-radius: var(--radius); width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); }
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.75); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 4px; backdrop-filter: blur(4px); }
+.modal-box { background: var(--surface); padding: 20px; border-radius: var(--radius); width: 100%; max-width: 500px; max-height: 94vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); }
 .modal-box label { display: block; font-size: 0.95rem; font-weight: 600; margin-bottom: 6px; color: var(--text-muted); margin-top: 12px; }
 .modal-input { margin-bottom: 0; }
 
@@ -533,14 +533,14 @@ body.card-flipped-active .card:not(.card-flip-container) {
 }
 
 /* ===================================================== */
-/* OBSAZENÍ ORCHESTRU (PLÁSTVOVÉ ŠESTIÚHELNÍKY)         */
+/* OBSAZENÍ ORCHESTRU (MAXIMÁLNÍ ŠÍŘKA & VELKÉ PLÁSTVE)  */
 /* ===================================================== */
 
 .stage-wrapper {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 10px 8px 14px 8px;
+  border-radius: 12px;
+  padding: 6px 2px 8px 2px;
   box-sizing: border-box;
   width: 100%;
 }
@@ -549,10 +549,10 @@ body.card-flipped-active .card:not(.card-flip-container) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 4px 8px 4px;
+  padding: 0 4px 6px 4px;
   border-bottom: 1px dashed var(--border);
-  margin-bottom: 8px;
-  font-size: 0.82rem;
+  margin-bottom: 4px;
+  font-size: 0.85rem;
   font-weight: 700;
   color: var(--text-muted);
 }
@@ -560,9 +560,9 @@ body.card-flipped-active .card:not(.card-flip-container) {
 .stage-count-badge {
   background: var(--success-bg);
   color: var(--success);
-  padding: 3px 8px;
+  padding: 3px 10px;
   border-radius: 12px;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 800;
 }
 
@@ -570,7 +570,7 @@ body.card-flipped-active .card:not(.card-flip-container) {
 .hex-spot polygon {
   fill: #16a34a;
   stroke: #ffffff;
-  stroke-width: 1.8px;
+  stroke-width: 1.6px;
   cursor: pointer;
   transform-box: fill-box;
   transform-origin: center;
@@ -585,19 +585,19 @@ body.card-flipped-active .card:not(.card-flip-container) {
 .hex-spot.is-km polygon {
   fill: #0a4b66;
   stroke: #f59e0b;
-  stroke-width: 2.5px;
+  stroke-width: 2.8px;
 }
 
 .dark-mode .hex-spot.is-km polygon {
   fill: #14749c;
   stroke: #fde68a;
-  stroke-width: 2.5px;
+  stroke-width: 2.8px;
 }
 
 .hex-spot text {
   font-family: inherit;
   font-weight: 800;
-  font-size: 8px;
+  font-size: 9.5px;
   fill: #ffffff;
   text-anchor: middle;
   dominant-baseline: central;
@@ -622,30 +622,30 @@ body.card-flipped-active .card:not(.card-flip-container) {
   stroke: #38a0c2;
 }
 
-/* Větší a kontrastnější nápisy sekcí */
+/* Větší nadpisy nástrojových skupin */
 .sec-label {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 900;
   fill: var(--primary-light);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.6px;
   text-anchor: middle;
   pointer-events: none;
 }
 
 .dark-mode .sec-label {
-  fill: var(--primary-light);
+  fill: #67c2e0;
 }
 
 /* Mobilní infobox pod pódiem */
 .stage-player-detail {
-  margin-top: 10px;
-  padding: 10px 14px;
+  margin-top: 8px;
+  padding: 8px 12px;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 10px;
   text-align: center;
-  min-height: 54px;
+  min-height: 50px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -684,13 +684,13 @@ body.card-flipped-active .card:not(.card-flip-container) {
   cursor: pointer;
 }
 
-/* Zarovnaný seznam výběru hráčů v modálu */
+/* Seznam výběru konkrétních hráčů v modálu */
 .roster-select-group {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 10px 12px;
-  margin-bottom: 10px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
   text-align: left;
 }
 
@@ -698,30 +698,26 @@ body.card-flipped-active .card:not(.card-flip-container) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   padding-bottom: 4px;
   border-bottom: 1px solid var(--border);
-  text-align: left;
 }
 
 .roster-select-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  text-align: left;
 }
 
 .roster-player-row {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
   gap: 10px;
   font-size: 0.92rem;
   color: var(--text);
   cursor: pointer;
-  padding: 4px 6px;
+  padding: 3px 6px;
   border-radius: 6px;
-  text-align: left;
   user-select: none;
 }
 
@@ -729,7 +725,8 @@ body.card-flipped-active .card:not(.card-flip-container) {
   background: var(--bg);
 }
 
-.roster-player-row input[type="checkbox"] {
+.roster-player-row input[type="checkbox"],
+.roster-player-row input[type="radio"] {
   width: 18px;
   height: 18px;
   min-width: 18px;
@@ -741,7 +738,6 @@ body.card-flipped-active .card:not(.card-flip-container) {
 .roster-player-name {
   flex: 1;
   text-align: left;
-  line-height: 1.3;
 }
 
 .km-badge {
@@ -753,5 +749,4 @@ body.card-flipped-active .card:not(.card-flip-container) {
   border-radius: 4px;
   background: var(--primary-light);
   color: #ffffff;
-  vertical-align: middle;
 }

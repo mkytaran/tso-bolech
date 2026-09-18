@@ -26,39 +26,40 @@ let user = null;
 let appData = { akce: [], noty: [], ucast: [], clenove: [], zadosti: [], orchestraConfig: {} };
 
 const PARTITURA_SECTIONS = [
-  "1. Housle", "2. Housle", "Violy", "Violoncella", "Kontrabasy", 
+  "1. Housle", "2. Housle", "Violy", "Violoncella", "Kontrabasy", "Baskytara",
   "Flétny", "Hoboje", "Klarinety / Saxofony", "Fagoty", "Lesní rohy", 
   "Trubky", "Trombóny a Tuba", "Bicí nástroje", "Klávesy", "Kytary", "Zpěv", 
   "Smyčce", "Dechy", "Dřeva", "Žestě", "Hosté"
 ];
 
-// Kompaktní vertikální uspořádání pódia (výška zredukována na 420 px)
+// Široké rozvržení pódia (viewBox 660 x 380)
 const ORCHESTRA_LAYOUT_CFG = {
-  // Smyčce: 1. řada začíná na Y=360, řady po 3 rostou nahoru
-  "1. Housle": { type: "honeycomb_strings", centerX: 80,  yStart: 360, perRow: 3, defaultCap: 10 },
-  "2. Housle": { type: "honeycomb_strings", centerX: 195, yStart: 360, perRow: 3, defaultCap: 10 },
-  "Violy":      { type: "honeycomb_strings", centerX: 325, yStart: 360, perRow: 3, defaultCap: 8 },
-  "Violoncella":{ type: "honeycomb_strings", centerX: 440, yStart: 360, perRow: 3, defaultCap: 8 },
+  // Smyčce v přední části: řady po 3 vedle sebe
+  "1. Housle": { type: "strings", centerX: 100, yStart: 320, defaultCap: 10 },
+  "2. Housle": { type: "strings", centerX: 250, yStart: 320, defaultCap: 10 },
+  "Violy":      { type: "strings", centerX: 410, yStart: 320, defaultCap: 8 },
+  "Violoncella":{ type: "strings", centerX: 560, yStart: 320, defaultCap: 8 },
 
-  // Kontrabasy za smyčci
-  "Kontrabasy": { type: "honeycomb_row", centerX: 260, y: 244, spacing: 38, defaultCap: 4 },
+  // Kontrabasy + Baskytara vpravo vedle nich
+  "Kontrabasy": { type: "row", y: 205, defaultCap: 4 },
+  "Baskytara":  { type: "bassguitar", y: 205, defaultCap: 0 },
 
-  // Dřeva a doprovod
-  "Flétny":              { type: "honeycomb_row", centerX: 145, y: 186, spacing: 36, defaultCap: 4 },
-  "Hoboje":              { type: "honeycomb_row", centerX: 365, y: 186, spacing: 36, defaultCap: 3 },
-  "Klarinety / Saxofony":{ type: "honeycomb_row", centerX: 80,  y: 140, spacing: 36, defaultCap: 4 },
-  "Fagoty":              { type: "honeycomb_row", centerX: 210, y: 140, spacing: 36, defaultCap: 3 },
-  "Klávesy":             { type: "honeycomb_row", centerX: 325, y: 140, spacing: 36, defaultCap: 2 },
-  "Kytary":              { type: "honeycomb_row", centerX: 430, y: 140, spacing: 36, defaultCap: 0, dynamicLabel: true, labelY: 122 },
+  // Dřeva, klávesy a kytary v jedné spojené horizontální řadě (Y = 144)
+  "Flétny":              { type: "woodwinds", defaultCap: 4 },
+  "Hoboje":              { type: "woodwinds", defaultCap: 3 },
+  "Klarinety / Saxofony":{ type: "woodwinds", defaultCap: 4 },
+  "Fagoty":              { type: "woodwinds", defaultCap: 3 },
+  "Klávesy":             { type: "woodwinds", defaultCap: 2 },
+  "Kytary":              { type: "woodwinds", defaultCap: 0 },
 
   // Žestě a bicí
-  "Lesní rohy":     { type: "honeycomb_row", centerX: 110, y: 86, spacing: 36, defaultCap: 4 },
-  "Trubky":         { type: "honeycomb_row", centerX: 260, y: 86, spacing: 36, defaultCap: 4 },
-  "Trombóny a Tuba":{ type: "honeycomb_row", centerX: 415, y: 86, spacing: 36, defaultCap: 4 },
-  "Bicí nástroje":   { type: "honeycomb_row", centerX: 260, y: 36, spacing: 38, defaultCap: 4 }
+  "Lesní rohy":     { type: "brass", y: 78, defaultCap: 4 },
+  "Trubky":         { type: "brass", y: 78, defaultCap: 4 },
+  "Trombóny a Tuba":{ type: "brass", y: 78, defaultCap: 4 },
+  "Bicí nástroje":   { type: "percussion", y: 32, centerX: 330, spacing: 38, defaultCap: 4 }
 };
 
-const SMYCKE_SECTIONS = ["housl", "viol", "cell", "kontrabas", "smyčce", "smycce"];
+const SMYCKE_SECTIONS = ["housl", "viol", "cell", "kontrabas", "baskytara", "smyčce", "smycce"];
 const DECHOVE_SECTIONS = ["flétn", "hoboj", "klarinet", "saxofon", "fagot", "roh", "trubk", "trubc", "trombón", "trombon", "tuba", "tuby", "tubě", "tubou", "dech", "dřev", "žest"];
 
 // =====================================================
@@ -280,7 +281,7 @@ function getPlayerDisplayLabel(fullName, isKm) {
   return `${first[0]}${last[0]}`.toUpperCase();
 }
 
-function getHexPoints(cx, cy, r = 17) {
+function getHexPoints(cx, cy, r = 19.5) {
   const pts = [];
   for (let i = 0; i < 6; i++) {
     const angle = (Math.PI / 3) * i + (Math.PI / 6);
@@ -461,7 +462,7 @@ function toggleRoster(id) {
 }
 
 // =========================================================================
-// ŠABLONA PÓDIA: KOMPAKTNÍ VÝŠKA 420px (HEXAGONY PO 3 VEDLE SEBE)
+// ŠABLONA PÓDIA: ŠIROKÁ VERZE 660 x 380 S VELKÝMI PLÁSTVEMI
 // =========================================================================
 function getOrchestraSvgHtml(prefix = "stage") {
   return `
@@ -471,41 +472,30 @@ function getOrchestraSvgHtml(prefix = "stage") {
       <span class="stage-count-badge" id="${prefix}-total-count">0 hraje</span>
     </div>
 
-    <svg viewBox="0 0 520 420" id="${prefix}-svg" style="width:100%; height:auto; display:block; user-select:none;">
-      <!-- Kompaktní podkresové zóny -->
-      <rect x="130" y="6" width="260" height="46" rx="8" fill="var(--sec-bg, rgba(5,38,52,0.035))"/>
-      <rect x="35" y="58" width="450" height="50" rx="8" fill="var(--sec-bg, rgba(5,38,52,0.035))"/>
-      <rect x="20" y="114" width="480" height="96" rx="8" fill="var(--sec-bg, rgba(5,38,52,0.035))"/>
-      <rect x="10" y="216" width="500" height="196" rx="10" fill="var(--sec-bg, rgba(5,38,52,0.035))"/>
+    <svg viewBox="0 0 660 375" id="${prefix}-svg" style="width:100%; height:auto; display:block; user-select:none;">
+      <!-- Podkresové zóny roztáhnuté téměř na 100 % šířky -->
+      <rect x="190" y="4" width="280" height="46" rx="8" fill="var(--sec-bg)"/>
+      <rect x="8" y="52" width="644" height="52" rx="8" fill="var(--sec-bg)"/>
+      <rect x="6" y="106" width="648" height="74" rx="8" fill="var(--sec-bg)"/>
+      <rect x="4" y="182" width="652" height="188" rx="10" fill="var(--sec-bg)"/>
 
-      <!-- Názvy sekcí nahoře -->
-      <text x="260" y="18" class="sec-label">Bicí nástroje</text>
-      
-      <text x="110" y="70" class="sec-label">Lesní rohy</text>
-      <text x="260" y="70" class="sec-label">Trubky</text>
-      <text x="415" y="70" class="sec-label">Trombóny / Tuba</text>
+      <!-- Názvy žesťů a bicích -->
+      <text x="330" y="18" class="sec-label">Bicí nástroje</text>
+      <text x="120" y="66" class="sec-label">Lesní rohy</text>
+      <text x="330" y="66" class="sec-label">Trubky</text>
+      <text x="540" y="66" class="sec-label">Trombóny / Tuba</text>
 
-      <text x="80" y="124" class="sec-label">Klarinety</text>
-      <text x="210" y="124" class="sec-label">Fagoty</text>
-      <text x="325" y="124" class="sec-label">Klávesy</text>
+      <!-- Dynamická vrstva pro přihlášené hráče a nápisy -->
       <g id="${prefix}-dynamic-labels"></g>
-
-      <text x="145" y="170" class="sec-label">Flétny</text>
-      <text x="365" y="170" class="sec-label">Hoboje</text>
-
-      <text x="260" y="230" class="sec-label">Kontrabasy</text>
-
-      <!-- Dynamická vrstva pro přihlášené hráče -->
       <g id="${prefix}-dynamic-spots"></g>
 
       <!-- NÁPISY SMYČCŮ DOLE U DIRIGENTA -->
-      <text x="80" y="405" class="sec-label">1. Housle</text>
-      <text x="195" y="405" class="sec-label">2. Housle</text>
-      <text x="325" y="405" class="sec-label">Violy</text>
-      <text x="440" y="405" class="sec-label">Violoncella</text>
+      <text x="100" y="362" class="sec-label">1. Housle</text>
+      <text x="250" y="362" class="sec-label">2. Housle</text>
+      <text x="410" y="362" class="sec-label">Violy</text>
+      <text x="560" y="362" class="sec-label">Violoncella</text>
     </svg>
 
-    <!-- Detailní infobox s celým jménem hráče -->
     <div id="${prefix}-detail-box" class="stage-player-detail">
       <div class="detail-name" style="font-size:0.95rem; font-weight:normal; color:var(--text-muted);">
         👆 Klepněte na hráče pro celé jméno
@@ -536,11 +526,27 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
 
   let celkemHraje = 0;
 
+  // 1. ZÍSKÁNÍ PŘIHLÁŠENÝCH HRÁČŮ PRO JEDNOTLIVÉ SEKCE
+  const attendingBySec = {};
+
   Object.keys(ORCHESTRA_LAYOUT_CFG).forEach(sec => {
     const cfg = ORCHESTRA_LAYOUT_CFG[sec];
     const capacity = limits[sec] !== undefined ? parseInt(limits[sec], 10) : cfg.defaultCap;
+    if (capacity <= 0) {
+      attendingBySec[sec] = [];
+      return;
+    }
 
-    if (capacity <= 0) return;
+    if (sec === "Baskytara") {
+      const chosenBass = (activeRoster["Baskytara"] && activeRoster["Baskytara"][0]) || "";
+      if (chosenBass) {
+        const u = ucastAkce.find(item => item.jmeno === chosenBass);
+        if (u && u.stav === "Ano") {
+          attendingBySec["Baskytara"] = [{ celeJmeno: chosenBass, sekce: "Baskytara" }];
+        }
+      }
+      return;
+    }
 
     let eligiblePlayers = (appData.clenove || []).filter(c => {
       return c.sekce === sec && isMemberEligibleForAkce(c, datumAkce);
@@ -557,76 +563,143 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
       chosenPlayers.sort((a, b) => (a.celeJmeno === kmName ? -1 : b.celeJmeno === kmName ? 1 : 0));
     }
 
-    chosenPlayers = chosenPlayers.slice(0, capacity);
-
-    // Filtr pouze na přihlášené hráče
-    const attendingPlayers = chosenPlayers.filter(p => {
+    // Nejprve filtr na potvrzenou účast ("Ano"), až poté ořez kapacitou
+    const attending = chosenPlayers.filter(p => {
       const u = ucastAkce.find(item => item.jmeno === p.celeJmeno);
       return u && u.stav === "Ano";
     });
 
-    if (cfg.dynamicLabel && attendingPlayers.length > 0 && dynamicLabelsGroup) {
-      const labelEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      labelEl.setAttribute("x", cfg.centerX);
-      labelEl.setAttribute("y", cfg.labelY || (cfg.y - 16));
-      labelEl.setAttribute("class", "sec-label");
-      labelEl.textContent = sec === "Kytary" ? "Kytara" : sec;
-      dynamicLabelsGroup.appendChild(labelEl);
-    }
+    attendingBySec[sec] = attending.slice(0, capacity);
+  });
 
-    celkemHraje += attendingPlayers.length;
+  // Pomocné vykreslení hex-spotu
+  function renderHexSpot(x, y, p, isKm, secName) {
+    celkemHraje++;
+    const spot = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    spot.setAttribute("class", `hex-spot ${isKm ? 'is-km' : ''}`);
 
-    attendingPlayers.forEach((p, idx) => {
-      let x = 0, y = 0;
-      const hexRadius = 17;
+    const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    polygon.setAttribute("points", getHexPoints(x, y, 19.5));
+    spot.appendChild(polygon);
 
-      if (cfg.type === "honeycomb_strings") {
-        // SMYČCE: 3 VEDLE SEBE (rozteč 29 px), ŘADY SMĚREM NAHORU (rozteč 25 px)
-        const perRow = cfg.perRow || 3;
-        const row = Math.floor(idx / perRow);
-        const col = idx % perRow;
-        
-        const rowOffsetX = (row % 2 === 1) ? 14 : 0;
-        const colPitch = 29;
-        const rowPitch = 25;
+    const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    label.setAttribute("x", x);
+    label.setAttribute("y", y);
+    label.textContent = getPlayerDisplayLabel(p.celeJmeno, isKm);
+    spot.appendChild(label);
 
-        x = (cfg.centerX - ((perRow - 1) * colPitch) / 2) + (col * colPitch) + rowOffsetX;
-        y = cfg.yStart - (row * rowPitch);
-      } else {
-        const count = attendingPlayers.length;
-        const spacing = cfg.spacing || 36;
-        const offset = (idx - (count - 1) / 2) * spacing;
-        x = cfg.centerX + offset;
-        y = cfg.y;
-      }
+    const playerLabel = `${p.celeJmeno}${isKm ? " 🎻 (Koncertní mistr)" : ""}`;
+    const statusText = `✓ Potvrzena účast – ${secName}`;
+    const statusColor = "var(--success)";
 
+    spot.onclick = () => {
+      document.querySelectorAll(`#${prefix}-svg .hex-spot`).forEach(el => el.classList.remove("is-selected"));
+      spot.classList.add("is-selected");
+      showPlayerDetailBox(prefix, playerLabel, statusText, statusColor);
+    };
+
+    dynamicGroup.appendChild(spot);
+  }
+
+  function renderLabel(x, y, text) {
+    if (!dynamicLabelsGroup) return;
+    const l = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    l.setAttribute("x", x);
+    l.setAttribute("y", y);
+    l.setAttribute("class", "sec-label");
+    l.textContent = text;
+    dynamicLabelsGroup.appendChild(l);
+  }
+
+  // 2. SMYČCE (1. Housle, 2. Housle, Violy, Violoncella)
+  ["1. Housle", "2. Housle", "Violy", "Violoncella"].forEach(sec => {
+    const list = attendingBySec[sec] || [];
+    const cfg = ORCHESTRA_LAYOUT_CFG[sec];
+    list.forEach((p, idx) => {
+      const perRow = 3;
+      const row = Math.floor(idx / perRow);
+      const col = idx % perRow;
+      const rowOffsetX = (row % 2 === 1) ? 17 : 0;
+      const colPitch = 34;
+      const rowPitch = 29;
+
+      const x = (cfg.centerX - ((perRow - 1) * colPitch) / 2) + (col * colPitch) + rowOffsetX;
+      const y = cfg.yStart - (row * rowPitch);
       const isKm = (sec === "1. Housle" && p.celeJmeno === kmName);
-
-      const spot = document.createElementNS("http://www.w3.org/2000/svg", "g");
-      spot.setAttribute("class", `hex-spot ${isKm ? 'is-km' : ''}`);
-
-      const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-      polygon.setAttribute("points", getHexPoints(x, y, hexRadius));
-      spot.appendChild(polygon);
-
-      const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      label.setAttribute("x", x);
-      label.setAttribute("y", y);
-      label.textContent = getPlayerDisplayLabel(p.celeJmeno, isKm);
-      spot.appendChild(label);
-
-      const playerLabel = `${p.celeJmeno}${isKm ? " 🎻 (Koncertní mistr)" : ""}`;
-      const statusText = `✓ Potvrzena účast – ${sec}`;
-      const statusColor = "var(--success)";
-
-      spot.onclick = () => {
-        document.querySelectorAll(`#${prefix}-svg .hex-spot`).forEach(el => el.classList.remove("is-selected"));
-        spot.classList.add("is-selected");
-        showPlayerDetailBox(prefix, playerLabel, statusText, statusColor);
-      };
-
-      dynamicGroup.appendChild(spot);
+      renderHexSpot(x, y, p, isKm, sec);
     });
+  });
+
+  // 3. KONTRABASY + BASKYTARA
+  const cbList = attendingBySec["Kontrabasy"] || [];
+  const bassList = attendingBySec["Baskytara"] || [];
+  const hasBass = bassList.length > 0;
+  const cbCenter = hasBass ? 275 : 330;
+
+  renderLabel(cbCenter, 196, "Kontrabasy");
+  cbList.forEach((p, idx) => {
+    const offset = (idx - (cbList.length - 1) / 2) * 38;
+    renderHexSpot(cbCenter + offset, 218, p, false, "Kontrabasy");
+  });
+
+  if (hasBass) {
+    const bassX = Math.max(cbCenter + (cbList.length * 20) + 38, 415);
+    renderLabel(bassX, 196, "Baskytara");
+    renderHexSpot(bassX, 218, bassList[0], false, "Baskytara");
+  }
+
+  // 4. JEDNA ŘADA DŘEV A DOPROVODU (Y = 144)
+  const baseWoodwinds = [
+    { sec: "Flétny", label: "Flétny" },
+    { sec: "Hoboje", label: "Hoboje" },
+    { sec: "Klarinety / Saxofony", label: "Klarinety" },
+    { sec: "Fagoty", label: "Fagoty" },
+    { sec: "Klávesy", label: "Klávesy" }
+  ];
+
+  const hasGuitar = attendingBySec["Kytary"] && attendingBySec["Kytary"].length > 0;
+  if (hasGuitar) {
+    baseWoodwinds.push({ sec: "Kytary", label: "Kytara" });
+  }
+
+  const totalCols = baseWoodwinds.length;
+  const blockWidth = Math.min(620 / totalCols, 115);
+  const startX = 330 - ((totalCols - 1) * blockWidth) / 2;
+
+  baseWoodwinds.forEach((item, bIdx) => {
+    const bCenter = startX + (bIdx * blockWidth);
+    renderLabel(bCenter, 120, item.label);
+
+    const list = attendingBySec[item.sec] || [];
+    list.forEach((p, idx) => {
+      const offset = (idx - (list.length - 1) / 2) * 36;
+      renderHexSpot(bCenter + offset, 144, p, false, item.sec);
+    });
+  });
+
+  // 5. ŽESTĚ A BICÍ (Horní patra)
+  const hornList = attendingBySec["Lesní rohy"] || [];
+  hornList.forEach((p, idx) => {
+    const offset = (idx - (hornList.length - 1) / 2) * 36;
+    renderHexSpot(120 + offset, 88, p, false, "Lesní rohy");
+  });
+
+  const trpList = attendingBySec["Trubky"] || [];
+  trpList.forEach((p, idx) => {
+    const offset = (idx - (trpList.length - 1) / 2) * 36;
+    renderHexSpot(330 + offset, 88, p, false, "Trubky");
+  });
+
+  const trbList = attendingBySec["Trombóny a Tuba"] || [];
+  trbList.forEach((p, idx) => {
+    const offset = (idx - (trbList.length - 1) / 2) * 36;
+    renderHexSpot(540 + offset, 88, p, false, "Trombóny / Tuba");
+  });
+
+  const biciList = attendingBySec["Bicí nástroje"] || [];
+  biciList.forEach((p, idx) => {
+    const offset = (idx - (biciList.length - 1) / 2) * 38;
+    renderHexSpot(330 + offset, 38, p, false, "Bicí nástroje");
   });
 
   const countBadge = document.getElementById(`${prefix}-total-count`);
@@ -647,14 +720,14 @@ function showPlayerDetailBox(prefix, name, status, color) {
 function openStageModalForAkce(akceId) {
   const akce = (appData.akce || []).find(a => String(a.id) === String(akceId));
   const html = `
-    <div id="viewStageModal" class="modal-overlay" onclick="if(event.target===this) document.getElementById('viewStageModal').remove()">
-      <div class="modal-box" style="max-width: 530px; padding: 14px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+    <div id="viewStageModal" class="modal-overlay" style="padding: 4px;" onclick="if(event.target===this) document.getElementById('viewStageModal').remove()">
+      <div class="modal-box" style="max-width: 820px; width: 100%; padding: 8px 6px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px; padding: 0 4px;">
           <div>
-            <h3 style="margin:0; font-size:1.05rem; color:var(--primary);">${escapeHtml(akce ? akce.nazev : "Obsazení orchestru")}</h3>
-            <span style="font-size:0.8rem; color:var(--text-muted);">${escapeHtml(akce ? akce.datum : "")}</span>
+            <h3 style="margin:0; font-size:1.15rem; color:var(--primary);">${escapeHtml(akce ? akce.nazev : "Obsazení orchestru")}</h3>
+            <span style="font-size:0.82rem; color:var(--text-muted);">${escapeHtml(akce ? akce.datum : "")}</span>
           </div>
-          <button type="button" style="background:transparent; border:none; font-size:20px; color:var(--text-muted); cursor:pointer;" onclick="document.getElementById('viewStageModal').remove()">✕</button>
+          <button type="button" style="background:transparent; border:none; font-size:22px; color:var(--text-muted); cursor:pointer; padding:4px 8px;" onclick="document.getElementById('viewStageModal').remove()">✕</button>
         </div>
         
         ${getOrchestraSvgHtml("view")}
@@ -666,7 +739,7 @@ function openStageModalForAkce(akceId) {
 }
 
 // =========================================================================
-// MODÁL: SPRÁVA OBSAZENÍ ORCHESTRU
+// MODÁL: SPRÁVA OBSAZENÍ ORCHESTRU (VOLBA BASKYTARY Z KONTRABASISTŮ)
 // =========================================================================
 function openOrchestrModal() {
   const akceList = (appData.akce || []).filter(a => !a.typ.includes("Oznámení") && !a.typ.includes("Informace"));
@@ -693,41 +766,41 @@ function openOrchestrModal() {
   limitsHtml += '</div>';
 
   const html = `
-    <div id="orchestrModal" class="modal-overlay">
-      <div class="modal-box" style="max-height: 92vh; max-width: 530px; overflow-y: auto; padding: 16px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+    <div id="orchestrModal" class="modal-overlay" style="padding: 4px;">
+      <div class="modal-box" style="max-height: 94vh; max-width: 820px; width: 100%; overflow-y: auto; padding: 10px 6px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; padding: 0 4px;">
           <h3 style="margin:0; font-size:1.15rem; color:var(--text);">🎼 Obsazení orchestru</h3>
-          <button type="button" style="background:transparent; border:none; font-size:20px; color:var(--text-muted); cursor:pointer;" onclick="document.getElementById('orchestrModal').remove()">✕</button>
+          <button type="button" style="background:transparent; border:none; font-size:22px; color:var(--text-muted); cursor:pointer; padding:4px 8px;" onclick="document.getElementById('orchestrModal').remove()">✕</button>
         </div>
 
-        <div style="margin-bottom:12px;">
+        <div style="margin-bottom:10px; padding: 0 4px;">
           <label style="font-size:0.82rem; font-weight:700;">Vyberte akci / projekt:</label>
           <select id="orch_modal_akce" class="modal-input" onchange="onOrchModalAkceChange()" style="margin-top:2px;">
             ${akceOptions}
           </select>
         </div>
 
-        <div style="margin-bottom:12px; background:var(--bg); padding:10px; border-radius:8px; border:1px solid var(--border);">
+        <div style="margin-bottom:10px; margin-left:4px; margin-right:4px; background:var(--bg); padding:8px 10px; border-radius:8px; border:1px solid var(--border);">
           <label style="font-size:0.82rem; font-weight:800; color:var(--primary-light);">🎻 Koncertní mistr (1. židle):</label>
           <select id="orch_modal_km" class="modal-input" onchange="onConcertMasterChange()" style="margin-top:4px;">
           </select>
         </div>
 
-        <details style="margin-bottom:12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:6px 10px;">
+        <details style="margin: 0 4px 10px 4px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:6px 10px;">
           <summary style="cursor:pointer; font-weight:700; font-size:0.85rem; color:var(--text);">🏛️ Nastavení kapacity sekcí v sále</summary>
           ${limitsHtml}
         </details>
 
-        <details id="details_roster_selection" open style="margin-bottom:14px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:8px 10px;">
+        <details id="details_roster_selection" open style="margin: 0 4px 10px 4px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:8px 10px;">
           <summary style="cursor:pointer; font-weight:800; font-size:0.85rem; color:var(--primary-light);">👥 Výběr konkrétních hráčů na projekt</summary>
           <div id="roster_selection_container" style="margin-top:8px;"></div>
         </details>
 
-        <div id="orch_preview_wrapper" style="margin-bottom: 14px;">
+        <div id="orch_preview_wrapper" style="margin-bottom: 10px;">
           ${getOrchestraSvgHtml("manage")}
         </div>
 
-        <div style="display:flex; gap:8px;">
+        <div style="display:flex; gap:8px; padding: 0 4px;">
           <button type="button" class="btn" style="background:var(--success); flex:1;" onclick="saveOrchestrSettings()">💾 Uložit obsazení</button>
           <button type="button" class="btn" style="background:var(--border); color:var(--text); width:auto;" onclick="document.getElementById('orchestrModal').remove()">Zavřít</button>
         </div>
@@ -794,9 +867,42 @@ function renderRosterSelectionInputs() {
   if (!container) return;
 
   let html = "";
-  let anyReduction = false;
+  let anyForm = false;
 
+  // 1. Výběr baskytary z kontrabasistů (pokud je kapacita Baskytary > 0)
+  const bassLimitInput = document.querySelector(`.sec-limit-input[data-sec="Baskytara"]`);
+  const bassCapacity = bassLimitInput ? parseInt(bassLimitInput.value, 10) : 0;
+  
+  if (bassCapacity > 0) {
+    anyForm = true;
+    const contrabassists = (appData.clenove || []).filter(c => c.sekce === "Kontrabasy" && isMemberEligibleForAkce(c, datumAkce));
+    const currentSelectedBass = (activeRoster["Baskytara"] && activeRoster["Baskytara"][0]) || "";
+
+    html += `
+      <div class="roster-select-group">
+        <div class="roster-select-header">
+          <strong style="font-size:0.9rem; color:var(--text);">🎸 Baskytara</strong>
+          <span style="font-size:0.75rem; color:var(--primary-light); font-weight:700;">Zvolte hráče z kontrabasů</span>
+        </div>
+        <div class="roster-select-list">
+    `;
+
+    contrabassists.forEach(p => {
+      const isSelected = p.celeJmeno === currentSelectedBass;
+      html += `
+        <label class="roster-player-row">
+          <input type="radio" name="roster_bassguitar" class="roster-bass-radio" value="${escapeHtml(p.celeJmeno)}" ${isSelected ? 'checked' : ''} onchange="refreshStagePreviewFromForm()">
+          <span class="roster-player-name">${escapeHtml(p.celeJmeno)}</span>
+        </label>
+      `;
+    });
+    html += `</div></div>`;
+  }
+
+  // 2. Standardní výběr hráčů v sekcích s redukovanou kapacitou
   Object.keys(ORCHESTRA_LAYOUT_CFG).forEach(sec => {
+    if (sec === "Baskytara") return;
+
     const eligiblePlayers = (appData.clenove || []).filter(c => {
       return c.sekce === sec && isMemberEligibleForAkce(c, datumAkce);
     });
@@ -807,7 +913,7 @@ function renderRosterSelectionInputs() {
     if (capacity === 0) return;
 
     if (eligiblePlayers.length > capacity) {
-      anyReduction = true;
+      anyForm = true;
       const savedForSec = activeRoster[sec] || [];
 
       html += `
@@ -848,8 +954,8 @@ function renderRosterSelectionInputs() {
     }
   });
 
-  if (!anyReduction) {
-    html = `<p style="font-size:0.82rem; color:var(--text-muted); margin:0; text-align:left;">Kapacita sekcí pokrývá všechny aktivní hráče. Není nutné nikoho vyřazovat.</p>`;
+  if (!anyForm) {
+    html = `<p style="font-size:0.82rem; color:var(--text-muted); margin:0; text-align:left;">Kapacita pokrývá všechny aktivní hráče. Není nutné nikoho vyřazovat.</p>`;
   }
 
   container.innerHTML = html;
@@ -874,6 +980,12 @@ function getRosterFromForm() {
     if (!roster[sec]) roster[sec] = [];
     roster[sec].push(chk.value);
   });
+
+  const chosenBass = document.querySelector(".roster-bass-radio:checked");
+  if (chosenBass) {
+    roster["Baskytara"] = [chosenBass.value];
+  }
+
   return roster;
 }
 
@@ -917,7 +1029,7 @@ function saveOrchestrSettings() {
 
   runGoogleScript("saveOrchestraConfig", payload).then(res => {
     if (res.success) {
-      alert("Obsazení orchestru a jmenný výběr hráčů pro projekt byly úspěšně uloženy!");
+      alert("Obsazení orchestru bylo úspěšně uloženo!");
     } else {
       alert("Uloženo lokálně, ale zápis do tabulky selhal: " + res.error);
     }
@@ -1575,7 +1687,7 @@ function confirmLogout() {
 }
 
 // =========================================================================
-// NOTOVÝ ARCHIV A JEHO SPRÁVA
+// NOTOVÝ ARCHIV A JEHO SPRÁVA (Baskytara bere noty z Kontrabasů)
 // =========================================================================
 function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
   const kontejner = document.getElementById('notyContainer');
@@ -1586,8 +1698,10 @@ function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
   const userRole = String(user.role || "").trim().toLowerCase();
   const isVedení = ['admin', 'dirigent', 'vedení', 'vedeni'].includes(userRole);
 
+  const efektivniNastroj = (nastrojUzivatele === "Baskytara") ? "Kontrabasy" : nastrojUzivatele;
+
   if (infoText) {
-    infoText.textContent = jeDirigent ? "Režim partitury" : `Zobrazený part: ${nastrojUzivatele}`;
+    infoText.textContent = jeDirigent ? "Režim partitury" : `Zobrazený part: ${efektivniNastroj}${nastrojUzivatele === 'Baskytara' ? ' (převzato z kontrabasů)' : ''}`;
   }
 
   let htmlDropdown = '';
@@ -1596,8 +1710,8 @@ function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
       <div style="margin-bottom: 20px; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
         <label style="font-size: 13px; font-weight: bold; display: block; margin-bottom: 8px; color: var(--text);">👀 Náhled partů (pouze pro vedení):</label>
         <select class="modal-input" onchange="zmenitPohledNot(this.value)" style="margin-bottom:0; font-size:14px; background: var(--surface);">
-          <option value="Vlastní part" ${nastrojUzivatele === user.section ? 'selected' : ''}>Můj nástroj / Výchozí pohled (${user.section})</option>
-          ${PARTITURA_SECTIONS.map(s => `<option value="${s}" ${nastrojUzivatele === s && nastrojUzivatele !== user.section ? 'selected' : ''}>${s}</option>`).join('')}
+          <option value="Vlastní part" ${efektivniNastroj === user.section ? 'selected' : ''}>Můj nástroj / Výchozí pohled (${user.section})</option>
+          ${PARTITURA_SECTIONS.map(s => `<option value="${s}" ${efektivniNastroj === s && efektivniNastroj !== user.section ? 'selected' : ''}>${s}</option>`).join('')}
         </select>
       </div>
     `;
@@ -1607,13 +1721,13 @@ function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
     let aktivni = String(nota.aktivni || '').toUpperCase().trim();
     if (aktivni !== 'TRUE' && aktivni !== 'ANO' && aktivni !== '1') return false;
     if (jeDirigent && nota.sekce === 'Partitura') return true;
-    if (nota.sekce === nastrojUzivatele) return true;
+    if (nota.sekce === efektivniNastroj) return true;
     
-    if (nota.sekce === 'Housle' && (nastrojUzivatele === '1. Housle' || nastrojUzivatele === '2. Housle')) return true;
-    if (nota.sekce === 'Smyčce' && ['1. Housle', '2. Housle', 'Violy', 'Violoncella', 'Kontrabasy'].includes(nastrojUzivatele)) return true;
-    if (nota.sekce === 'Dechy' && ['Flétny', 'Hoboje', 'Klarinety / Saxofony', 'Fagoty', 'Lesní rohy', 'Trubky', 'Trombóny a Tuba'].includes(nastrojUzivatele)) return true;
-    if (nota.sekce === 'Dřeva' && ['Flétny', 'Hoboje', 'Klarinety / Saxofony', 'Fagoty'].includes(nastrojUzivatele)) return true;
-    if (nota.sekce === 'Žestě' && ['Lesní rohy', 'Trubky', 'Trombóny a Tuba'].includes(nastrojUzivatele)) return true;
+    if (nota.sekce === 'Housle' && (efektivniNastroj === '1. Housle' || efektivniNastroj === '2. Housle')) return true;
+    if (nota.sekce === 'Smyčce' && ['1. Housle', '2. Housle', 'Violy', 'Violoncella', 'Kontrabasy'].includes(efektivniNastroj)) return true;
+    if (nota.sekce === 'Dechy' && ['Flétny', 'Hoboje', 'Klarinety / Saxofony', 'Fagoty', 'Lesní rohy', 'Trubky', 'Trombóny a Tuba'].includes(efektivniNastroj)) return true;
+    if (nota.sekce === 'Dřeva' && ['Flétny', 'Hoboje', 'Klarinety / Saxofony', 'Fagoty'].includes(efektivniNastroj)) return true;
+    if (nota.sekce === 'Žestě' && ['Lesní rohy', 'Trubky', 'Trombóny a Tuba'].includes(efektivniNastroj)) return true;
     return false;
   });
 
@@ -1639,7 +1753,7 @@ function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
     }
     
     let emailPredmet = encodeURIComponent(`Noty TSO Bolech - ${program}`);
-    let emailTelo = `Dobrý den,\n\nzasílám odkazy pro přímé stažení not (Program: ${program}, Part: ${nastrojUzivatele}).\n\n`;
+    let emailTelo = `Dobrý den,\n\nzasílám odkazy pro přímé stažení not (Program: ${program}, Part: ${efektivniNastroj}).\n\n`;
     noty.forEach(n => {
       let stahovaciOdkaz = n.odkaz.replace(/.*\/d\/([a-zA-Z0-9_-]+).*/, 'https://drive.google.com/uc?export=download&id=$1');
       emailTelo += `- ${n.skladba}:\n  ${stahovaciOdkaz}\n\n`;
