@@ -387,79 +387,86 @@ function zavritOtocenouKartu() {
 }
 
 // =====================================================
-// ROBUSTNÍ PARSOVÁNÍ POZNÁMKY, PROGRAMU A HARMONOGRAMU
+// ROBUSTNÍ REGEX PARSER POZNÁMKY, PROGRAMU A HARMONOGRAMU
 // =====================================================
 function parsovatPoznamku(rawNote) {
   let text = String(rawNote || '').trim();
-  let progIdx = text.indexOf('===PROGRAM===');
-  let harmIdx = text.indexOf('===HARMONOGRAM===');
+  if (!text) return { mainNote: '', progData: '', schedData: '' };
+
+  const progRegex = /={2,}\s*PROGRAM\s*={2,}/i;
+  const harmRegex = /={2,}\s*HARMONOGRAM\s*={2,}/i;
+
+  let progMatch = progRegex.exec(text);
+  let harmMatch = harmRegex.exec(text);
 
   let mainNote = '';
   let progData = '';
   let schedData = '';
 
-  if (progIdx === -1 && harmIdx === -1) {
+  if (!progMatch && !harmMatch) {
     mainNote = text;
-  } else if (progIdx !== -1 && harmIdx === -1) {
-    mainNote = text.substring(0, progIdx);
-    progData = text.substring(progIdx + 13);
-  } else if (progIdx === -1 && harmIdx !== -1) {
-    mainNote = text.substring(0, harmIdx);
-    schedData = text.substring(harmIdx + 17);
-  } else if (progIdx < harmIdx) {
-    mainNote = text.substring(0, progIdx);
-    progData = text.substring(progIdx + 13, harmIdx);
-    schedData = text.substring(harmIdx + 17);
+  } else if (progMatch && !harmMatch) {
+    mainNote = text.substring(0, progMatch.index);
+    progData = text.substring(progMatch.index + progMatch[0].length);
+  } else if (!progMatch && harmMatch) {
+    mainNote = text.substring(0, harmMatch.index);
+    schedData = text.substring(harmMatch.index + harmMatch[0].length);
+  } else if (progMatch.index < harmMatch.index) {
+    mainNote = text.substring(0, progMatch.index);
+    progData = text.substring(progMatch.index + progMatch[0].length, harmMatch.index);
+    schedData = text.substring(harmMatch.index + harmMatch[0].length);
   } else {
-    mainNote = text.substring(0, harmIdx);
-    schedData = text.substring(harmIdx + 17, progIdx);
-    progData = text.substring(progIdx + 13);
+    mainNote = text.substring(0, harmMatch.index);
+    schedData = text.substring(harmMatch.index + harmMatch[0].length, progMatch.index);
+    progData = text.substring(progMatch.index + progMatch[0].length);
   }
 
-  mainNote = mainNote.trim();
-  progData = progData.trim();
-  schedData = schedData.trim();
-
-  // ZÁCHRANA POŠKOZENÝCH DAT:
-  // Pokud v mainNote z dřívějška uvízl program, vyjmeme ho a vrátíme do progData
-  if (mainNote.includes('===PROGRAM===')) {
-    let pParts = mainNote.split('===PROGRAM===');
-    mainNote = pParts[0].trim();
-    if (!progData && pParts[1]) {
-      let subRest = pParts[1].trim();
-      if (subRest.includes('===HARMONOGRAM===')) {
-        let hParts = subRest.split('===HARMONOGRAM===');
-        progData = hParts[0].trim();
-        if (!schedData && hParts[1]) schedData = hParts[1].trim();
-      } else {
-        progData = subRest;
-      }
-    }
+  // Záchrana: Pokud v mainNote z dřívějška uvízl další tag, odstraníme jej a zachráníme data
+  if (progRegex.test(mainNote)) {
+    let pMatch = progRegex.exec(mainNote);
+    let extraProg = mainNote.substring(pMatch.index + pMatch[0].length);
+    mainNote = mainNote.substring(0, pMatch.index);
+    if (!progData) progData = extraProg;
+  }
+  if (harmRegex.test(mainNote)) {
+    let hMatch = harmRegex.exec(mainNote);
+    let extraHarm = mainNote.substring(hMatch.index + hMatch[0].length);
+    mainNote = mainNote.substring(0, hMatch.index);
+    if (!schedData) schedData = extraHarm;
   }
 
-  if (mainNote.includes('===HARMONOGRAM===')) {
-    let hParts = mainNote.split('===HARMONOGRAM===');
-    mainNote = hParts[0].trim();
-    if (!schedData && hParts[1]) {
-      schedData = hParts[1].trim();
-    }
-  }
+  // Finální vyčištění poznámky od jakýchkoliv zbytků tagů
+  mainNote = mainNote
+    .replace(/={2,}\s*PROGRAM\s*={2,}[\s\S]*/gi, '')
+    .replace(/={2,}\s*HARMONOGRAM\s*={2,}[\s\S]*/gi, '')
+    .trim();
 
-  return { mainNote, progData, schedData };
+  return { 
+    mainNote: mainNote, 
+    progData: progData.trim(), 
+    schedData: schedData.trim() 
+  };
 }
 
 function formatHarmonogramHtml(sData) {
   if (!sData) return '';
-  let lines = sData.split('\n').filter(l => l.trim().length > 0);
+  let lines = sData.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   if (lines.length === 0) return '';
 
   let html = `<div style="margin-top:16px; padding-top:14px; border-top: 1px dashed var(--border);">
       <h4 style="margin-top:0; margin-bottom:10px; font-size:16px; color:var(--text);">⏱️ Časový plán</h4>
       <table style="width:100%; border-collapse: collapse; font-size:15px;">`;
+  
   lines.forEach((line, index) => {
-      let p = line.split('|');
-      let time = escapeHtml(p[0]||'').trim();
-      let desc = escapeHtml(p[1]||'').trim().replace(/\[BR\]/g, '<br>');
+      let time = '', desc = '';
+      if (line.includes('|')) {
+        let p = line.split('|');
+        time = escapeHtml(p[0]||'').trim();
+        desc = escapeHtml(p[1]||'').trim().replace(/\[BR\]/g, '<br>');
+      } else {
+        desc = escapeHtml(line).replace(/\[BR\]/g, '<br>');
+      }
+
       if (!time && !desc) return;
       let borderObj = (index === lines.length - 1) ? 'none' : '1px solid var(--border)';
       
@@ -474,16 +481,28 @@ function formatHarmonogramHtml(sData) {
 
 function formatProgramHtml(pData) {
   if (!pData) return '';
-  let lines = pData.split('\n').filter(l => l.trim().length > 0);
+  let lines = pData.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   if (lines.length === 0) return '';
 
   let rows = '';
-  lines.forEach(line => {
-    let parts = line.split('|');
-    if (parts.length >= 2) {
-      let num = escapeHtml(parts[0] || '').trim();
-      let author = escapeHtml(parts[1] || '').trim();
-      let piece = escapeHtml(parts[2] || '').trim().replace(/\[BR\]/g, '<br>');
+  lines.forEach((line, idx) => {
+    let num = '', author = '', piece = '';
+    if (line.includes('|')) {
+      let parts = line.split('|');
+      num = escapeHtml(parts[0] || '').trim();
+      author = escapeHtml(parts[1] || '').trim();
+      piece = escapeHtml(parts[2] || '').trim().replace(/\[BR\]/g, '<br>');
+    } else if (line.includes(' - ')) {
+      let parts = line.split(' - ');
+      num = String(idx + 1);
+      author = escapeHtml(parts[0] || '').trim();
+      piece = escapeHtml(parts.slice(1).join(' - ') || '').trim().replace(/\[BR\]/g, '<br>');
+    } else {
+      num = String(idx + 1);
+      piece = escapeHtml(line).replace(/\[BR\]/g, '<br>');
+    }
+
+    if (author || piece) {
       rows += `
         <tr>
           <td class="col-num">${num ? num + '.' : ''}</td>
@@ -756,7 +775,6 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
       chosenPlayers.sort((a, b) => (a.celeJmeno === kmName ? -1 : b.celeJmeno === kmName ? 1 : 0));
     }
 
-    // Nejprve filtr na potvrzenou účast ("Ano"), až poté ořez kapacitou
     const attending = chosenPlayers.filter(p => {
       const u = ucastAkce.find(item => item.jmeno === p.celeJmeno);
       return u && u.stav === "Ano";
@@ -1228,95 +1246,6 @@ function saveOrchestrSettings() {
   });
 }
 
-// =========================================================================
-// FORMULÁŘ AKCÍ, PROGRAM A HARMONOGRAM
-// =========================================================================
-function moveProgramRow(btn, direction) {
-  const row = btn.closest('.prog-item-row');
-  if (!row) return;
-  if (direction === -1 && row.previousElementSibling) {
-    row.parentElement.insertBefore(row, row.previousElementSibling);
-  } else if (direction === 1 && row.nextElementSibling) {
-    row.parentElement.insertBefore(row.nextElementSibling, row);
-  }
-  renumberProgramRows();
-}
-
-function renumberProgramRows() {
-  const rows = document.querySelectorAll('.prog-item-row');
-  rows.forEach((r, idx) => {
-    const numInput = r.querySelector('.prog-num');
-    if (numInput && (!numInput.value || !isNaN(parseInt(numInput.value)))) {
-      numInput.value = (idx + 1);
-    }
-  });
-}
-
-function removeProgramRow(btn) {
-  if (confirm("Opravdu chcete tuto skladbu z programu odstranit?")) {
-    const row = btn.closest('.prog-item-row');
-    if (row) {
-      row.remove();
-      renumberProgramRows();
-    }
-  }
-}
-
-function addProgramRow(num = '', author = '', piece = '') {
-  const cont = document.getElementById('program-rows');
-  if (!cont) return;
-  
-  if (!num) {
-    num = cont.querySelectorAll('.prog-item-row').length + 1;
-  }
-
-  const div = document.createElement('div');
-  div.className = 'prog-item-row';
-  div.style = 'border: 1px dashed var(--border); padding: 10px; margin-bottom: 10px; border-radius: 8px; background: var(--surface);';
-  
-  div.innerHTML = `
-    <div style="display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 6px;">
-      <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); width: auto;" onclick="moveProgramRow(this, -1)" title="Posunout nahoru">▲</button>
-      <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); width: auto;" onclick="moveProgramRow(this, 1)" title="Posunout dolů">▼</button>
-      <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: transparent; color: var(--danger); border: 1px solid var(--danger); width: auto; margin-left: 6px;" onclick="removeProgramRow(this)" title="Smazat skladbu">✕</button>
-    </div>
-
-    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-      <div style="width: 52px; flex-shrink: 0;">
-        <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 2px;">Pořadí:</label>
-        <input type="text" class="modal-input prog-num" placeholder="1" value="${escapeHtml(num)}" style="padding: 8px 6px; font-size: 14px; text-align: right;">
-      </div>
-      <div style="flex: 1; min-width: 0;">
-        <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 2px;">Autor / Skladatel:</label>
-        <input type="text" class="modal-input prog-author" placeholder="např. Antonín Dvořák" value="${escapeHtml(author)}" style="padding: 8px 10px; font-size: 14px;">
-      </div>
-    </div>
-    
-    <div>
-      <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 2px;">Dílo / Skladba:</label>
-      <textarea class="modal-input prog-piece" placeholder="např. Symfonie č. 9 e moll „Z Nového světa“, op. 95" rows="2" style="padding: 8px 10px; font-size: 14px; min-height: 54px; resize: vertical; line-height: 1.4;">${escapeHtml(piece).replace(/\[BR\]/g, '\n')}</textarea>
-    </div>
-  `;
-  cont.appendChild(div);
-}
-
-function addScheduleRow(time = '', desc = '') {
-  const cont = document.getElementById('schedule-rows');
-  if (!cont) return;
-  const div = document.createElement('div');
-  div.style = 'border: 1px dashed var(--border); padding: 8px; margin-bottom: 8px; border-radius: 6px; position: relative;';
-  div.innerHTML = `
-    <button type="button" style="position: absolute; top: 8px; right: 8px; background: transparent; border: 1px solid var(--danger); border-radius: 4px; color: var(--danger); font-size: 12px; padding: 2px 6px;" onclick="this.parentElement.remove()">✕</button>
-    <div style="margin-top: 20px;">
-        <label style="font-size: 12px; display: block; margin-bottom: 2px;">Čas (od - do):</label>
-        <input type="text" class="modal-input sched-time" placeholder="např. 10:00 - 12:30" value="${escapeHtml(time)}" style="margin-bottom: 6px; padding: 6px 8px; font-size: 14px;">
-        <label style="font-size: 12px; display: block; margin-bottom: 2px;">Popis programu:</label>
-        <textarea class="modal-input sched-desc" placeholder="např. Dopolední zkouška" rows="2" style="padding: 6px 8px; font-size: 14px; min-height: 50px; resize: vertical;">${escapeHtml(desc).replace(/\[BR\]/g, '\n')}</textarea>
-    </div>
-  `;
-  cont.appendChild(div);
-}
-
 function openAkceForm(akce = null) {
   const isEdit = akce !== null;
   const selectDisabledAttr = isEdit ? 'disabled style="background: var(--bg); opacity: 0.8;"' : '';
@@ -1326,17 +1255,26 @@ function openAkceForm(akce = null) {
   
   let programLines = [];
   if (parsed.progData) {
-    programLines = parsed.progData.split('\n').filter(l => l.trim().length > 0).map(line => {
-      let p = line.split('|');
-      return { num: p[0]||'', author: p[1]||'', piece: p[2]||'' };
+    programLines = parsed.progData.split('\n').map(l => l.trim()).filter(l => l.length > 0).map((line, idx) => {
+      if (line.includes('|')) {
+        let p = line.split('|');
+        return { num: p[0]||String(idx+1), author: p[1]||'', piece: p[2]||'' };
+      } else if (line.includes(' - ')) {
+        let p = line.split(' - ');
+        return { num: String(idx+1), author: p[0]||'', piece: p.slice(1).join(' - ')||'' };
+      }
+      return { num: String(idx+1), author: '', piece: line };
     });
   }
 
   let scheduleLines = [];
   if (parsed.schedData) {
-    scheduleLines = parsed.schedData.split('\n').filter(l => l.trim().length > 0).map(line => {
-      let p = line.split('|');
-      return { time: p[0]||'', desc: p[1]||'' };
+    scheduleLines = parsed.schedData.split('\n').map(l => l.trim()).filter(l => l.length > 0).map(line => {
+      if (line.includes('|')) {
+        let p = line.split('|');
+        return { time: p[0]||'', desc: p[1]||'' };
+      }
+      return { time: '', desc: line };
     });
   }
 
@@ -1461,7 +1399,13 @@ function submitAkceForm(e, akceId) {
   const jeZkouska = typ.includes('zkouška') || typ.includes('Zkouška');
   const finalId = akceId || generovatIdAkce(typ);
 
-  let finalPoznamka = document.getElementById('f_poznamka').value.trim();
+  // DŮSLEDNÉ OČIŠTĚNÍ POZNÁMKY:
+  // Odstraníme jakýkoliv nechtěný starý blok ===PROGRAM=== nebo ===HARMONOGRAM===
+  let rawNoteInput = document.getElementById('f_poznamka').value;
+  let finalPoznamka = rawNoteInput
+    .replace(/={2,}\s*PROGRAM\s*={2,}[\s\S]*/gi, '')
+    .replace(/={2,}\s*HARMONOGRAM\s*={2,}[\s\S]*/gi, '')
+    .trim();
   
   const progNums = document.querySelectorAll('.prog-num');
   const progAuthors = document.querySelectorAll('.prog-author');
@@ -1509,7 +1453,6 @@ function submitAkceForm(e, akceId) {
     if (res.success) { 
       document.getElementById('akceModal').remove(); 
       
-      // Okamžitá lokální aktualizace paměti pro bleskovou odezvu bez čekání
       const idx = (appData.akce || []).findIndex(a => String(a.id) === String(finalId));
       if (idx !== -1) {
         appData.akce[idx] = Object.assign({}, appData.akce[idx], payload);
@@ -1588,56 +1531,6 @@ function obnovitOznameni(akceId) {
   });
 }
 
-function submitUcast(id, datum, stav, btn) { 
-  const origText = btn.innerText; btn.innerText = "Ukládám...";
-  runGoogleScript("saveUcast", {akceId: id, datumAkce: datum, jmeno: user.name, sekce: user.section, stav: stav})
-  .then(res => {
-    btn.innerText = origText;
-    if(res.success) {
-      document.getElementById('duvod-'+id).style.display = (stav === 'Ne') ? 'block' : 'none'; 
-      btn.parentElement.querySelectorAll('.btn-att').forEach(b => b.className = 'btn-att'); 
-      btn.classList.add(stav === 'Ano' ? 'selected-ano' : 'selected-ne');
-      let exist = (appData.ucast || []).find(u => u.akceId === id && u.jmeno === user.name);
-      if(exist) exist.stav = stav; else appData.ucast.push({akceId:id, jmeno:user.name, sekce:user.section, stav:stav});
-      document.getElementById('roster-container-'+id).innerHTML = generateRosterHtml(id);
-      localStorage.setItem("bolech_data_cache", JSON.stringify(appData));
-    }
-  });
-}
-
-function saveDuvod(id, datum, btn) { 
-  const duvod = document.getElementById('in-'+id).value; btn.innerText = "Ukládám...";
-  runGoogleScript("saveUcast", {akceId: id, datumAkce: datum, jmeno: user.name, sekce: user.section, stav: 'Ne', duvod: duvod})
-  .then(res => {
-    btn.innerText = "Odeslat důvod";
-    if(res.success) { document.getElementById('duvod-'+id).style.display = 'none'; }
-  });
-}
-
-function formatDateForInput(dateStr) {
-  if (!dateStr) return "";
-  const parts = String(dateStr).trim().split('.');
-  if (parts.length === 3) {
-    const d = parts[0].trim().padStart(2, '0');
-    const m = parts[1].trim().padStart(2, '0');
-    const y = parts[2].trim();
-    return `${y}-${m}-${d}`;
-  }
-  return dateStr;
-}
-
-function formatDateForSave(isoDate) {
-  if (!isoDate) return "";
-  const parts = String(isoDate).split('-');
-  if (parts.length === 3) {
-    return `${parseInt(parts[2], 10)}. ${parseInt(parts[1], 10)}. ${parts[0]}`;
-  }
-  return isoDate;
-}
-
-// =========================================================================
-// SPRÁVA HOSTŮ
-// =========================================================================
 function openGuestManager() {
   let htmlHoste = "";
   let htmlClenove = "";
