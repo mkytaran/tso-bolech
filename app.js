@@ -164,23 +164,75 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function handleLoginSubmit(e) { 
   e.preventDefault(); 
-  const btn = document.getElementById('loginBtn');
-  btn.innerText = "Ověřuji..."; btn.disabled = true;
-  runGoogleScript("authenticateMember", { query: document.getElementById('loginQuery').value, pin: document.getElementById('loginPin').value })
+  
+  const loginCard = document.getElementById('loginFormCard');
+  const queryVal = document.getElementById('loginQuery').value;
+  const pinVal = document.getElementById('loginPin').value;
+
+  // Zobrazení elegantního načítacího stavu
+  loginCard.innerHTML = `
+    <div class="welcome-loader-card">
+      <div class="welcome-clef-icon">🎼</div>
+      <h3 style="margin: 0 0 6px 0; color: var(--text);">Vítejte v Bolechu</h3>
+      <div id="loaderStatusMsg" style="font-size: 0.92rem; color: var(--text-muted); min-height: 24px;">
+        Ověřuji přihlašovací údaje...
+      </div>
+      
+      <div class="orchestra-progress-track">
+        <div id="loaderProgressBar" class="orchestra-progress-bar"></div>
+      </div>
+      
+      <small style="color: var(--text-muted); font-size: 0.78rem;">Při prvním spuštění ladíme orchestrální data</small>
+    </div>
+  `;
+
+  // Časovač, který plynule mění zprávy a hýbe ukazatelem
+  let progress = 15;
+  const bar = document.getElementById('loaderProgressBar');
+  const msg = document.getElementById('loaderStatusMsg');
+  
+  bar.style.width = progress + "%";
+
+  const progressInterval = setInterval(() => {
+    progress += Math.floor(Math.random() * 8) + 4;
+    if (progress > 92) progress = 92; // Zastaví těsně před koncem, dokud nepřijdou data
+    bar.style.width = progress + "%";
+
+    if (progress > 30 && progress < 60) {
+      msg.textContent = "Ladíme nástroje a stahujeme rozpis akcí...";
+    } else if (progress >= 60 && progress < 80) {
+      msg.textContent = "Připravujeme pódium a obsazení...";
+    } else if (progress >= 80) {
+      msg.textContent = "Už jen okamžik, otevíráme pult...";
+    }
+  }, 400);
+
+  // Volání ověření
+  runGoogleScript("authenticateMember", { query: queryVal, pin: pinVal })
   .then(res => { 
-    btn.innerText = "Vstoupit"; btn.disabled = false;
-    if(res.success) { 
+    if (res.success) { 
       user = res.member; 
-      const jmeno = String(user.name || "").toLowerCase();
-      const sekce = String(user.section || "").toLowerCase();
-      const role = String(user.role || "").toLowerCase();
-      if (sekce.includes('host') || jmeno.includes('host') || role === 'host') {
-        user.platnostDo = Date.now() + (14 * 24 * 60 * 60 * 1000); 
-      }
       localStorage.setItem('bolech_auth_member', JSON.stringify(user)); 
-      document.getElementById('loginScreen').style.display = 'none'; 
-      initApp(); 
-    } else alert(res.error); 
+
+      // Dokončení progress baru na 100 %
+      clearInterval(progressInterval);
+      bar.style.width = "100%";
+      msg.textContent = "Připraveno!";
+
+      setTimeout(() => {
+        document.getElementById('loginScreen').style.display = 'none'; 
+        initApp(); 
+      }, 300);
+
+    } else { 
+      clearInterval(progressInterval);
+      alert(res.error); 
+      location.reload(); // Při chybě vrátí čistý formulář
+    } 
+  }).catch(err => {
+    clearInterval(progressInterval);
+    alert("Chyba spojení se serverem: " + err);
+    location.reload();
   }); 
 }
 
