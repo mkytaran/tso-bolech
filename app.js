@@ -421,7 +421,6 @@ function parsovatPoznamku(rawNote) {
     progData = text.substring(progMatch.index + progMatch[0].length);
   }
 
-  // Záchrana: Pokud v mainNote z dřívějška uvízl další tag, odstraníme jej a zachráníme data
   if (progRegex.test(mainNote)) {
     let pMatch = progRegex.exec(mainNote);
     let extraProg = mainNote.substring(pMatch.index + pMatch[0].length);
@@ -435,7 +434,6 @@ function parsovatPoznamku(rawNote) {
     if (!schedData) schedData = extraHarm;
   }
 
-  // Finální vyčištění poznámky od jakýchkoliv zbytků tagů
   mainNote = mainNote
     .replace(/={2,}\s*PROGRAM\s*={2,}[\s\S]*/gi, '')
     .replace(/={2,}\s*HARMONOGRAM\s*={2,}[\s\S]*/gi, '')
@@ -516,7 +514,7 @@ function formatProgramHtml(pData) {
   if (!rows) return '';
 
   return `
-    <div style="margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--border);">
+    <div style="margin-top: 4px;">
       <h4 style="margin-top:0; margin-bottom: 8px; font-size: 16px; color: var(--text);">🎼 Program</h4>
       <table class="program-table">
         <tbody>
@@ -575,13 +573,17 @@ function generateAkceHtml(akce, isVedení) {
   else if(akce.typ === 'Zkouška smyčců') barClass = 'bar-zkouska-smycce';
   else if(akce.typ === 'Zkouška dechů') barClass = 'bar-zkouska-dechy';
   
-  let editBtn = isVedení ? `<button class="edit-btn" onclick='event.stopPropagation(); openAkceForm(${JSON.stringify(akce).replace(/'/g, "&#39;")})'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>` : "";
+  // Bezpečné volání předáním pouhého stringu ID
+  const editBtn = isVedení ? `
+    <button type="button" class="edit-btn" onclick="event.preventDefault(); event.stopPropagation(); openAkceForm('${escapeHtml(akce.id)}');" title="Upravit akci">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+      </svg>
+    </button>
+  ` : "";
 
   const parsed = parsovatPoznamku(akce.poznamka);
   const hasProgram = !!parsed.progData;
-  const hasSchedule = !!parsed.schedData;
-  const hasNote = !!parsed.mainNote;
-  const hasDetailsOnBack = hasProgram || hasSchedule || hasNote;
   const cardFlipperId = `flipper-${akce.id}`;
 
   return `
@@ -590,19 +592,32 @@ function generateAkceHtml(akce, isVedení) {
         
         <!-- PŘEDNÍ STRANA KARTY -->
         <div class="card-front">
-          ${hasDetailsOnBack ? `<button type="button" class="corner-fold-btn" onclick="event.stopPropagation(); flipCard('${cardFlipperId}')" title="Zobrazit program a detaily"></button>` : ''}
+          ${hasProgram ? `<button type="button" class="corner-fold-btn" onclick="event.stopPropagation(); flipCard('${cardFlipperId}')" title="Zobrazit program"></button>` : ''}
           
-          <div class="${hasDetailsOnBack ? 'card-clickable-area' : ''}" ${hasDetailsOnBack ? `onclick="flipCard('${cardFlipperId}')"` : ''}>
-            <div class="card-top-bar ${barClass}"><span>${akce.typ}</span><span>🗓️ ${akce.datum}</span></div>
-            <div class="card-body" style="padding-bottom: 0;">
-              <div class="card-title-row"><div class="card-title">${akce.nazev}</div>${editBtn}</div>
-              ${akce.misto ? `<p style="margin-bottom:6px;">📍 ${akce.misto}</p>` : ''}
-              <p style="margin-bottom:6px;">🕒 Začátek: <strong>${akce.casOd}</strong></p>
-              ${akce.casSrazu ? `<p style="margin-bottom:6px;">⏰ Sraz: <strong>${akce.casSrazu}</strong></p>` : ''}
-              ${akce.zacatekGeneralky ? `<p style="margin-bottom:6px;">🎻 Generálka: <strong>${akce.zacatekGeneralky}</strong></p>` : ''}
-              ${akce.damy ? `<p style="margin-bottom:6px;">👗 Dámy: ${akce.damy}</p>` : ''}
-              ${akce.pani ? `<p style="margin-bottom:6px;">🤵 Páni: ${akce.pani}</p>` : ''}
+          <div class="card-top-bar ${barClass}">
+            <span>${akce.typ}</span>
+            <span>🗓️ ${akce.datum}</span>
+          </div>
+
+          <div class="card-body" style="padding-bottom: 0;">
+            <div class="card-title-row">
+              <div class="card-title" style="flex:1;">${escapeHtml(akce.nazev)}</div>
+              ${editBtn}
+            </div>
+
+            <!-- Klikatelná oblast výhradně pro otočení karty na program -->
+            <div class="${hasProgram ? 'card-clickable-area' : ''}" ${hasProgram ? `onclick="flipCard('${cardFlipperId}')"` : ''}>
+              ${akce.misto ? `<p style="margin-bottom:6px;">📍 ${escapeHtml(akce.misto)}</p>` : ''}
+              <p style="margin-bottom:6px;">🕒 Začátek: <strong>${escapeHtml(akce.casOd)}</strong></p>
+              ${akce.casSrazu ? `<p style="margin-bottom:6px;">⏰ Sraz: <strong>${escapeHtml(akce.casSrazu)}</strong></p>` : ''}
+              ${akce.zacatekGeneralky ? `<p style="margin-bottom:6px;">🎻 Generálka: <strong>${escapeHtml(akce.zacatekGeneralky)}</strong></p>` : ''}
+              ${akce.damy ? `<p style="margin-bottom:6px;">👗 Dámy: ${escapeHtml(akce.damy)}</p>` : ''}
+              ${akce.pani ? `<p style="margin-bottom:6px;">🤵 Páni: ${escapeHtml(akce.pani)}</p>` : ''}
               
+              <!-- Poznámka na přední straně -->
+              ${parsed.mainNote ? `<div class="oznameni-text" style="margin-top: 10px; margin-bottom: 6px;">${escapeHtml(parsed.mainNote)}</div>` : ''}
+
+              <!-- Časový plán na přední straně -->
               ${formatHarmonogramHtml(parsed.schedData)}
             </div>
           </div>
@@ -621,18 +636,52 @@ function generateAkceHtml(akce, isVedení) {
           </div>
         </div>
 
-        <!-- ZADNÍ STRANA KARTY -->
+        <!-- ZADNÍ STRANA KARTY: VÝHRADNĚ PROGRAM -->
         <div class="card-back card-clickable-area" onclick="flipCard('${cardFlipperId}')" title="Klepnutím otočíte zpět na přehled">
           <div class="card-top-bar ${barClass}">
-            <span>DETAILY & PROGRAM</span>
+            <span>PROGRAM KONCERTU</span>
           </div>
           <div class="card-body">
-            ${parsed.mainNote ? `<div class="oznameni-text" style="margin-bottom: 16px;">${escapeHtml(parsed.mainNote)}</div>` : ''}
-            ${formatHarmonogramHtml(parsed.schedData)}
             ${formatProgramHtml(parsed.progData)}
           </div>
         </div>
 
+      </div>
+    </div>`;
+}
+
+function generateOznameniHtml(akce, isVedení, isArchiv = false) {
+  const editBtn = isVedení ? `
+    <button type="button" class="edit-btn" onclick="event.preventDefault(); event.stopPropagation(); openAkceForm('${escapeHtml(akce.id)}');" title="Upravit oznámení">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+      </svg>
+    </button>
+  ` : "";
+  
+  let akceBtn = "";
+  if (isVedení) {
+    if (!isArchiv) {
+      akceBtn = `<button class="btn" style="background:transparent; color:var(--text-muted); border:1px solid var(--border); padding:8px; margin-top:16px; font-size:14px;" onclick="archivovatOznameni('${akce.id}')">🗃️ Přesunout do infoarchivu</button>`;
+    } else {
+      akceBtn = `<button class="btn" style="background:transparent; color:var(--primary-light); border:1px solid var(--primary-light); padding:8px; margin-top:16px; font-size:14px;" onclick="obnovitOznameni('${akce.id}')">↩️ Vrátit zpět na hlavní stránku</button>`;
+    }
+  }
+
+  const parsed = parsovatPoznamku(akce.poznamka);
+  
+  return `
+    <div class="card card-oznameni">
+      <div class="card-top-bar bar-oznameni"><span>💡 Informace</span><span>🗓️ ${akce.datum}</span></div>
+      <div class="card-body" style="padding-top:12px;">
+        <div class="card-title-row" style="margin-bottom:4px;">
+          <div class="card-title" style="font-size:20px; flex:1;">${escapeHtml(akce.nazev)}</div>
+          ${editBtn}
+        </div>
+        ${parsed.mainNote ? `<div class="oznameni-text" style="margin-top:12px;">${escapeHtml(parsed.mainNote)}</div>` : ''}
+        ${formatHarmonogramHtml(parsed.schedData)}
+        ${formatProgramHtml(parsed.progData)}
+        ${akceBtn}
       </div>
     </div>`;
 }
@@ -685,23 +734,19 @@ function getOrchestraSvgHtml(prefix = "stage") {
     </div>
 
     <svg viewBox="0 0 660 375" id="${prefix}-svg" style="width:100%; height:auto; display:block; user-select:none;">
-      <!-- Podkresové zóny roztáhnuté téměř na 100 % šířky -->
       <rect x="190" y="4" width="280" height="46" rx="8" fill="var(--sec-bg)"/>
       <rect x="8" y="52" width="644" height="52" rx="8" fill="var(--sec-bg)"/>
       <rect x="6" y="106" width="648" height="74" rx="8" fill="var(--sec-bg)"/>
       <rect x="4" y="182" width="652" height="188" rx="10" fill="var(--sec-bg)"/>
 
-      <!-- Názvy žesťů a bicích -->
       <text x="330" y="18" class="sec-label">Bicí nástroje</text>
       <text x="120" y="66" class="sec-label">Lesní rohy</text>
       <text x="330" y="66" class="sec-label">Trubky</text>
       <text x="540" y="66" class="sec-label">Trombóny / Tuba</text>
 
-      <!-- Dynamická vrstva pro přihlášené hráče a nápisy -->
       <g id="${prefix}-dynamic-labels"></g>
       <g id="${prefix}-dynamic-spots"></g>
 
-      <!-- NÁPISY SMYČCŮ DOLE U DIRIGENTA -->
       <text x="100" y="362" class="sec-label">1. Housle</text>
       <text x="250" y="362" class="sec-label">2. Housle</text>
       <text x="410" y="362" class="sec-label">Violy</text>
@@ -738,7 +783,6 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
 
   let celkemHraje = 0;
 
-  // 1. ZÍSKÁNÍ PŘIHLÁŠENÝCH HRÁČŮ PRO JEDNOTLIVÉ SEKCE
   const attendingBySec = {};
 
   Object.keys(ORCHESTRA_LAYOUT_CFG).forEach(sec => {
@@ -821,7 +865,7 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
     dynamicLabelsGroup.appendChild(l);
   }
 
-  // 2. SMYČCE (1. Housle, 2. Housle, Violy, Violoncella)
+  // Smyčce
   ["1. Housle", "2. Housle", "Violy", "Violoncella"].forEach(sec => {
     const list = attendingBySec[sec] || [];
     const cfg = ORCHESTRA_LAYOUT_CFG[sec];
@@ -840,7 +884,7 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
     });
   });
 
-  // 3. KONTRABASY + BASKYTARA
+  // Kontrabasy + Baskytara
   const cbList = attendingBySec["Kontrabasy"] || [];
   const bassList = attendingBySec["Baskytara"] || [];
   const hasBass = bassList.length > 0;
@@ -858,7 +902,7 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
     renderHexSpot(bassX, 218, bassList[0], false, "Baskytara");
   }
 
-  // 4. JEDNA ŘADA DŘEV A DOPROVODU (Y = 144)
+  // Dřeva a doprovod
   const baseWoodwinds = [
     { sec: "Flétny", label: "Flétny" },
     { sec: "Hoboje", label: "Hoboje" },
@@ -887,7 +931,7 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
     });
   });
 
-  // 5. ŽESTĚ A BICÍ (Horní patra)
+  // Žestě a bicí
   const hornList = attendingBySec["Lesní rohy"] || [];
   hornList.forEach((p, idx) => {
     const offset = (idx - (hornList.length - 1) / 2) * 36;
@@ -1246,7 +1290,14 @@ function saveOrchestrSettings() {
   });
 }
 
-function openAkceForm(akce = null) {
+function openAkceForm(param = null) {
+  let akce = null;
+  if (param !== null && typeof param === 'string') {
+    akce = (appData.akce || []).find(a => String(a.id) === String(param));
+  } else if (typeof param === 'object') {
+    akce = param;
+  }
+
   const isEdit = akce !== null;
   const selectDisabledAttr = isEdit ? 'disabled style="background: var(--bg); opacity: 0.8;"' : '';
   const formDateValue = formatDateForInput(akce?.datum || '');
@@ -1258,12 +1309,12 @@ function openAkceForm(akce = null) {
     programLines = parsed.progData.split('\n').map(l => l.trim()).filter(l => l.length > 0).map((line, idx) => {
       if (line.includes('|')) {
         let p = line.split('|');
-        return { num: p[0]||String(idx+1), author: p[1]||'', piece: p[2]||'' };
+        return { num: p[0] || String(idx + 1), author: p[1] || '', piece: p[2] || '' };
       } else if (line.includes(' - ')) {
         let p = line.split(' - ');
-        return { num: String(idx+1), author: p[0]||'', piece: p.slice(1).join(' - ')||'' };
+        return { num: String(idx + 1), author: p[0] || '', piece: p.slice(1).join(' - ') || '' };
       }
-      return { num: String(idx+1), author: '', piece: line };
+      return { num: String(idx + 1), author: '', piece: line };
     });
   }
 
@@ -1272,14 +1323,14 @@ function openAkceForm(akce = null) {
     scheduleLines = parsed.schedData.split('\n').map(l => l.trim()).filter(l => l.length > 0).map(line => {
       if (line.includes('|')) {
         let p = line.split('|');
-        return { time: p[0]||'', desc: p[1]||'' };
+        return { time: p[0] || '', desc: p[1] || '' };
       }
       return { time: '', desc: line };
     });
   }
 
   const html = `
-    <div id="akceModal" class="modal-overlay">
+    <div id="akceModal" class="modal-overlay" style="padding: 4px;">
       <div class="modal-box" style="max-height: 90vh; overflow-y: auto;">
         
         <div style="display:flex; align-items:center; margin-bottom: 20px;">
@@ -1378,6 +1429,92 @@ function openAkceForm(akce = null) {
   scheduleLines.forEach(s => addScheduleRow(s.time, s.desc));
 }
 
+function moveProgramRow(btn, direction) {
+  const row = btn.closest('.prog-item-row');
+  if (!row) return;
+  if (direction === -1 && row.previousElementSibling) {
+    row.parentElement.insertBefore(row, row.previousElementSibling);
+  } else if (direction === 1 && row.nextElementSibling) {
+    row.parentElement.insertBefore(row.nextElementSibling, row);
+  }
+  renumberProgramRows();
+}
+
+function renumberProgramRows() {
+  const rows = document.querySelectorAll('.prog-item-row');
+  rows.forEach((r, idx) => {
+    const numInput = r.querySelector('.prog-num');
+    if (numInput && (!numInput.value || !isNaN(parseInt(numInput.value)))) {
+      numInput.value = (idx + 1);
+    }
+  });
+}
+
+function removeProgramRow(btn) {
+  if (confirm("Opravdu chcete tuto skladbu z programu odstranit?")) {
+    const row = btn.closest('.prog-item-row');
+    if (row) {
+      row.remove();
+      renumberProgramRows();
+    }
+  }
+}
+
+function addProgramRow(num = '', author = '', piece = '') {
+  const cont = document.getElementById('program-rows');
+  if (!cont) return;
+  
+  if (!num) {
+    num = cont.querySelectorAll('.prog-item-row').length + 1;
+  }
+
+  const div = document.createElement('div');
+  div.className = 'prog-item-row';
+  div.style = 'border: 1px dashed var(--border); padding: 10px; margin-bottom: 10px; border-radius: 8px; background: var(--surface);';
+  
+  div.innerHTML = `
+    <div style="display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 6px;">
+      <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); width: auto;" onclick="moveProgramRow(this, -1)" title="Posunout nahoru">▲</button>
+      <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); width: auto;" onclick="moveProgramRow(this, 1)" title="Posunout dolů">▼</button>
+      <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: transparent; color: var(--danger); border: 1px solid var(--danger); width: auto; margin-left: 6px;" onclick="removeProgramRow(this)" title="Smazat skladbu">✕</button>
+    </div>
+
+    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+      <div style="width: 52px; flex-shrink: 0;">
+        <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 2px;">Pořadí:</label>
+        <input type="text" class="modal-input prog-num" placeholder="1" value="${escapeHtml(num)}" style="padding: 8px 6px; font-size: 14px; text-align: right;">
+      </div>
+      <div style="flex: 1; min-width: 0;">
+        <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 2px;">Autor / Skladatel:</label>
+        <input type="text" class="modal-input prog-author" placeholder="např. Antonín Dvořák" value="${escapeHtml(author)}" style="padding: 8px 10px; font-size: 14px;">
+      </div>
+    </div>
+    
+    <div>
+      <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 2px;">Dílo / Skladba:</label>
+      <textarea class="modal-input prog-piece" placeholder="např. Symfonie č. 9 e moll „Z Nového světa“, op. 95" rows="2" style="padding: 8px 10px; font-size: 14px; min-height: 54px; resize: vertical; line-height: 1.4;">${escapeHtml(piece).replace(/\[BR\]/g, '\n')}</textarea>
+    </div>
+  `;
+  cont.appendChild(div);
+}
+
+function addScheduleRow(time = '', desc = '') {
+  const cont = document.getElementById('schedule-rows');
+  if (!cont) return;
+  const div = document.createElement('div');
+  div.style = 'border: 1px dashed var(--border); padding: 8px; margin-bottom: 8px; border-radius: 6px; position: relative;';
+  div.innerHTML = `
+    <button type="button" style="position: absolute; top: 8px; right: 8px; background: transparent; border: 1px solid var(--danger); border-radius: 4px; color: var(--danger); font-size: 12px; padding: 2px 6px;" onclick="this.parentElement.remove()">✕</button>
+    <div style="margin-top: 20px;">
+        <label style="font-size: 12px; display: block; margin-bottom: 2px;">Čas (od - do):</label>
+        <input type="text" class="modal-input sched-time" placeholder="např. 10:00 - 12:30" value="${escapeHtml(time)}" style="margin-bottom: 6px; padding: 6px 8px; font-size: 14px;">
+        <label style="font-size: 12px; display: block; margin-bottom: 2px;">Popis programu:</label>
+        <textarea class="modal-input sched-desc" placeholder="např. Dopolední zkouška" rows="2" style="padding: 6px 8px; font-size: 14px; min-height: 50px; resize: vertical;">${escapeHtml(desc).replace(/\[BR\]/g, '\n')}</textarea>
+    </div>
+  `;
+  cont.appendChild(div);
+}
+
 function toggleAkceFields() {
   const typ = document.getElementById('f_typ').value;
   const jeOznameni = typ.includes('Oznámení') || typ.includes('Informace');
@@ -1399,8 +1536,6 @@ function submitAkceForm(e, akceId) {
   const jeZkouska = typ.includes('zkouška') || typ.includes('Zkouška');
   const finalId = akceId || generovatIdAkce(typ);
 
-  // DŮSLEDNÉ OČIŠTĚNÍ POZNÁMKY:
-  // Odstraníme jakýkoliv nechtěný starý blok ===PROGRAM=== nebo ===HARMONOGRAM===
   let rawNoteInput = document.getElementById('f_poznamka').value;
   let finalPoznamka = rawNoteInput
     .replace(/={2,}\s*PROGRAM\s*={2,}[\s\S]*/gi, '')
@@ -1484,33 +1619,6 @@ function deleteAkcePrompt(akceId) {
   }
 }
 
-function generateOznameniHtml(akce, isVedení, isArchiv = false) {
-  let editBtn = isVedení ? `<button class="edit-btn" onclick='openAkceForm(${JSON.stringify(akce).replace(/'/g, "&#39;")})'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>` : "";
-  
-  let akceBtn = "";
-  if (isVedení) {
-    if (!isArchiv) {
-      akceBtn = `<button class="btn" style="background:transparent; color:var(--text-muted); border:1px solid var(--border); padding:8px; margin-top:16px; font-size:14px;" onclick="archivovatOznameni('${akce.id}')">🗃️ Přesunout do infoarchivu</button>`;
-    } else {
-      akceBtn = `<button class="btn" style="background:transparent; color:var(--primary-light); border:1px solid var(--primary-light); padding:8px; margin-top:16px; font-size:14px;" onclick="obnovitOznameni('${akce.id}')">↩️ Vrátit zpět na hlavní stránku</button>`;
-    }
-  }
-
-  const parsed = parsovatPoznamku(akce.poznamka);
-  
-  return `
-    <div class="card card-oznameni">
-      <div class="card-top-bar bar-oznameni"><span>💡 Informace</span><span>🗓️ ${akce.datum}</span></div>
-      <div class="card-body" style="padding-top:12px;">
-        <div class="card-title-row" style="margin-bottom:4px;"><div class="card-title" style="font-size:20px;">${akce.nazev}</div>${editBtn}</div>
-        ${parsed.mainNote ? `<div class="oznameni-text" style="margin-top:12px;">${escapeHtml(parsed.mainNote)}</div>` : ''}
-        ${formatHarmonogramHtml(parsed.schedData)}
-        ${formatProgramHtml(parsed.progData)}
-        ${akceBtn}
-      </div>
-    </div>`;
-}
-
 function archivovatOznameni(akceId) {
   if(confirm("Přesunout tuto informaci do infoarchivu? Zmizí z hlavní stránky.")) {
     const akce = (appData.akce || []).find(a => String(a.id) === String(akceId));
@@ -1531,6 +1639,56 @@ function obnovitOznameni(akceId) {
   });
 }
 
+function submitUcast(id, datum, stav, btn) { 
+  const origText = btn.innerText; btn.innerText = "Ukládám...";
+  runGoogleScript("saveUcast", {akceId: id, datumAkce: datum, jmeno: user.name, sekce: user.section, stav: stav})
+  .then(res => {
+    btn.innerText = origText;
+    if(res.success) {
+      document.getElementById('duvod-'+id).style.display = (stav === 'Ne') ? 'block' : 'none'; 
+      btn.parentElement.querySelectorAll('.btn-att').forEach(b => b.className = 'btn-att'); 
+      btn.classList.add(stav === 'Ano' ? 'selected-ano' : 'selected-ne');
+      let exist = (appData.ucast || []).find(u => u.akceId === id && u.jmeno === user.name);
+      if(exist) exist.stav = stav; else appData.ucast.push({akceId:id, jmeno:user.name, sekce:user.section, stav:stav});
+      document.getElementById('roster-container-'+id).innerHTML = generateRosterHtml(id);
+      localStorage.setItem("bolech_data_cache", JSON.stringify(appData));
+    }
+  });
+}
+
+function saveDuvod(id, datum, btn) { 
+  const duvod = document.getElementById('in-'+id).value; btn.innerText = "Ukládám...";
+  runGoogleScript("saveUcast", {akceId: id, datumAkce: datum, jmeno: user.name, sekce: user.section, stav: 'Ne', duvod: duvod})
+  .then(res => {
+    btn.innerText = "Odeslat důvod";
+    if(res.success) { document.getElementById('duvod-'+id).style.display = 'none'; }
+  });
+}
+
+function formatDateForInput(dateStr) {
+  if (!dateStr) return "";
+  const parts = String(dateStr).trim().split('.');
+  if (parts.length === 3) {
+    const d = parts[0].trim().padStart(2, '0');
+    const m = parts[1].trim().padStart(2, '0');
+    const y = parts[2].trim();
+    return `${y}-${m}-${d}`;
+  }
+  return dateStr;
+}
+
+function formatDateForSave(isoDate) {
+  if (!isoDate) return "";
+  const parts = String(isoDate).split('-');
+  if (parts.length === 3) {
+    return `${parseInt(parts[2], 10)}. ${parseInt(parts[1], 10)}. ${parts[0]}`;
+  }
+  return isoDate;
+}
+
+// =========================================================================
+// SPRÁVA HOSTŮ
+// =========================================================================
 function openGuestManager() {
   let htmlHoste = "";
   let htmlClenove = "";
