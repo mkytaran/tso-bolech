@@ -816,3 +816,60 @@ body.card-flipped-active .card:not(.card-flip-container) {
   border-radius: 20px;
   transition: width 0.4s ease-out;
 }
+
+/* Tlačítko obálky u partu (neaktivní / aktivní) */
+.btn-nota-mail {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  touch-action: manipulation;
+}
+
+.btn-nota-mail svg {
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+}
+
+/* Zvýraznění vybraného partu */
+.btn-nota-mail.is-selected {
+  background: var(--success) !important;
+  color: #ffffff !important;
+  border-color: var(--success) !important;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.35);
+  transform: scale(1.05);
+}
+
+/* Plovoucí tlačítko dole nad navigací */
+.floating-mail-bar {
+  position: fixed;
+  bottom: calc(75px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 24px);
+  max-width: 540px;
+  background: var(--surface);
+  border: 2px solid var(--primary-light);
+  border-radius: 14px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  z-index: 105;
+  animation: slideUpFloat 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpFloat {
+  from { transform: translate(-50%, 30px); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}

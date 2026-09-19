@@ -25,6 +25,9 @@ const API_URL = "https://script.google.com/macros/s/AKfycbwVHLODjApvEPwE4RQo5nQx
 let user = null; 
 let appData = { akce: [], noty: [], ucast: [], clenove: [], zadosti: [], orchestraConfig: {} };
 
+// Seznam vybraných not pro odeslání e-mailem
+window.vybraneNotyKEmailu = [];
+
 const PARTITURA_SECTIONS = [
   "1. Housle", "2. Housle", "Violy", "Violoncella", "Kontrabasy", "Baskytara",
   "Flétny", "Hoboje", "Klarinety / Saxofony", "Fagoty", "Lesní rohy", 
@@ -573,7 +576,6 @@ function generateAkceHtml(akce, isVedení) {
   else if(akce.typ === 'Zkouška smyčců') barClass = 'bar-zkouska-smycce';
   else if(akce.typ === 'Zkouška dechů') barClass = 'bar-zkouska-dechy';
   
-  // Bezpečné volání předáním pouhého stringu ID
   const editBtn = isVedení ? `
     <button type="button" class="edit-btn" onclick="event.preventDefault(); event.stopPropagation(); openAkceForm('${escapeHtml(akce.id)}');" title="Upravit akci">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -605,7 +607,6 @@ function generateAkceHtml(akce, isVedení) {
               ${editBtn}
             </div>
 
-            <!-- Klikatelná oblast výhradně pro otočení karty na program -->
             <div class="${hasProgram ? 'card-clickable-area' : ''}" ${hasProgram ? `onclick="flipCard('${cardFlipperId}')"` : ''}>
               ${akce.misto ? `<p style="margin-bottom:6px;">📍 ${escapeHtml(akce.misto)}</p>` : ''}
               <p style="margin-bottom:6px;">🕒 Začátek: <strong>${escapeHtml(akce.casOd)}</strong></p>
@@ -614,15 +615,11 @@ function generateAkceHtml(akce, isVedení) {
               ${akce.damy ? `<p style="margin-bottom:6px;">👗 Dámy: ${escapeHtml(akce.damy)}</p>` : ''}
               ${akce.pani ? `<p style="margin-bottom:6px;">🤵 Páni: ${escapeHtml(akce.pani)}</p>` : ''}
               
-              <!-- Poznámka na přední straně -->
               ${parsed.mainNote ? `<div class="oznameni-text" style="margin-top: 10px; margin-bottom: 6px;">${escapeHtml(parsed.mainNote)}</div>` : ''}
-
-              <!-- Časový plán na přední straně -->
               ${formatHarmonogramHtml(parsed.schedData)}
             </div>
           </div>
 
-          <!-- Spodní zóna: docházka a přehled -->
           <div class="card-body" style="padding-top: 16px;">
             <div class="att-buttons">
               <button class="btn-att ${myVote?.stav==='Ano'?'selected-ano':''}" onclick="submitUcast('${akce.id}','${akce.datum}','Ano',this)">✓ Účastním se</button>
@@ -1864,7 +1861,7 @@ function confirmLogout() {
 }
 
 // =========================================================================
-// NOTOVÝ ARCHIV A JEHO SPRÁVA (Baskytara bere noty z Kontrabasů)
+// NOTOVÝ ARCHIV PRO HRÁČE (PŘEPOSLÁNÍ SOBĚ)
 // =========================================================================
 function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
   const kontejner = document.getElementById('notyContainer');
@@ -1922,39 +1919,41 @@ function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
     notyPodleProgramu[program].push(nota);
   });
 
+  let mujEmail = (user && user.email) ? user.email.trim() : '';
+  if (!mujEmail && appData.clenove) {
+    const ja = appData.clenove.find(c => (c.celeJmeno === user.name || c.jmeno === user.name || c.name === user.name));
+    if (ja && ja.email) mujEmail = ja.email.trim();
+  }
+
   for (const [program, noty] of Object.entries(notyPodleProgramu)) {
-    let mujEmail = user.email || '';
-    if (!mujEmail && appData.clenove) {
-      const ja = appData.clenove.find(c => c.jmeno === user.name || c.name === user.name);
-      if (ja && ja.email) mujEmail = ja.email.trim();
-    }
-    
     let emailPredmet = encodeURIComponent(`Noty TSO Bolech - ${program}`);
-    let emailTelo = `Dobrý den,\n\nzasílám odkazy pro přímé stažení not (Program: ${program}, Part: ${efektivniNastroj}).\n\n`;
+    let emailTelo = `Dobrý den,\n\nzasílám odkazy pro přímé stažení not (Program: ${program}, Part: ${efektivniNastroj}):\n\n`;
     noty.forEach(n => {
       let stahovaciOdkaz = n.odkaz.replace(/.*\/d\/([a-zA-Z0-9_-]+).*/, 'https://drive.google.com/uc?export=download&id=$1');
       emailTelo += `- ${n.skladba}:\n  ${stahovaciOdkaz}\n\n`;
     });
     emailTelo += `Portál TSO Bolech`;
+
     let mailtoOdkaz = `mailto:${mujEmail}?subject=${emailPredmet}&body=${encodeURIComponent(emailTelo)}`;
 
     html += `
       <div class="program-header">
-        <h3 class="program-title">${program}</h3>
-        <a href="${mailtoOdkaz}" class="email-btn" title="Přeposlat odkazy na svůj e-mail">
+        <h3 class="program-title">${escapeHtml(program)}</h3>
+        <a href="${mailtoOdkaz}" class="email-btn" title="Odeslat odkazy na e-mail">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
-          Přeposlat sobě
+          Poslat e-mailem
         </a>
       </div>`;
       
     noty.forEach(nota => {
+      let downloadUrl = nota.odkaz.replace(/.*\/d\/([a-zA-Z0-9_-]+).*/, 'https://drive.google.com/uc?export=download&id=$1');
       html += `
         <div class="nota-card">
           <div class="nota-info">
-            <h4>${nota.skladba}</h4>
-            <span>${nota.sekce}</span>
+            <h4>${escapeHtml(nota.skladba)}</h4>
+            <span>${escapeHtml(nota.sekce)}</span>
           </div>
-          <a href="${nota.odkaz.replace(/.*\/d\/([a-zA-Z0-9_-]+).*/, 'https://drive.google.com/uc?export=download&id=$1')}" target="_blank" class="nota-down-btn" title="Stáhnout">
+          <a href="${downloadUrl}" target="_blank" class="nota-down-btn" title="Stáhnout">
             <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
@@ -2015,9 +2014,125 @@ function switchTab(t, b) {
   
   if (t === 'archive') document.body.classList.add('archive-open');
   else document.body.classList.remove('archive-open');
+
+  // Skryje plovoucí lištu, pokud uživatel odejde ze správy not
+  const bar = document.getElementById('floatingMailBar');
+  if (bar) bar.style.display = (t === 'admin-noty' && window.vybraneNotyKEmailu.length > 0) ? 'flex' : 'none';
 }
 
 window.stromSlozek = []; 
+
+// =========================================================================
+// SPRÁVA NOT VEDENÍ: VÝBĚR OBÁLKOU + PLOVOUCÍ TLAČÍTKO ODESLÁNÍ
+// =========================================================================
+function toggleMailSelection(odkaz, skladba, sekce, btnElem) {
+  const idx = window.vybraneNotyKEmailu.findIndex(n => n.odkaz === odkaz);
+  
+  if (idx === -1) {
+    window.vybraneNotyKEmailu.push({ odkaz, skladba, sekce });
+    btnElem.classList.add('is-selected');
+    btnElem.title = 'Odebrat z výběru k odeslání';
+  } else {
+    window.vybraneNotyKEmailu.splice(idx, 1);
+    btnElem.classList.remove('is-selected');
+    btnElem.title = 'Přidat do výběru k odeslání';
+  }
+
+  aktualizovatPlovouciListu();
+}
+
+function zrusitVyberNot() {
+  window.vybraneNotyKEmailu = [];
+  document.querySelectorAll('.btn-nota-mail').forEach(btn => {
+    btn.classList.remove('is-selected');
+    btn.title = 'Přidat do výběru k odeslání';
+  });
+  aktualizovatPlovouciListu();
+}
+
+function aktualizovatPlovouciListu() {
+  let bar = document.getElementById('floatingMailBar');
+  const count = window.vybraneNotyKEmailu.length;
+
+  if (count === 0) {
+    if (bar) bar.remove();
+    return;
+  }
+
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'floatingMailBar';
+    bar.className = 'floating-mail-bar';
+    document.body.appendChild(bar);
+  }
+
+  bar.style.display = 'flex';
+  bar.innerHTML = `
+    <button type="button" class="btn" style="padding: 10px 16px; font-size: 15px; background: var(--success); flex: 1; margin-right: 8px; font-weight: 700;" onclick="otevritDialogHromadnehoEmailu()">
+      ✉️ Odeslat vybrané noty (${count})
+    </button>
+    <button type="button" class="btn" style="padding: 10px 14px; font-size: 15px; background: var(--border); color: var(--text); width: auto;" onclick="zrusitVyberNot()" title="Zrušit výběr">
+      ✕
+    </button>
+  `;
+}
+
+function otevritDialogHromadnehoEmailu() {
+  if (window.vybraneNotyKEmailu.length === 0) return;
+
+  const html = `
+    <div id="bulkSendModal" class="modal-overlay" style="padding: 4px;" onclick="if(event.target===this) document.getElementById('bulkSendModal').remove()">
+      <div class="modal-box" style="max-width: 480px; width: 100%;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+          <h3 style="margin:0; font-size:1.15rem; color:var(--text);">✉️ Odeslat vybrané noty</h3>
+          <button type="button" style="background:transparent; border:none; font-size:22px; color:var(--text-muted); cursor:pointer;" onclick="document.getElementById('bulkSendModal').remove()">✕</button>
+        </div>
+
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:12px;">
+          Zadejte e-mail příjemce (např. hosta) nebo nechte prázdné. Po kliknutí se otevře váš poštovní program s přímými odkazy na vybrané party.
+        </p>
+
+        <label style="font-size: 0.82rem; font-weight: 700; margin-bottom: 4px; display: block;">Komu (e-mail příjemce):</label>
+        <input type="email" id="bulkRecipientEmail" placeholder="např. host@seznam.cz" class="modal-input" style="margin-bottom: 12px;">
+
+        <div style="max-height: 180px; overflow-y: auto; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; margin-bottom: 16px;">
+          <ul style="margin:0; padding-left: 18px; font-size: 0.85rem; line-height: 1.4;">
+            ${window.vybraneNotyKEmailu.map(n => `<li><strong>${escapeHtml(n.skladba)}</strong> (${escapeHtml(n.sekce)})</li>`).join('')}
+          </ul>
+        </div>
+
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn" style="background:var(--success); flex:1;" onclick="odeslatMailtoOdkaz()">
+            🚀 Otevřít e-mail
+          </button>
+          <button type="button" class="btn" style="background:var(--border); color:var(--text); width:auto;" onclick="document.getElementById('bulkSendModal').remove()">
+            Zrušit
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function odeslatMailtoOdkaz() {
+  const recipient = (document.getElementById('bulkRecipientEmail')?.value || '').trim();
+  let emailPredmet = encodeURIComponent(`Noty TSO Bolech`);
+  let emailTelo = `Dobrý den,\n\nzasílám odkazy pro přímé stažení not z archivu TSO Bolech:\n\n`;
+  
+  window.vybraneNotyKEmailu.forEach(n => {
+    let dlUrl = n.odkaz.replace(/.*\/d\/([a-zA-Z0-9_-]+).*/, 'https://drive.google.com/uc?export=download&id=$1');
+    emailTelo += `• ${n.skladba} (${n.sekce}):\n  ${dlUrl}\n\n`;
+  });
+  
+  emailTelo += `Táborský symfonický orchestr Bolech`;
+  
+  const mailtoLink = `mailto:${recipient}?subject=${emailPredmet}&body=${encodeURIComponent(emailTelo)}`;
+  
+  document.getElementById('bulkSendModal')?.remove();
+  window.location.href = mailtoLink;
+}
 
 function vykresliAdminNoty() {
   const cont = document.getElementById('adminNotyContainer');
@@ -2084,7 +2199,7 @@ function vykresliAdminNoty() {
             <div class="folder-controls" onclick="event.stopPropagation();" style="display: flex; gap: 8px; align-items: center; width: 100%;">
               <input type="text" id="prog_${index}" class="modal-input" placeholder="Název programu..." value="${escapeHtml(s.program)}" style="flex: 1; margin: 0; padding: 10px; font-size: 14px; border-radius: 6px;" oninput="oznacNeulozeneZmeny()">  
 
-              <label style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; background: ${checkBg}; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: background 0.2s;" title="Aktivní">
+              <label style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; background: ${checkBg}; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: background 0.2s;" title="Aktivní na repertoáru">
                 <input type="checkbox" id="chk_${index}" ${s.aktivni ? 'checked' : ''} style="transform: scale(1.4); margin: 0; cursor: pointer;" 
                        onchange="
                          oznacNeulozeneZmeny();
@@ -2100,12 +2215,26 @@ function vykresliAdminNoty() {
           
           <div class="folder-content" style="padding: 12px; display: flex; flex-direction: column; gap: 6px; background: var(--bg);">
             ${s.soubory.map(soub => {
+              const isSelected = window.vybraneNotyKEmailu.some(n => n.odkaz === soub.odkaz);
+
               return `
-              <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card, transparent); gap: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card, transparent); gap: 8px;">
                 <a href="${soub.odkaz.replace(/\/view.*/, '/preview')}" target="_blank" style="font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; color: var(--primary); text-decoration: none; font-weight: 600; cursor: pointer;">
                   📄 <span style="text-decoration: underline;">${escapeHtml(soub.kratkyNazev)}</span>
                 </a>
+                
                 <span style="font-size: 11px; opacity: 0.8; white-space: nowrap; background: var(--border); padding: 4px 6px; border-radius: 4px; color: var(--text);">${escapeHtml(String(soub.sekce||''))}</span>
+                
+                <!-- Ikona obálky fungující jako přepínač výběru k odeslání -->
+                <button type="button" 
+                        class="btn-nota-mail ${isSelected ? 'is-selected' : ''}" 
+                        onclick="toggleMailSelection('${soub.odkaz}', '${escapeHtml(soub.skladba)}', '${escapeHtml(soub.sekce||'')}', this)" 
+                        title="${isSelected ? 'Odebrat z výběru k odeslání' : 'Přidat do výběru k odeslání'}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                    <path d="M22 6l-10 7L2 6"/>
+                  </svg>
+                </button>
               </div>
               `;
             }).join('')}
@@ -2116,6 +2245,7 @@ function vykresliAdminNoty() {
     });
 
     cont.innerHTML = html;
+    aktualizovatPlovouciListu();
 
   } catch (error) {
     cont.innerHTML = `<p style="color:var(--danger); padding:16px;">Chyba: ${error.message}</p>`;
