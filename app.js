@@ -65,6 +65,14 @@ const ORCHESTRA_LAYOUT_CFG = {
 const SMYCKE_SECTIONS = ["housl", "viol", "cell", "kontrabas", "baskytara", "smyčce", "smycce"];
 const DECHOVE_SECTIONS = ["flétn", "hoboj", "klarinet", "saxofon", "fagot", "roh", "trubk", "trubc", "trombón", "trombon", "tuba", "tuby", "tubě", "tubou", "dech", "dřev", "žest"];
 
+// Pomocná funkce pro identifikaci dirigenta
+function isDirigentPerson(jmeno, sekce, role) {
+  const j = String(jmeno || "").toLowerCase();
+  const s = String(sekce || "").toLowerCase();
+  const r = String(role || "").toLowerCase();
+  return r === 'dirigent' || s.includes('dirigent') || j.includes('sycha');
+}
+
 // =====================================================
 // GLOBÁLNÍ NASTAVENÍ PÍSMA A TÉMATU
 // =====================================================
@@ -529,15 +537,17 @@ function formatProgramHtml(pData) {
 }
 
 // =====================================================
-// VYKRESLENÍ AKCÍ (HLAVNÍ STRÁNKA S 3 TLAČÍTKY PRO VEDENÍ)
+// VYKRESLENÍ AKCÍ (CHYTRÉ ŘAZENÍ: BUDOUCÍ VS. HISTORIE)
 // =====================================================
 function renderEvents() {
   zavritOtocenouKartu();
 
-  const cont = document.getElementById("eventsContainer"); cont.innerHTML = "";
-  const archCont = document.getElementById("archiveContainer"); archCont.innerHTML = "";
-  const userRole = String(user.role||"").trim().toLowerCase();
+  const cont = document.getElementById("eventsContainer"); 
+  cont.innerHTML = "";
+  const archCont = document.getElementById("archiveContainer"); 
+  archCont.innerHTML = "";
   
+  const userRole = String(user.role || "").trim().toLowerCase();
   const povoleneRole = ['admin', 'dirigent', 'vedení', 'vedeni'];
   const isVedení = povoleneRole.includes(userRole);
   
@@ -551,21 +561,51 @@ function renderEvents() {
   }
 
   const vsechnyViditelne = (appData.akce || []).filter(a => isEventVisibleForUser(a));
-  
-  const aktivniOznameni = vsechnyViditelne.filter(a => a.typ === 'Oznámení' || a.typ === 'Informace').sort((a,b) => parseDate(b.datum) - parseDate(a.datum));
-  const akceNorm = vsechnyViditelne.filter(a => !a.typ.includes('Oznámení') && !a.typ.includes('Informace')).sort((a,b) => parseDate(b.datum) - parseDate(a.datum));
-  const archiv = vsechnyViditelne.filter(a => a.typ === 'Oznámení (Archiv)' || a.typ === 'Informace (Infoarchiv)').sort((a,b) => parseDate(b.datum) - parseDate(a.datum));
 
+  // Nastavení hranice na dnešní půlnoc (akce z dneška zůstává aktivní celý den)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTs = today.getTime();
+
+  // 1. Aktivní textová oznámení (vždy nahoře)
+  const aktivniOznameni = vsechnyViditelne
+    .filter(a => (a.typ === 'Oznámení' || a.typ === 'Informace'))
+    .sort((a, b) => parseDate(b.datum) - parseDate(a.datum));
+
+  // 2. Hudební akce (zkoušky, koncerty, generálky)
+  const hudebniAkce = vsechnyViditelne.filter(a => !a.typ.includes('Oznámení') && !a.typ.includes('Informace'));
+
+  // Nadcházející akce (dnes a v budoucnu) -> ŘAZENÍ VZESTUPNĚ (nejbližší první!)
+  const nadchazejiciAkce = hudebniAkce
+    .filter(a => parseDate(a.datum) >= todayTs)
+    .sort((a, b) => parseDate(a.datum) - parseDate(b.datum));
+
+  // Proběhlé akce (historie) -> ŘAZENÍ SESTUPNĚ (naposledy proběhlá nahoře)
+  const probehleAkce = hudebniAkce
+    .filter(a => parseDate(a.datum) < todayTs)
+    .sort((a, b) => parseDate(b.datum) - parseDate(a.datum));
+
+  // Archivovaná textová oznámení
+  const archivOznameni = vsechnyViditelne
+    .filter(a => a.typ === 'Oznámení (Archiv)' || a.typ === 'Informace (Infoarchiv)' || a.typ === 'Informace (Historie)')
+    .sort((a, b) => parseDate(b.datum) - parseDate(a.datum));
+
+  // --- VYKRESLENÍ ZÁLOŽKY „AKCE“ ---
   aktivniOznameni.forEach(a => cont.innerHTML += generateOznameniHtml(a, isVedení));
   
-  if(akceNorm.length === 0 && aktivniOznameni.length === 0) {
-    cont.innerHTML += `<div style="text-align:center; padding:40px; color:var(--text-muted);">Zatím nejsou naplánovány žádné akce.</div>`;
+  if (nadchazejiciAkce.length === 0 && aktivniOznameni.length === 0) {
+    cont.innerHTML += `<div style="text-align:center; padding:40px; color:var(--text-muted);">Žádné nadcházející akce nejsou naplánovány.</div>`;
   } else {
-    akceNorm.forEach(a => cont.innerHTML += generateAkceHtml(a, isVedení));
+    nadchazejiciAkce.forEach(a => cont.innerHTML += generateAkceHtml(a, isVedení));
   }
 
-  if(archiv.length === 0) archCont.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted);">Infoarchiv je prázdný.</div>`;
-  else archiv.forEach(a => archCont.innerHTML += generateOznameniHtml(a, isVedení, true));
+  // --- VYKRESLENÍ ZÁLOŽKY „HISTORIE“ ---
+  if (probehleAkce.length === 0 && archivOznameni.length === 0) {
+    archCont.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted);">Historie je prázdná.</div>`;
+  } else {
+    probehleAkce.forEach(a => archCont.innerHTML += generateAkceHtml(a, isVedení));
+    archivOznameni.forEach(a => archCont.innerHTML += generateOznameniHtml(a, isVedení, true));
+  }
 }
 
 function generateAkceHtml(akce, isVedení) {
@@ -659,7 +699,7 @@ function generateOznameniHtml(akce, isVedení, isArchiv = false) {
   let akceBtn = "";
   if (isVedení) {
     if (!isArchiv) {
-      akceBtn = `<button class="btn" style="background:transparent; color:var(--text-muted); border:1px solid var(--border); padding:8px; margin-top:16px; font-size:14px;" onclick="archivovatOznameni('${akce.id}')">🗃️ Přesunout do infoarchivu</button>`;
+      akceBtn = `<button class="btn" style="background:transparent; color:var(--text-muted); border:1px solid var(--border); padding:8px; margin-top:16px; font-size:14px;" onclick="archivovatOznameni('${akce.id}')">📜 Přesunout do historie</button>`;
     } else {
       akceBtn = `<button class="btn" style="background:transparent; color:var(--primary-light); border:1px solid var(--primary-light); padding:8px; margin-top:16px; font-size:14px;" onclick="obnovitOznameni('${akce.id}')">↩️ Vrátit zpět na hlavní stránku</button>`;
     }
@@ -683,10 +723,24 @@ function generateOznameniHtml(akce, isVedení, isArchiv = false) {
     </div>`;
 }
 
+// =====================================================
+// PŘEHLED PŘIHLÁŠENÝCH (DIRIGENT VŽDY NAHOŘE)
+// =====================================================
 function generateRosterHtml(akceId) {
   const potvrdili = (appData.ucast || []).filter(u => String(u.akceId) === String(akceId) && u.stav === 'Ano');
+  
+  let dirigentJmeno = null;
   const grouped = {};
+
   potvrdili.forEach(p => {
+    const clenInfo = (appData.clenove || []).find(c => c.celeJmeno === p.jmeno || c.jmeno === p.jmeno);
+    const jeDirigent = isDirigentPerson(p.jmeno, p.sekce, clenInfo?.role);
+
+    if (jeDirigent) {
+      dirigentJmeno = p.jmeno;
+      return;
+    }
+
     let hracSekce = String(p.sekce || "Ostatní").trim().toLowerCase();
     let nalezenaSekce = PARTITURA_SECTIONS.find(s => s.toLowerCase().includes(hracSekce) || hracSekce.includes(s.toLowerCase())) || "Ostatní / Hosté";
     if (!grouped[nalezenaSekce]) grouped[nalezenaSekce] = [];
@@ -704,6 +758,17 @@ function generateRosterHtml(akceId) {
       </button>
   `;
 
+  // 1. Dirigent má výsadní místo na úplném vrcholu
+  if (dirigentJmeno) {
+    html += `
+      <div class="roster-section" style="border-left: 3px solid #f59e0b; padding-left: 8px; margin-bottom: 10px; background: rgba(245, 158, 11, 0.08); border-radius: 4px;">
+        <div class="roster-section-title" style="color: #d97706; font-weight: 800;">🎼 Dirigent</div>
+        <div class="roster-members" style="font-weight: 700; font-size: 15px;">${escapeHtml(dirigentJmeno)}</div>
+      </div>
+    `;
+  }
+
+  // 2. Standardní nástrojové sekce
   PARTITURA_SECTIONS.forEach(s => { 
     if (grouped[s]) html += `<div class="roster-section"><div class="roster-section-title">${s}</div><div class="roster-members">${grouped[s].join(', ')}</div></div>`; 
   });
@@ -720,14 +785,14 @@ function toggleRoster(id) {
 }
 
 // =========================================================================
-// ŠABLONA PÓDIA: ŠIROKÁ VERZE 660 x 375 (MINIMÁLNÍ OKRAJE)
+// ŠABLONA PÓDIA (PŘIDÁN DIRIGENTSKÝ PULT DOLE UPROSTŘED)
 // =========================================================================
 function getOrchestraSvgHtml(prefix = "stage") {
   return `
   <div class="stage-wrapper">
     <div class="stage-header-info">
       <span>Obsazení přihlášených</span>
-      <span class="stage-count-badge" id="${prefix}-total-count">0 hraje</span>
+      <span class="stage-count-badge" id="${prefix}-total-count">0 na pódiu</span>
     </div>
 
     <svg viewBox="0 0 660 375" id="${prefix}-svg" style="width:100%; height:auto; display:block; user-select:none;">
@@ -735,6 +800,10 @@ function getOrchestraSvgHtml(prefix = "stage") {
       <rect x="8" y="52" width="644" height="52" rx="8" fill="var(--sec-bg)"/>
       <rect x="6" y="106" width="648" height="74" rx="8" fill="var(--sec-bg)"/>
       <rect x="4" y="182" width="652" height="188" rx="10" fill="var(--sec-bg)"/>
+
+      <!-- Dirigentský stupínek dole uprostřed -->
+      <rect x="306" y="300" width="48" height="50" rx="6" fill="rgba(245, 158, 11, 0.12)" stroke="rgba(245, 158, 11, 0.4)" stroke-dasharray="2,2"/>
+      <text x="330" y="362" class="sec-label" style="fill:#d97706; font-weight:bold;">Dirigent</text>
 
       <text x="330" y="18" class="sec-label">Bicí nástroje</text>
       <text x="120" y="66" class="sec-label">Lesní rohy</text>
@@ -745,14 +814,14 @@ function getOrchestraSvgHtml(prefix = "stage") {
       <g id="${prefix}-dynamic-spots"></g>
 
       <text x="100" y="362" class="sec-label">1. Housle</text>
-      <text x="250" y="362" class="sec-label">2. Housle</text>
-      <text x="410" y="362" class="sec-label">Violy</text>
+      <text x="245" y="362" class="sec-label">2. Housle</text>
+      <text x="415" y="362" class="sec-label">Violy</text>
       <text x="560" y="362" class="sec-label">Violoncella</text>
     </svg>
 
     <div id="${prefix}-detail-box" class="stage-player-detail">
       <div class="detail-name" style="font-size:0.95rem; font-weight:normal; color:var(--text-muted);">
-        👆 Klepněte na hráče pro celé jméno
+        👆 Klepněte na hráče nebo dirigenta pro detail
       </div>
       <div class="detail-status" style="color:var(--text-muted); font-size:0.8rem;">
         Zobrazují se pouze ti, kteří potvrdili účast
@@ -779,6 +848,17 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
   if (dynamicLabelsGroup) dynamicLabelsGroup.innerHTML = "";
 
   let celkemHraje = 0;
+  let dirigentPrihlasen = null;
+
+  // Ověření, zda dirigent potvrdil účast
+  ucastAkce.forEach(u => {
+    if (u.stav === "Ano") {
+      const clen = (appData.clenove || []).find(c => c.celeJmeno === u.jmeno || c.jmeno === u.jmeno);
+      if (isDirigentPerson(u.jmeno, u.sekce, clen?.role)) {
+        dirigentPrihlasen = u.jmeno;
+      }
+    }
+  });
 
   const attendingBySec = {};
 
@@ -802,6 +882,8 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
     }
 
     let eligiblePlayers = (appData.clenove || []).filter(c => {
+      // Dirigent se nepočítá do běžných nástrojových sekcí
+      if (isDirigentPerson(c.celeJmeno, c.sekce, c.role)) return false;
       return c.sekce === sec && isMemberEligibleForAkce(c, datumAkce);
     });
 
@@ -824,10 +906,10 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
     attendingBySec[sec] = attending.slice(0, capacity);
   });
 
-  function renderHexSpot(x, y, p, isKm, secName) {
+  function renderHexSpot(x, y, p, isKm, secName, isDir = false) {
     celkemHraje++;
     const spot = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    spot.setAttribute("class", `hex-spot ${isKm ? 'is-km' : ''}`);
+    spot.setAttribute("class", `hex-spot ${isKm ? 'is-km' : ''} ${isDir ? 'is-dirigent' : ''}`);
 
     const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
     polygon.setAttribute("points", getHexPoints(x, y, 19.5));
@@ -836,12 +918,12 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
     const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
     label.setAttribute("x", x);
     label.setAttribute("y", y);
-    label.textContent = getPlayerDisplayLabel(p.celeJmeno, isKm);
+    label.textContent = isDir ? "DIR" : getPlayerDisplayLabel(p.celeJmeno, isKm);
     spot.appendChild(label);
 
-    const playerLabel = `${p.celeJmeno}${isKm ? " 🎻 (Koncertní mistr)" : ""}`;
-    const statusText = `✓ Potvrzena účast – ${secName}`;
-    const statusColor = "var(--success)";
+    const playerLabel = isDir ? `${p.celeJmeno} 🎼 (Šéfdirigent)` : `${p.celeJmeno}${isKm ? " 🎻 (Koncertní mistr)" : ""}`;
+    const statusText = isDir ? `✓ Potvrzena účast – Řídí orchestr` : `✓ Potvrzena účast – ${secName}`;
+    const statusColor = isDir ? "#d97706" : "var(--success)";
 
     spot.onclick = () => {
       document.querySelectorAll(`#${prefix}-svg .hex-spot`).forEach(el => el.classList.remove("is-selected"));
@@ -862,7 +944,12 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
     dynamicLabelsGroup.appendChild(l);
   }
 
-  // Smyčce
+  // 1. Dirigent (stojí na pultu X = 330, Y = 325)
+  if (dirigentPrihlasen) {
+    renderHexSpot(330, 325, { celeJmeno: dirigentPrihlasen }, false, "Dirigent", true);
+  }
+
+  // 2. Smyčce
   ["1. Housle", "2. Housle", "Violy", "Violoncella"].forEach(sec => {
     const list = attendingBySec[sec] || [];
     const cfg = ORCHESTRA_LAYOUT_CFG[sec];
@@ -881,7 +968,7 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
     });
   });
 
-  // Kontrabasy + Baskytara
+  // 3. Kontrabasy + Baskytara
   const cbList = attendingBySec["Kontrabasy"] || [];
   const bassList = attendingBySec["Baskytara"] || [];
   const hasBass = bassList.length > 0;
@@ -899,7 +986,7 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
     renderHexSpot(bassX, 218, bassList[0], false, "Baskytara");
   }
 
-  // Dřeva a doprovod
+  // 4. Dřeva a doprovod
   const baseWoodwinds = [
     { sec: "Flétny", label: "Flétny" },
     { sec: "Hoboje", label: "Hoboje" },
@@ -928,7 +1015,7 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
     });
   });
 
-  // Žestě a bicí
+  // 5. Žestě a bicí
   const hornList = attendingBySec["Lesní rohy"] || [];
   hornList.forEach((p, idx) => {
     const offset = (idx - (hornList.length - 1) / 2) * 36;
@@ -955,7 +1042,7 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
 
   const countBadge = document.getElementById(`${prefix}-total-count`);
   if (countBadge) {
-    countBadge.textContent = `${celkemHraje} ${celkemHraje === 1 ? 'hráč' : (celkemHraje >= 2 && celkemHraje <= 4 ? 'hráči' : 'hráčů')}`;
+    countBadge.textContent = `${celkemHraje} na pódiu`;
   }
 }
 
@@ -1155,6 +1242,7 @@ function renderRosterSelectionInputs() {
     if (sec === "Baskytara") return;
 
     const eligiblePlayers = (appData.clenove || []).filter(c => {
+      if (isDirigentPerson(c.celeJmeno, c.sekce, c.role)) return false;
       return c.sekce === sec && isMemberEligibleForAkce(c, datumAkce);
     });
 
@@ -1617,22 +1705,28 @@ function deleteAkcePrompt(akceId) {
 }
 
 function archivovatOznameni(akceId) {
-  if(confirm("Přesunout tuto informaci do infoarchivu? Zmizí z hlavní stránky.")) {
+  if (confirm("Přesunout tuto informaci do historie? Zmizí z hlavní stránky.")) {
     const akce = (appData.akce || []).find(a => String(a.id) === String(akceId));
-    if(!akce) return;
-    akce.typ = 'Informace (Infoarchiv)';
+    if (!akce) return;
+    akce.typ = 'Informace (Historie)';
     runGoogleScript("saveAkce", akce).then(res => {
-      if(res.success) { localStorage.setItem("bolech_data_cache", JSON.stringify(appData)); renderEvents(); }
+      if (res.success) {
+        localStorage.setItem("bolech_data_cache", JSON.stringify(appData));
+        renderEvents();
+      }
     });
   }
 }
 
 function obnovitOznameni(akceId) {
   const akce = (appData.akce || []).find(a => String(a.id) === String(akceId));
-  if(!akce) return;
+  if (!akce) return;
   akce.typ = 'Informace';
   runGoogleScript("saveAkce", akce).then(res => {
-    if(res.success) { localStorage.setItem("bolech_data_cache", JSON.stringify(appData)); renderEvents(); }
+    if (res.success) {
+      localStorage.setItem("bolech_data_cache", JSON.stringify(appData));
+      renderEvents();
+    }
   });
 }
 
@@ -2015,7 +2109,6 @@ function switchTab(t, b) {
   if (t === 'archive') document.body.classList.add('archive-open');
   else document.body.classList.remove('archive-open');
 
-  // Skryje plovoucí lištu, pokud uživatel odejde ze správy not
   const bar = document.getElementById('floatingMailBar');
   if (bar) bar.style.display = (t === 'admin-noty' && window.vybraneNotyKEmailu.length > 0) ? 'flex' : 'none';
 }
@@ -2225,7 +2318,6 @@ function vykresliAdminNoty() {
                 
                 <span style="font-size: 11px; opacity: 0.8; white-space: nowrap; background: var(--border); padding: 4px 6px; border-radius: 4px; color: var(--text);">${escapeHtml(String(soub.sekce||''))}</span>
                 
-                <!-- Ikona obálky fungující jako přepínač výběru k odeslání -->
                 <button type="button" 
                         class="btn-nota-mail ${isSelected ? 'is-selected' : ''}" 
                         onclick="toggleMailSelection('${soub.odkaz}', '${escapeHtml(soub.skladba)}', '${escapeHtml(soub.sekce||'')}', this)" 

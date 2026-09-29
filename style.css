@@ -873,3 +873,15 @@ body.card-flipped-active .card:not(.card-flip-container) {
   from { transform: translate(-50%, 30px); opacity: 0; }
   to { transform: translate(-50%, 0); opacity: 1; }
 }
+
+/* Zvýraznění dirigentského pultu */
+.hex-spot.is-dirigent polygon {
+  fill: #f59e0b !important;
+  stroke: #d97706 !important;
+  stroke-width: 2.5px;
+}
+
+.hex-spot.is-dirigent text {
+  fill: #ffffff !important;
+  font-weight: 800;
+}
