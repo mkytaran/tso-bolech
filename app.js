@@ -1079,14 +1079,48 @@ function openStageModalForAkce(akceId) {
 // =========================================================================
 // MODÁL: SPRÁVA OBSAZENÍ ORCHESTRU (VOLBA BASKYTARY Z KONTRABASISTŮ)
 // =========================================================================
+// =========================================================================
+// MODÁL: SPRÁVA OBSAZENÍ ORCHESTRU (NEJBLIŽŠÍ AKCE PRVNÍ + HISTORIE + SBALENÝ VÝBĚR)
+// =========================================================================
 function openOrchestrModal() {
-  const akceList = (appData.akce || []).filter(a => !a.typ.includes("Oznámení") && !a.typ.includes("Informace"));
-  if (akceList.length === 0) {
-    alert("Zatím nemáte vytvořeny žádné akce.");
+  const vsechnyAkce = (appData.akce || []).filter(a => !a.typ.includes("Oznámení") && !a.typ.includes("Informace"));
+  if (vsechnyAkce.length === 0) {
+    alert("Zatím nemáte vytvořeny žádné hudební akce.");
     return;
   }
 
-  let akceOptions = akceList.map(a => `<option value="${a.id}">${escapeHtml(a.nazev)} (${a.datum})</option>`).join('');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTs = today.getTime();
+
+  // Nadcházející akce (dnes a v budoucnu) -> vzestupně (nejbližší nahoře)
+  const nadchazejiciAkce = vsechnyAkce
+    .filter(a => parseDate(a.datum) >= todayTs)
+    .sort((a, b) => parseDate(a.datum) - parseDate(b.datum));
+
+  // Starší akce (historie) -> sestupně (naposledy proběhlá nahoře)
+  const probehleAkce = vsechnyAkce
+    .filter(a => parseDate(a.datum) < todayTs)
+    .sort((a, b) => parseDate(b.datum) - parseDate(a.datum));
+
+  // Sestavení základních (nadcházejících) možností
+  let akceOptions = "";
+  if (nadchazejiciAkce.length > 0) {
+    akceOptions += nadchazejiciAkce.map(a => `<option value="${a.id}">${escapeHtml(a.nazev)} (${a.datum})</option>`).join('');
+  } else {
+    // Pokud žádná budoucí není, použijeme proběhlé
+    akceOptions += probehleAkce.map(a => `<option value="${a.id}">${escapeHtml(a.nazev)} (${a.datum})</option>`).join('');
+  }
+
+  // Příprava HTML pro starší akce (skryté ve skupině <optgroup>)
+  let historyGroupHtml = "";
+  if (nadchazejiciAkce.length > 0 && probehleAkce.length > 0) {
+    historyGroupHtml = `
+      <optgroup id="orch_history_group" label="── Proběhlé akce ──" style="display:none;">
+        ${probehleAkce.map(a => `<option value="${a.id}">📜 ${escapeHtml(a.nazev)} (${a.datum})</option>`).join('')}
+      </optgroup>
+    `;
+  }
 
   let limitsHtml = '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:8px;">';
   Object.keys(ORCHESTRA_LAYOUT_CFG).forEach(sec => {
@@ -1112,9 +1146,17 @@ function openOrchestrModal() {
         </div>
 
         <div style="margin-bottom:10px; padding: 0 4px;">
-          <label style="font-size:0.82rem; font-weight:700;">Vyberte akci / projekt:</label>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <label style="font-size:0.82rem; font-weight:700;">Vyberte akci / projekt:</label>
+            ${(nadchazejiciAkce.length > 0 && probehleAkce.length > 0) ? `
+              <button type="button" id="btnToggleOrchHistory" style="background:transparent; border:none; color:var(--primary-light); font-size:12px; cursor:pointer; padding:2px 4px; text-decoration:underline;" onclick="toggleOrchHistoryEvents(${probehleAkce.length})">
+                📜 Historie akcí (${probehleAkce.length})
+              </button>
+            ` : ''}
+          </div>
           <select id="orch_modal_akce" class="modal-input" onchange="onOrchModalAkceChange()" style="margin-top:2px;">
             ${akceOptions}
+            ${historyGroupHtml}
           </select>
         </div>
 
@@ -1129,7 +1171,8 @@ function openOrchestrModal() {
           ${limitsHtml}
         </details>
 
-        <details id="details_roster_selection" open style="margin: 0 4px 10px 4px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:8px 10px;">
+        <!-- VÝBĚR HRÁČŮ JE NYNÍ DEFAULTNĚ SBALENÝ (bez atributu open) -->
+        <details id="details_roster_selection" style="margin: 0 4px 10px 4px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:8px 10px;">
           <summary style="cursor:pointer; font-weight:800; font-size:0.85rem; color:var(--primary-light);">👥 Výběr konkrétních hráčů na projekt</summary>
           <div id="roster_selection_container" style="margin-top:8px;"></div>
         </details>
@@ -1150,6 +1193,21 @@ function openOrchestrModal() {
   onOrchModalAkceChange();
 }
 
+// Přepínání zobrazení starších akcí v roletce
+function toggleOrchHistoryEvents(pocet) {
+  const optGroup = document.getElementById("orch_history_group");
+  const btn = document.getElementById("btnToggleOrchHistory");
+  if (!optGroup || !btn) return;
+
+  const isHidden = optGroup.style.display === "none";
+  if (isHidden) {
+    optGroup.style.display = "";
+    btn.textContent = "✕ Skrýt historii";
+  } else {
+    optGroup.style.display = "none";
+    btn.textContent = `📜 Historie akcí (${pocet})`;
+  }
+}
 function stepSecLimit(sec, step) {
   const input = document.querySelector(`.sec-limit-input[data-sec="${sec}"]`);
   if (!input) return;
