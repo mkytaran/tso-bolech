@@ -299,6 +299,66 @@ function parseDate(dateStr) {
 
 function escapeHtml(str) { return String(str||'').replace(/[&<>'"]/g, tag => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[tag])); }
 
+// Bezpečný převod formátování (Markdown + auto links)
+function formatRichText(raw) {
+  if (!raw) return "";
+  let text = escapeHtml(raw);
+
+  // **tučně**
+  text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  // *kurzíva*
+  text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  // __podtržení__
+  text = text.replace(/__(.*?)__/g, '<u>$1</u>');
+
+  // Klikací webové odkazy
+  text = text.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+
+  // Odrážky na začátku řádku (- nebo •)
+  const lines = text.split('\n');
+  const formattedLines = lines.map(line => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('- ') || trimmed.startsWith('• ')) {
+      return `<span class="list-item">• ${trimmed.substring(2)}</span>`;
+    }
+    return line;
+  });
+
+  return formattedLines.join('<br>');
+}
+
+// Obsluha kliknutí na tlačítka lišty (obalení označeného textu)
+function insertFormatTag(prefix, suffix = prefix) {
+  const textarea = document.getElementById('f_poznamka');
+  if (!textarea) return;
+
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const text = textarea.value;
+  const selectedText = text.substring(start, end);
+
+  if (prefix === 'LINK') {
+    const url = prompt("Zadejte URL adresu (např. https://drive.google.com):", "https://");
+    if (!url) return;
+    const replacement = url;
+    textarea.value = text.substring(0, start) + replacement + text.substring(end);
+    textarea.focus();
+    textarea.setSelectionRange(start + replacement.length, start + replacement.length);
+    return;
+  }
+
+  const replacement = prefix + (selectedText || (prefix === '- ' ? 'položka' : 'text')) + suffix;
+  textarea.value = text.substring(0, start) + replacement + text.substring(end);
+
+  textarea.focus();
+  if (selectedText.length > 0) {
+    textarea.setSelectionRange(start, start + replacement.length);
+  } else {
+    const newCursor = start + prefix.length;
+    textarea.setSelectionRange(newCursor, newCursor + (prefix === '- ' ? 7 : 4));
+  }
+}
+
 function generovatIdAkce(typ) {
   let prefix = 'akce_';
   const t = String(typ).toLowerCase();
@@ -654,8 +714,7 @@ function generateAkceHtml(akce, isVedení) {
               ${akce.zacatekGeneralky ? `<p style="margin-bottom:6px;">🎻 Generálka: <strong>${escapeHtml(akce.zacatekGeneralky)}</strong></p>` : ''}
               ${akce.damy ? `<p style="margin-bottom:6px;">👗 Dámy: ${escapeHtml(akce.damy)}</p>` : ''}
               ${akce.pani ? `<p style="margin-bottom:6px;">🤵 Páni: ${escapeHtml(akce.pani)}</p>` : ''}
-              
-              ${parsed.mainNote ? `<div class="oznameni-text" style="margin-top: 10px; margin-bottom: 6px;">${escapeHtml(parsed.mainNote)}</div>` : ''}
+              ${parsed.mainNote ? `<div class="oznameni-text formatted-note" style="margin-top: 10px; margin-bottom: 6px;">${formatRichText(parsed.mainNote)}</div>` : ''}
               ${formatHarmonogramHtml(parsed.schedData)}
             </div>
           </div>
@@ -715,7 +774,7 @@ function generateOznameniHtml(akce, isVedení, isArchiv = false) {
           <div class="card-title" style="font-size:20px; flex:1;">${escapeHtml(akce.nazev)}</div>
           ${editBtn}
         </div>
-        ${parsed.mainNote ? `<div class="oznameni-text" style="margin-top:12px;">${escapeHtml(parsed.mainNote)}</div>` : ''}
+        ${parsed.mainNote ? `<div class="oznameni-text formatted-note" style="margin-top:12px;">${formatRichText(parsed.mainNote)}</div>` : ''}
         ${formatHarmonogramHtml(parsed.schedData)}
         ${formatProgramHtml(parsed.progData)}
         ${akceBtn}
@@ -1536,9 +1595,18 @@ function openAkceForm(param = null) {
             </div>
           </div>
 
-          <label>Hlavní text (Poznámka / organizační info):</label>
-          <textarea id="f_poznamka" class="modal-input" style="min-height:90px; resize:vertical;">${escapeHtml(parsed.mainNote)}</textarea>
-
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:4px;">
+            <label style="margin:0;">Hlavní text (Poznámka / organizační info):</label>
+            <div class="format-toolbar">
+              <button type="button" class="format-btn" onclick="insertFormatTag('**')" title="Tučně"><b>B</b></button>
+              <button type="button" class="format-btn" onclick="insertFormatTag('*')" title="Kurzíva"><i>I</i></button>
+              <button type="button" class="format-btn" onclick="insertFormatTag('__')" title="Podtržení"><u>U</u></button>
+              <button type="button" class="format-btn" onclick="insertFormatTag('- ', '')" title="Odrážka">• Seznam</button>
+              <button type="button" class="format-btn" onclick="insertFormatTag('LINK')" title="Vložit odkaz">🔗 Odkaz</button>
+            </div>
+          </div>
+          <textarea id="f_poznamka" class="modal-input" style="min-height:90px; resize:vertical;" placeholder="Zde můžete psát i formátovat (**tučně**, *kurzíva*, odkazy...)">${escapeHtml(parsed.mainNote)}</textarea>
+          
           <div style="margin-top: 16px; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
               <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; position: sticky; top: -12px; background: var(--bg); z-index: 5; padding: 6px 0; border-bottom: 1px solid var(--border);">
                   <span style="font-weight:bold; color:var(--text);">🎼 Program</span>

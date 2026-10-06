@@ -885,3 +885,47 @@ body.card-flipped-active .card:not(.card-flip-container) {
   fill: #ffffff !important;
   font-weight: 800;
 }
+
+/* Lišta nástrojů pro formátování textu */
+.format-toolbar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.format-btn {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1.2;
+}
+
+.format-btn:hover {
+  background: var(--bg);
+  border-color: var(--primary-light);
+  color: var(--primary-light);
+}
+
+/* Formátovaný text v kartách */
+.formatted-note {
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.formatted-note a {
+  color: var(--primary-light);
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.formatted-note .list-item {
+  display: block;
+  padding-left: 14px;
+  text-indent: -14px;
+  margin-bottom: 3px;
+}
