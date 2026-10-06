@@ -614,7 +614,7 @@ function renderEvents() {
   if (isVedení) {
     cont.innerHTML += `
       <div class="admin-actions" style="display:flex; gap:8px; margin-bottom:16px;">
-        <button class="btn" style="background:var(--success); flex:1; padding:12px 6px; font-size:14px;" onclick="openAkceForm()">➕ Přidat</button>
+        <button class="btn" style="background:var(--success); flex:1; padding:12px 6px; font-size:14px;" onclick="checkAndOpenAkceForm()">➕ Přidat</button>
         <button class="btn" style="background:var(--primary); flex:1; padding:12px 6px; font-size:14px;" onclick="openOrchestrModal()">🎼 Obsazení</button>
         <button class="btn" style="background:var(--primary-light); flex:1; padding:12px 6px; font-size:14px;" onclick="openGuestManager()">👥 Hosté</button>
       </div>`;
@@ -677,7 +677,7 @@ function generateAkceHtml(akce, isVedení) {
   else if(akce.typ === 'Zkouška dechů') barClass = 'bar-zkouska-dechy';
   
   const editBtn = isVedení ? `
-    <button type="button" class="edit-btn" onclick="event.preventDefault(); event.stopPropagation(); openAkceForm('${escapeHtml(akce.id)}');" title="Upravit akci">
+    <button type="button" class="edit-btn" onclick="event.preventDefault(); event.stopPropagation(); checkAndOpenAkceForm('${escapeHtml(akce.id)}');" title="Upravit akci">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
       </svg>
@@ -748,7 +748,7 @@ function generateAkceHtml(akce, isVedení) {
 
 function generateOznameniHtml(akce, isVedení, isArchiv = false) {
   const editBtn = isVedení ? `
-    <button type="button" class="edit-btn" onclick="event.preventDefault(); event.stopPropagation(); openAkceForm('${escapeHtml(akce.id)}');" title="Upravit oznámení">
+    <button type="button" class="edit-btn" onclick="event.preventDefault(); event.stopPropagation(); checkAndOpenAkceForm('${escapeHtml(akce.id)}');" title="Upravit oznámení">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
       </svg>
@@ -1492,7 +1492,36 @@ function saveOrchestrSettings() {
   });
 }
 
-function openAkceForm(param = null) {
+window.aktualneZamknutaAkceId = null;
+
+async function checkAndOpenAkceForm(akceId = null) {
+  if (!akceId) {
+    openAkceForm(null, false);
+    return;
+  }
+
+  // Zjistíme na serveru stav zámku
+  const res = await runGoogleScript("lockAkce", { akceId: akceId, user: user.name });
+
+  if (res && res.locked) {
+    alert(`⚠️ Tuto akci právě upravuje ${res.editor} (od ${res.time}).\n\nFormulář se otevře pouze pro čtení, aby nedošlo k přepsání změn.`);
+    openAkceForm(akceId, true); // Pouze pro čtení (read-only)
+  } else {
+    window.aktualneZamknutaAkceId = akceId;
+    openAkceForm(akceId, false);
+  }
+}
+
+function closeAndUnlockAkceModal() {
+  if (window.aktualneZamknutaAkceId) {
+    runGoogleScript("unlockAkce", { akceId: window.aktualneZamknutaAkceId, user: user.name });
+    window.aktualneZamknutaAkceId = null;
+  }
+  const modal = document.getElementById('akceModal');
+  if (modal) modal.remove();
+}
+
+function openAkceForm(param = null, isReadOnly = false) {
   let akce = null;
   if (param !== null && typeof param === 'string') {
     akce = (appData.akce || []).find(a => String(a.id) === String(param));
@@ -1501,7 +1530,8 @@ function openAkceForm(param = null) {
   }
 
   const isEdit = akce !== null;
-  const selectDisabledAttr = isEdit ? 'disabled style="background: var(--bg); opacity: 0.8;"' : '';
+  const roAttr = isReadOnly ? 'disabled style="background: var(--bg); opacity: 0.85; cursor: not-allowed;"' : '';
+  const selectDisabledAttr = (isEdit || isReadOnly) ? 'disabled style="background: var(--bg); opacity: 0.85;"' : '';
   const formDateValue = formatDateForInput(akce?.datum || '');
   
   const parsed = parsovatPoznamku(akce?.poznamka || '');
@@ -1531,16 +1561,26 @@ function openAkceForm(param = null) {
     });
   }
 
+  const modalTitle = isReadOnly 
+    ? '👁️ Náhled položky (pouze pro čtení)' 
+    : (isEdit ? 'Úprava položky' : 'Nová položka');
+
   const html = `
-    <div id="akceModal" class="modal-overlay" style="padding: 4px;">
+    <div id="akceModal" class="modal-overlay" style="padding: 4px;" onclick="if(event.target === this) closeAndUnlockAkceModal()">
       <div class="modal-box" style="max-height: 90vh; overflow-y: auto;">
         
         <div style="display:flex; align-items:center; margin-bottom: 20px;">
-          <button type="button" style="background:transparent; border:none; font-size:16px; color:var(--text); padding:8px 16px 8px 0; margin-right:8px; cursor:pointer; display:flex; align-items:center; gap:6px;" onclick="document.getElementById('akceModal').remove()">
+          <button type="button" style="background:transparent; border:none; font-size:16px; color:var(--text); padding:8px 16px 8px 0; margin-right:8px; cursor:pointer; display:flex; align-items:center; gap:6px;" onclick="closeAndUnlockAkceModal()">
             <span style="font-size:24px; line-height:1;">←</span> Zpět
           </button>
-          <h3 style="margin:0; font-size:20px;">${isEdit ? 'Úprava položky' : 'Nová položka'}</h3>
+          <h3 style="margin:0; font-size:19px; color:${isReadOnly ? 'var(--text-muted)' : 'var(--text)'};">${modalTitle}</h3>
         </div>
+
+        ${isReadOnly ? `
+          <div style="background: rgba(245, 158, 11, 0.12); border: 1px solid #f59e0b; border-radius: 6px; padding: 10px 12px; margin-bottom: 16px; font-size: 13px; color: var(--text);">
+            🔒 <strong>Položka je uzamčena pro úpravy.</strong> Právě ji upravuje jiný člen vedení. Data jsou zobrazena pouze pro čtení.
+          </div>
+        ` : ''}
         
         <form id="editAkceForm" onsubmit="submitAkceForm(event, '${isEdit ? escapeHtml(akce.id) : ''}')"> 
           <label>Typ:</label>
@@ -1551,83 +1591,92 @@ function openAkceForm(param = null) {
             <option value="Generálka" ${akce?.typ==='Generálka'?'selected':''}>Generálka</option>
             <option value="Koncert" ${akce?.typ==='Koncert'?'selected':''}>Koncert</option>
             <option value="Informace" ${(akce?.typ==='Informace' || akce?.typ==='Oznámení') ? 'selected' : ''}>Informace</option>
-            <option value="Informace (Infoarchiv)" ${(akce?.typ==='Informace (Infoarchiv)' || akce?.typ==='Oznámení (Archiv)') ? 'selected' : ''}>Informace (Infoarchiv)</option>
+            <option value="Informace (Historie)" ${(akce?.typ==='Informace (Historie)' || akce?.typ==='Informace (Infoarchiv)' || akce?.typ==='Oznámení (Archiv)') ? 'selected' : ''}>Informace (Historie)</option>
           </select>
 
           <label>Název / Nadpis oznámení:</label>
-          <input type="text" id="f_nazev" value="${escapeHtml(akce?.nazev||'')}" required class="modal-input">
+          <input type="text" id="f_nazev" value="${escapeHtml(akce?.nazev||'')}" required class="modal-input" ${roAttr}>
 
           <div style="display:flex; gap:12px;">
             <div style="flex:1;">
               <label>Datum:</label>
-              <input type="date" id="f_datum" value="${escapeHtml(formDateValue)}" required class="modal-input">
+              <input type="date" id="f_datum" value="${escapeHtml(formDateValue)}" required class="modal-input" ${roAttr}>
             </div>
             <div id="col_casOd" style="flex:1;">
               <label>Čas od:</label>
-              <input type="time" id="f_casOd" value="${escapeHtml(akce?.casOd||'')}" class="modal-input">
+              <input type="time" id="f_casOd" value="${escapeHtml(akce?.casOd||'')}" class="modal-input" ${roAttr}>
             </div>
           </div>
 
           <div id="row_misto" style="display:block;">
             <label>Místo:</label>
-            <input type="text" id="f_misto" value="${escapeHtml(akce?.misto||'')}" class="modal-input">
+            <input type="text" id="f_misto" value="${escapeHtml(akce?.misto||'')}" class="modal-input" ${roAttr}>
           </div>
 
           <div id="row_casy" style="display:flex; gap:12px;">
             <div style="flex:1;">
               <label>Čas srazu:</label>
-              <input type="time" id="f_casSrazu" value="${escapeHtml(akce?.casSrazu||'')}" class="modal-input">
+              <input type="time" id="f_casSrazu" value="${escapeHtml(akce?.casSrazu||'')}" class="modal-input" ${roAttr}>
             </div>
             <div id="col_generalka" style="flex:1;">
               <label>Čas generálky:</label>
-              <input type="time" id="f_zacatekGeneralky" value="${escapeHtml(akce?.zacatekGeneralky||'')}" class="modal-input">
+              <input type="time" id="f_zacatekGeneralky" value="${escapeHtml(akce?.zacatekGeneralky||'')}" class="modal-input" ${roAttr}>
             </div>
           </div>
 
           <div id="row_obleceni" style="display:flex; gap:12px;">
             <div style="flex:1;">
               <label>Dámy (oděv):</label>
-              <input type="text" id="f_damy" value="${escapeHtml(akce?.damy||'')}" class="modal-input">
+              <input type="text" id="f_damy" value="${escapeHtml(akce?.damy||'')}" class="modal-input" ${roAttr}>
             </div>
             <div style="flex:1;">
               <label>Páni (oděv):</label>
-              <input type="text" id="f_pani" value="${escapeHtml(akce?.pani||'')}" class="modal-input">
+              <input type="text" id="f_pani" value="${escapeHtml(akce?.pani||'')}" class="modal-input" ${roAttr}>
             </div>
           </div>
 
-          <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:4px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:4px; margin-top:8px;">
             <label style="margin:0;">Hlavní text (Poznámka / organizační info):</label>
-            <div class="format-toolbar">
-              <button type="button" class="format-btn" onclick="insertFormatTag('**')" title="Tučně"><b>B</b></button>
-              <button type="button" class="format-btn" onclick="insertFormatTag('*')" title="Kurzíva"><i>I</i></button>
-              <button type="button" class="format-btn" onclick="insertFormatTag('__')" title="Podtržení"><u>U</u></button>
-              <button type="button" class="format-btn" onclick="insertFormatTag('- ', '')" title="Odrážka">• Seznam</button>
-              <button type="button" class="format-btn" onclick="insertFormatTag('LINK')" title="Vložit odkaz">🔗 Odkaz</button>
-            </div>
+            ${!isReadOnly ? `
+              <div class="format-toolbar">
+                <button type="button" class="format-btn" onclick="insertFormatTag('**')" title="Tučně"><b>B</b></button>
+                <button type="button" class="format-btn" onclick="insertFormatTag('*')" title="Kurzíva"><i>I</i></button>
+                <button type="button" class="format-btn" onclick="insertFormatTag('__')" title="Podtržení"><u>U</u></button>
+                <button type="button" class="format-btn" onclick="insertFormatTag('- ', '')" title="Odrážka">• Seznam</button>
+                <button type="button" class="format-btn" onclick="insertFormatTag('LINK')" title="Vložit odkaz">🔗 Odkaz</button>
+              </div>
+            ` : ''}
           </div>
-          <textarea id="f_poznamka" class="modal-input" style="min-height:90px; resize:vertical;" placeholder="Zde můžete psát i formátovat (**tučně**, *kurzíva*, odkazy...)">${escapeHtml(parsed.mainNote)}</textarea>
-          
+          <textarea id="f_poznamka" class="modal-input" style="min-height:90px; resize:vertical;" placeholder="Zde můžete psát i formátovat (**tučně**, *kurzíva*, odkazy...)" ${roAttr}>${escapeHtml(parsed.mainNote)}</textarea>
+
+          <!-- BLOK: PROGRAM -->
           <div style="margin-top: 16px; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
               <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; position: sticky; top: -12px; background: var(--bg); z-index: 5; padding: 6px 0; border-bottom: 1px solid var(--border);">
                   <span style="font-weight:bold; color:var(--text);">🎼 Program</span>
-                  <button type="button" class="btn" style="padding:6px 12px; font-size:13px; background:var(--primary-light); width:auto;" onclick="addProgramRow()">➕ Přidat skladbu</button>
+                  ${!isReadOnly ? `<button type="button" class="btn" style="padding:6px 12px; font-size:13px; background:var(--primary-light); width:auto;" onclick="addProgramRow()">➕ Přidat skladbu</button>` : ''}
               </label>
               <div id="program-rows"></div>
-              <button type="button" class="btn" style="width:100%; margin-top:8px; padding:10px; font-size:14px; background:var(--primary-light);" onclick="addProgramRow()">➕ Přidat další skladbu</button>
+              ${!isReadOnly ? `<button type="button" class="btn" style="width:100%; margin-top:8px; padding:10px; font-size:14px; background:var(--primary-light);" onclick="addProgramRow()">➕ Přidat další skladbu</button>` : ''}
           </div>
 
+          <!-- BLOK: HARMONOGRAM -->
           <div style="margin-top: 16px; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
               <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
-                  <span style="font-weight:bold; color:var(--text);">⏱️ Připojit časový plán</span>
-                  <button type="button" class="btn" style="padding:6px 12px; font-size:13px; background:var(--primary-light); width:auto;" onclick="addScheduleRow()">➕ Přidat čas</button>
+                  <span style="font-weight:bold; color:var(--text);">⏱️ Časový plán</span>
+                  ${!isReadOnly ? `<button type="button" class="btn" style="padding:6px 12px; font-size:13px; background:var(--primary-light); width:auto;" onclick="addScheduleRow()">➕ Přidat čas</button>` : ''}
               </label>
               <div id="schedule-rows"></div>
           </div>
 
+          <!-- TLAČÍTKA AKCÍ / ZAVŘENÍ -->
           <div style="display:flex; gap:12px; margin-top:24px; flex-wrap:wrap;">
-            <button type="submit" id="btnSaveModal" class="btn" style="flex:1; min-width:120px;">Uložit</button>
-            <button type="button" class="btn" style="background:var(--border); color:var(--text); flex:1; min-width:120px;" onclick="document.getElementById('akceModal').remove()">Zrušit</button>
-            ${isEdit ? `<button type="button" class="btn" style="background:var(--danger); color:white; width:100%; margin-top:8px;" onclick="deleteAkcePrompt('${escapeHtml(akce.id)}')">🗑 Smazat položku</button>` : ''}
+            ${!isReadOnly ? `
+              <button type="submit" id="btnSaveModal" class="btn" style="flex:1; min-width:120px;">Uložit</button>
+              <button type="button" class="btn" style="background:var(--border); color:var(--text); flex:1; min-width:120px;" onclick="closeAndUnlockAkceModal()">Zrušit</button>
+              ${isEdit ? `<button type="button" class="btn" style="background:var(--danger); color:white; width:100%; margin-top:8px;" onclick="deleteAkcePrompt('${escapeHtml(akce.id)}')">🗑 Smazat položku</button>` : ''}
+            ` : `
+              <button type="button" class="btn" style="background:var(--primary); width:100%;" onclick="closeAndUnlockAkceModal()">Zavřít náhled</button>
+            `}
           </div>
         </form>
       </div>
@@ -1636,8 +1685,8 @@ function openAkceForm(param = null) {
   document.body.insertAdjacentHTML('beforeend', html);
   toggleAkceFields(); 
   
-  programLines.forEach(p => addProgramRow(p.num, p.author, p.piece));
-  scheduleLines.forEach(s => addScheduleRow(s.time, s.desc));
+  programLines.forEach(p => addProgramRow(p.num, p.author, p.piece, isReadOnly));
+  scheduleLines.forEach(s => addScheduleRow(s.time, s.desc, isReadOnly));
 }
 
 function moveProgramRow(btn, direction) {
@@ -1671,7 +1720,7 @@ function removeProgramRow(btn) {
   }
 }
 
-function addProgramRow(num = '', author = '', piece = '') {
+function addProgramRow(num = '', author = '', piece = '', isReadOnly = false) {
   const cont = document.getElementById('program-rows');
   if (!cont) return;
   
@@ -1679,48 +1728,55 @@ function addProgramRow(num = '', author = '', piece = '') {
     num = cont.querySelectorAll('.prog-item-row').length + 1;
   }
 
+  const roAttr = isReadOnly ? 'disabled style="background:var(--bg); opacity:0.85; cursor:not-allowed;"' : '';
   const div = document.createElement('div');
   div.className = 'prog-item-row';
   div.style = 'border: 1px dashed var(--border); padding: 10px; margin-bottom: 10px; border-radius: 8px; background: var(--surface);';
   
   div.innerHTML = `
-    <div style="display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 6px;">
-      <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); width: auto;" onclick="moveProgramRow(this, -1)" title="Posunout nahoru">▲</button>
-      <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); width: auto;" onclick="moveProgramRow(this, 1)" title="Posunout dolů">▼</button>
-      <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: transparent; color: var(--danger); border: 1px solid var(--danger); width: auto; margin-left: 6px;" onclick="removeProgramRow(this)" title="Smazat skladbu">✕</button>
-    </div>
+    ${!isReadOnly ? `
+      <div style="display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 6px;">
+        <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); width: auto;" onclick="moveProgramRow(this, -1)" title="Posunout nahoru">▲</button>
+        <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--border); width: auto;" onclick="moveProgramRow(this, 1)" title="Posunout dolů">▼</button>
+        <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: transparent; color: var(--danger); border: 1px solid var(--danger); width: auto; margin-left: 6px;" onclick="removeProgramRow(this)" title="Smazat skladbu">✕</button>
+      </div>
+    ` : ''}
 
     <div style="display: flex; gap: 8px; margin-bottom: 8px;">
       <div style="width: 52px; flex-shrink: 0;">
         <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 2px;">Pořadí:</label>
-        <input type="text" class="modal-input prog-num" placeholder="1" value="${escapeHtml(num)}" style="padding: 8px 6px; font-size: 14px; text-align: right;">
+        <input type="text" class="modal-input prog-num" placeholder="1" value="${escapeHtml(num)}" style="padding: 8px 6px; font-size: 14px; text-align: right;" ${roAttr}>
       </div>
       <div style="flex: 1; min-width: 0;">
         <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 2px;">Autor / Skladatel:</label>
-        <input type="text" class="modal-input prog-author" placeholder="např. Antonín Dvořák" value="${escapeHtml(author)}" style="padding: 8px 10px; font-size: 14px;">
+        <input type="text" class="modal-input prog-author" placeholder="např. Antonín Dvořák" value="${escapeHtml(author)}" style="padding: 8px 10px; font-size: 14px;" ${roAttr}>
       </div>
     </div>
     
     <div>
       <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 2px;">Dílo / Skladba:</label>
-      <textarea class="modal-input prog-piece" placeholder="např. Symfonie č. 9 e moll „Z Nového světa“, op. 95" rows="2" style="padding: 8px 10px; font-size: 14px; min-height: 54px; resize: vertical; line-height: 1.4;">${escapeHtml(piece).replace(/\[BR\]/g, '\n')}</textarea>
+      <textarea class="modal-input prog-piece" placeholder="např. Symfonie č. 9 e moll „Z Nového světa“, op. 95" rows="2" style="padding: 8px 10px; font-size: 14px; min-height: 54px; resize: vertical; line-height: 1.4;" ${roAttr}>${escapeHtml(piece).replace(/\[BR\]/g, '\n')}</textarea>
     </div>
   `;
   cont.appendChild(div);
 }
 
-function addScheduleRow(time = '', desc = '') {
+function addScheduleRow(time = '', desc = '', isReadOnly = false) {
   const cont = document.getElementById('schedule-rows');
   if (!cont) return;
+
+  const roAttr = isReadOnly ? 'disabled style="background:var(--bg); opacity:0.85; cursor:not-allowed;"' : '';
   const div = document.createElement('div');
   div.style = 'border: 1px dashed var(--border); padding: 8px; margin-bottom: 8px; border-radius: 6px; position: relative;';
   div.innerHTML = `
-    <button type="button" style="position: absolute; top: 8px; right: 8px; background: transparent; border: 1px solid var(--danger); border-radius: 4px; color: var(--danger); font-size: 12px; padding: 2px 6px;" onclick="this.parentElement.remove()">✕</button>
-    <div style="margin-top: 20px;">
+    ${!isReadOnly ? `
+      <button type="button" style="position: absolute; top: 8px; right: 8px; background: transparent; border: 1px solid var(--danger); border-radius: 4px; color: var(--danger); font-size: 12px; padding: 2px 6px; cursor:pointer;" onclick="this.parentElement.remove()">✕</button>
+    ` : ''}
+    <div style="margin-top: ${isReadOnly ? '0' : '20px'};">
         <label style="font-size: 12px; display: block; margin-bottom: 2px;">Čas (od - do):</label>
-        <input type="text" class="modal-input sched-time" placeholder="např. 10:00 - 12:30" value="${escapeHtml(time)}" style="margin-bottom: 6px; padding: 6px 8px; font-size: 14px;">
+        <input type="text" class="modal-input sched-time" placeholder="např. 10:00 - 12:30" value="${escapeHtml(time)}" style="margin-bottom: 6px; padding: 6px 8px; font-size: 14px;" ${roAttr}>
         <label style="font-size: 12px; display: block; margin-bottom: 2px;">Popis programu:</label>
-        <textarea class="modal-input sched-desc" placeholder="např. Dopolední zkouška" rows="2" style="padding: 6px 8px; font-size: 14px; min-height: 50px; resize: vertical;">${escapeHtml(desc).replace(/\[BR\]/g, '\n')}</textarea>
+        <textarea class="modal-input sched-desc" placeholder="např. Dopolední zkouška" rows="2" style="padding: 6px 8px; font-size: 14px; min-height: 50px; resize: vertical;" ${roAttr}>${escapeHtml(desc).replace(/\[BR\]/g, '\n')}</textarea>
     </div>
   `;
   cont.appendChild(div);
@@ -1740,7 +1796,8 @@ function toggleAkceFields() {
 
 function submitAkceForm(e, akceId) {
   e.preventDefault();
-  document.getElementById('btnSaveModal').innerText = "Ukládám...";
+  const saveBtn = document.getElementById('btnSaveModal');
+  if (saveBtn) saveBtn.innerText = "Ukládám...";
   
   const typ = document.getElementById('f_typ').value;
   const jeOznameni = typ.includes('Oznámení') || typ.includes('Informace');
@@ -1797,7 +1854,8 @@ function submitAkceForm(e, akceId) {
   
   runGoogleScript("saveAkce", payload).then(res => {
     if (res.success) { 
-      document.getElementById('akceModal').remove(); 
+      // Uvolníme zámek a zavřeme okno
+      closeAndUnlockAkceModal();
       
       const idx = (appData.akce || []).findIndex(a => String(a.id) === String(finalId));
       if (idx !== -1) {
@@ -1811,7 +1869,7 @@ function submitAkceForm(e, akceId) {
     } 
     else { 
       alert('Chyba: ' + res.error); 
-      document.getElementById('btnSaveModal').innerText = "Uložit"; 
+      if (saveBtn) saveBtn.innerText = "Uložit"; 
     }
   });
 }
@@ -1820,7 +1878,7 @@ function deleteAkcePrompt(akceId) {
   if (confirm("Opravdu chcete tuto položku nenávratně smazat z tabulky?")) {
     runGoogleScript("deleteAkce", { id: akceId }).then(res => {
       if (res.success) { 
-        document.getElementById('akceModal').remove(); 
+        closeAndUnlockAkceModal();
         appData.akce = (appData.akce || []).filter(a => String(a.id) !== String(akceId));
         localStorage.setItem("bolech_data_cache", JSON.stringify(appData));
         renderEvents(); 
