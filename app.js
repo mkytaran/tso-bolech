@@ -613,10 +613,15 @@ function renderEvents() {
   
   if (isVedení) {
     cont.innerHTML += `
-      <div class="admin-actions" style="display:flex; gap:8px; margin-bottom:16px;">
-        <button class="btn" style="background:var(--success); flex:1; padding:12px 6px; font-size:14px;" onclick="checkAndOpenAkceForm()">➕ Přidat</button>
-        <button class="btn" style="background:var(--primary); flex:1; padding:12px 6px; font-size:14px;" onclick="openOrchestrModal()">🎼 Obsazení</button>
-        <button class="btn" style="background:var(--primary-light); flex:1; padding:12px 6px; font-size:14px;" onclick="openGuestManager()">👥 Hosté</button>
+      <div class="admin-actions" style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;">
+        <div style="display:flex; gap:8px;">
+          <button class="btn" style="background:var(--success); flex:1; padding:10px 4px; font-size:13px;" onclick="checkAndOpenAkceForm()">➕ Přidat</button>
+          <button class="btn" style="background:var(--primary); flex:1; padding:10px 4px; font-size:13px;" onclick="openOrchestrModal()">🎼 Obsazení</button>
+          <button class="btn" style="background:var(--primary-light); flex:1; padding:10px 4px; font-size:13px;" onclick="openGuestManager()">👥 Hosté</button>
+        </div>
+        <button class="btn" style="background:var(--surface); color:var(--text); border:1px solid var(--border); padding:9px; font-size:13.5px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="openMailBroadcastModal()">
+          ✉️️ Napsat zprávu orchestru / vedení
+        </button>
       </div>`;
   }
 
@@ -698,7 +703,7 @@ function generateAkceHtml(akce, isVedení) {
           
           <div class="card-top-bar ${barClass}">
             <span>${akce.typ}</span>
-            <span>🗓️ ${akce.datum}</span>
+            <span>🗓️️ ${akce.datum}</span>
           </div>
 
           <div class="card-body" style="padding-bottom: 0;">
@@ -1136,9 +1141,6 @@ function openStageModalForAkce(akceId) {
 }
 
 // =========================================================================
-// MODÁL: SPRÁVA OBSAZENÍ ORCHESTRU (VOLBA BASKYTARY Z KONTRABASISTŮ)
-// =========================================================================
-// =========================================================================
 // MODÁL: SPRÁVA OBSAZENÍ ORCHESTRU (NEJBLIŽŠÍ AKCE PRVNÍ + HISTORIE + SBALENÝ VÝBĚR)
 // =========================================================================
 function openOrchestrModal() {
@@ -1162,16 +1164,13 @@ function openOrchestrModal() {
     .filter(a => parseDate(a.datum) < todayTs)
     .sort((a, b) => parseDate(b.datum) - parseDate(a.datum));
 
-  // Sestavení základních (nadcházejících) možností
   let akceOptions = "";
   if (nadchazejiciAkce.length > 0) {
     akceOptions += nadchazejiciAkce.map(a => `<option value="${a.id}">${escapeHtml(a.nazev)} (${a.datum})</option>`).join('');
   } else {
-    // Pokud žádná budoucí není, použijeme proběhlé
     akceOptions += probehleAkce.map(a => `<option value="${a.id}">${escapeHtml(a.nazev)} (${a.datum})</option>`).join('');
   }
 
-  // Příprava HTML pro starší akce (skryté ve skupině <optgroup>)
   let historyGroupHtml = "";
   if (nadchazejiciAkce.length > 0 && probehleAkce.length > 0) {
     historyGroupHtml = `
@@ -1230,7 +1229,6 @@ function openOrchestrModal() {
           ${limitsHtml}
         </details>
 
-        <!-- VÝBĚR HRÁČŮ JE NYNÍ DEFAULTNĚ SBALENÝ (bez atributu open) -->
         <details id="details_roster_selection" style="margin: 0 4px 10px 4px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:8px 10px;">
           <summary style="cursor:pointer; font-weight:800; font-size:0.85rem; color:var(--primary-light);">👥 Výběr konkrétních hráčů na projekt</summary>
           <div id="roster_selection_container" style="margin-top:8px;"></div>
@@ -1252,7 +1250,6 @@ function openOrchestrModal() {
   onOrchModalAkceChange();
 }
 
-// Přepínání zobrazení starších akcí v roletce
 function toggleOrchHistoryEvents(pocet) {
   const optGroup = document.getElementById("orch_history_group");
   const btn = document.getElementById("btnToggleOrchHistory");
@@ -1267,6 +1264,7 @@ function toggleOrchHistoryEvents(pocet) {
     btn.textContent = `📜 Historie akcí (${pocet})`;
   }
 }
+
 function stepSecLimit(sec, step) {
   const input = document.querySelector(`.sec-limit-input[data-sec="${sec}"]`);
   if (!input) return;
@@ -1492,6 +1490,9 @@ function saveOrchestrSettings() {
   });
 }
 
+// =========================================================================
+// SPRÁVA ZÁMKŮ AKCÍ (PESSIMISTIC LOCKING)
+// =========================================================================
 window.aktualneZamknutaAkceId = null;
 
 async function checkAndOpenAkceForm(akceId = null) {
@@ -1854,8 +1855,7 @@ function submitAkceForm(e, akceId) {
   
   runGoogleScript("saveAkce", payload).then(res => {
     if (res.success) { 
-      // Uvolníme zámek a zavřeme okno
-      closeAndUnlockAkceModal();
+      closeAndUnlockAkceModal(); 
       
       const idx = (appData.akce || []).findIndex(a => String(a.id) === String(finalId));
       if (idx !== -1) {
@@ -1878,7 +1878,7 @@ function deleteAkcePrompt(akceId) {
   if (confirm("Opravdu chcete tuto položku nenávratně smazat z tabulky?")) {
     runGoogleScript("deleteAkce", { id: akceId }).then(res => {
       if (res.success) { 
-        closeAndUnlockAkceModal();
+        closeAndUnlockAkceModal(); 
         appData.akce = (appData.akce || []).filter(a => String(a.id) !== String(akceId));
         localStorage.setItem("bolech_data_cache", JSON.stringify(appData));
         renderEvents(); 
@@ -1894,9 +1894,9 @@ function archivovatOznameni(akceId) {
     if (!akce) return;
     akce.typ = 'Informace (Historie)';
     runGoogleScript("saveAkce", akce).then(res => {
-      if (res.success) {
-        localStorage.setItem("bolech_data_cache", JSON.stringify(appData));
-        renderEvents();
+      if (res.success) { 
+        localStorage.setItem("bolech_data_cache", JSON.stringify(appData)); 
+        renderEvents(); 
       }
     });
   }
@@ -1907,9 +1907,9 @@ function obnovitOznameni(akceId) {
   if (!akce) return;
   akce.typ = 'Informace';
   runGoogleScript("saveAkce", akce).then(res => {
-    if (res.success) {
-      localStorage.setItem("bolech_data_cache", JSON.stringify(appData));
-      renderEvents();
+    if (res.success) { 
+      localStorage.setItem("bolech_data_cache", JSON.stringify(appData)); 
+      renderEvents(); 
     }
   });
 }
@@ -1959,6 +1959,126 @@ function formatDateForSave(isoDate) {
     return `${parseInt(parts[2], 10)}. ${parseInt(parts[1], 10)}. ${parts[0]}`;
   }
   return isoDate;
+}
+
+// =========================================================================
+// HROMADNÁ POŠTA: ROZESÍLÁNÍ ZPRÁV ČLENŮM A VEDENÍ
+// =========================================================================
+function openMailBroadcastModal() {
+  const html = `
+    <div id="broadcastMailModal" class="modal-overlay" style="padding: 4px;" onclick="if(event.target===this) document.getElementById('broadcastMailModal').remove()">
+      <div class="modal-box" style="max-width: 520px; width: 100%; max-height: 92vh; overflow-y: auto;">
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 14px;">
+          <h3 style="margin:0; font-size:1.15rem; color:var(--text);">✉️ Hromadná zpráva</h3>
+          <button type="button" style="background:transparent; border:none; font-size:22px; color:var(--text-muted); cursor:pointer;" onclick="document.getElementById('broadcastMailModal').remove()">✕</button>
+        </div>
+
+        <label style="font-size:0.85rem; font-weight:700; margin-bottom:4px; display:block;">Příjemci zprávy:</label>
+        <select id="mail_target_group" class="modal-input" onchange="updateBroadcastRecipientCount()" style="margin-bottom:10px;">
+          <option value="all">👥 Všichni aktivní členové orchestru</option>
+          <option value="management">🏛️ Pouze vedení a dirigent</option>
+          <option value="both">👥🏛️ Všichni členové + celé vedení</option>
+          <option value="strings">🎻 Pouze smyčcová sekce</option>
+          <option value="winds">🎺 Pouze dechová sekce</option>
+          <option value="guests">👥 Pouze aktivní hosté</option>
+        </select>
+
+        <div id="broadcast_recipients_info" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px; background:var(--bg); padding:8px 10px; border-radius:6px; border:1px solid var(--border);">
+          Načítám příjemce...
+        </div>
+
+        <label style="font-size:0.85rem; font-weight:700; margin-bottom:4px; display:block;">Předmět e-mailu:</label>
+        <input type="text" id="mail_broadcast_subject" class="modal-input" placeholder="např. Zkouška v pátek – změna místa" style="margin-bottom:12px;" value="TSO Bolech: ">
+
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:4px;">
+          <label style="font-size:0.85rem; font-weight:700; margin:0;">Text zprávy:</label>
+        </div>
+        <textarea id="mail_broadcast_body" class="modal-input" style="min-height:120px; resize:vertical; font-size:14px; margin-bottom:16px;" placeholder="Vážení přátelé, hudebníci..."></textarea>
+
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn" style="background:var(--success); flex:1; font-weight:700;" onclick="sendBroadcastViaMailto()">
+            🚀 Otevřít ve vašem e-mailu
+          </button>
+          <button type="button" class="btn" style="background:var(--border); color:var(--text); width:auto;" onclick="document.getElementById('broadcastMailModal').remove()">
+            Zrušit
+          </button>
+        </div>
+        
+        <small style="display:block; margin-top:10px; font-size:0.75rem; color:var(--text-muted); text-align:center;">
+          Zpráva se otevře ve vaší poštovní aplikaci se skrytými adresami (BCC), aby byly chráněny e-maily členů.
+        </small>
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML('beforeend', html);
+  updateBroadcastRecipientCount();
+}
+
+function getBroadcastEmails(targetGroup) {
+  const clenove = appData.clenove || [];
+  const uniqueEmails = new Set();
+
+  clenove.forEach(c => {
+    const email = String(c.email || "").trim().toLowerCase();
+    if (!email || !email.includes("@")) return;
+
+    const role = String(c.role || "").trim().toLowerCase();
+    const isLeadership = ['admin', 'dirigent', 'vedení', 'vedeni'].includes(role);
+    const sekce = String(c.sekce || "").toLowerCase();
+    const isHost = role === 'host';
+
+    const aktivni = String(c.aktivni || "").toUpperCase().trim();
+    const isAktivni = aktivni === 'ANO' || aktivni === 'TRUE' || aktivni === '1' || isHost;
+    if (!isAktivni) return;
+
+    if (targetGroup === 'all') {
+      if (!isHost) uniqueEmails.add(email);
+    } else if (targetGroup === 'management') {
+      if (isLeadership) uniqueEmails.add(email);
+    } else if (targetGroup === 'both') {
+      uniqueEmails.add(email);
+    } else if (targetGroup === 'strings') {
+      if (SMYCKE_SECTIONS.some(s => sekce.includes(s))) uniqueEmails.add(email);
+    } else if (targetGroup === 'winds') {
+      if (DECHOVE_SECTIONS.some(s => sekce.includes(s))) uniqueEmails.add(email);
+    } else if (targetGroup === 'guests') {
+      if (isHost) uniqueEmails.add(email);
+    }
+  });
+
+  return Array.from(uniqueEmails);
+}
+
+function updateBroadcastRecipientCount() {
+  const group = document.getElementById('mail_target_group')?.value || 'all';
+  const emails = getBroadcastEmails(group);
+  const infoEl = document.getElementById('broadcast_recipients_info');
+  if (infoEl) {
+    infoEl.innerHTML = `Vybráno <strong>${emails.length}</strong> adresátů se zadaným e-mailem.`;
+  }
+}
+
+function sendBroadcastViaMailto() {
+  const group = document.getElementById('mail_target_group')?.value || 'all';
+  const subjectInput = document.getElementById('mail_broadcast_subject')?.value || '';
+  const bodyInput = document.getElementById('mail_broadcast_body')?.value || '';
+
+  const emails = getBroadcastEmails(group);
+  if (emails.length === 0) {
+    alert("Pro tuto skupinu nebyli nalezeni žádní členové s platnou e-mailovou adresou.");
+    return;
+  }
+
+  const bccList = emails.join(',');
+  const encodedSubject = encodeURIComponent(subjectInput.trim() || 'Zpráva orchestru Bolech');
+  const encodedBody = encodeURIComponent(bodyInput.trim());
+
+  const mailtoUrl = `mailto:?bcc=${bccList}&subject=${encodedSubject}&body=${encodedBody}`;
+
+  document.getElementById('broadcastMailModal')?.remove();
+  window.location.href = mailtoUrl;
 }
 
 // =========================================================================
