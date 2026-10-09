@@ -37,25 +37,21 @@ const PARTITURA_SECTIONS = [
 
 // Široké rozvržení pódia (viewBox 660 x 375)
 const ORCHESTRA_LAYOUT_CFG = {
-  // Smyčce v přední části: řady po 3 vedle sebe
   "1. Housle": { type: "strings", centerX: 100, yStart: 320, defaultCap: 10 },
   "2. Housle": { type: "strings", centerX: 250, yStart: 320, defaultCap: 10 },
   "Violy":      { type: "strings", centerX: 410, yStart: 320, defaultCap: 8 },
   "Violoncella":{ type: "strings", centerX: 560, yStart: 320, defaultCap: 8 },
 
-  // Kontrabasy + Baskytara vpravo vedle nich
   "Kontrabasy": { type: "row", y: 205, defaultCap: 4 },
   "Baskytara":  { type: "bassguitar", y: 205, defaultCap: 0 },
 
-  // Dřeva, klávesy a kytary v jedné spojené horizontální řadě (Y = 144)
-  "Flétny":              { type: "woodwinds", defaultCap: 4 },
-  "Hoboje":              { type: "woodwinds", defaultCap: 3 },
+  "Flétny":               { type: "woodwinds", defaultCap: 4 },
+  "Hoboje":               { type: "woodwinds", defaultCap: 3 },
   "Klarinety / Saxofony":{ type: "woodwinds", defaultCap: 4 },
-  "Fagoty":              { type: "woodwinds", defaultCap: 3 },
-  "Klávesy":             { type: "woodwinds", defaultCap: 2 },
-  "Kytary":              { type: "woodwinds", defaultCap: 0 },
+  "Fagoty":               { type: "woodwinds", defaultCap: 3 },
+  "Klávesy":              { type: "woodwinds", defaultCap: 2 },
+  "Kytary":               { type: "woodwinds", defaultCap: 0 },
 
-  // Žestě a bicí
   "Lesní rohy":     { type: "brass", y: 78, defaultCap: 4 },
   "Trubky":         { type: "brass", y: 78, defaultCap: 4 },
   "Trombóny a Tuba":{ type: "brass", y: 78, defaultCap: 4 },
@@ -65,7 +61,7 @@ const ORCHESTRA_LAYOUT_CFG = {
 const SMYCKE_SECTIONS = ["housl", "viol", "cell", "kontrabas", "baskytara", "smyčce", "smycce"];
 const DECHOVE_SECTIONS = ["flétn", "hoboj", "klarinet", "saxofon", "fagot", "roh", "trubk", "trubc", "trombón", "trombon", "tuba", "tuby", "tubě", "tubou", "dech", "dřev", "žest"];
 
-// Pomocná funkce pro identifikaci dirigenta
+// Pomocné funkce pro role
 function isDirigentPerson(jmeno, sekce, role) {
   const j = String(jmeno || "").toLowerCase();
   const s = String(sekce || "").toLowerCase();
@@ -73,11 +69,24 @@ function isDirigentPerson(jmeno, sekce, role) {
   return r === 'dirigent' || s.includes('dirigent') || j.includes('sycha');
 }
 
+// Má uživatel právo tvořit/měnit akce, noty a obsazení? (Admin, Dirigent, Vedení)
+function hasEditRights(role) {
+  const r = String(role || "").trim().toLowerCase();
+  return r.includes('admin') || r.includes('dirigent') || r.includes('vedení') || r.includes('vedeni');
+}
+
+// Patří uživatel do vedení nebo je pomocníkem výboru? (Má právo číst interní zprávy)
+function isCommitteeMember(role) {
+  if (!role) return false;
+  const r = String(role).trim().toLowerCase();
+  return hasEditRights(r) || r.includes('výbor') || r.includes('vybor') || r.includes('pomocník') || r.includes('pomocnik');
+}
+
 // =====================================================
 // GLOBÁLNÍ NASTAVENÍ PÍSMA A TÉMATU
 // =====================================================
 const FONT_LEVELS = [
-  { id: 'small',  scale: 0.88, title: 'Malé',        sample: 'Kompaktní zobrazení' },
+  { id: 'small',  scale: 0.88, title: 'Malé',       sample: 'Kompaktní zobrazení' },
   { id: 'normal', scale: 1.0,  title: 'Výchozí',     sample: 'Standardní čitelnost' },
   { id: 'large',  scale: 1.15, title: 'Větší',       sample: 'Pohodlné čtení' },
   { id: 'xlarge', scale: 1.3,  title: 'Extra velké', sample: 'Maximální čitelnost' }
@@ -146,6 +155,7 @@ function toggleTheme() {
 }
 function updateThemeIcon(isDark) {
   const icon = document.getElementById('theme-icon');
+  if (!icon) return;
   if (isDark) icon.innerHTML = `<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>`;
   else icon.innerHTML = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>`;
 }
@@ -258,13 +268,12 @@ function initApp() {
   document.getElementById("mainApp").style.display = "block";
   document.getElementById("userBadge").innerText = user.name;
   
-  const userRole = String(user.role || "").trim().toLowerCase();
-  const povoleneRole = ['admin', 'dirigent', 'vedení', 'vedeni'];
-  const isVedení = povoleneRole.includes(userRole);
-  const jeDirigent = userRole === 'dirigent';
+  const canEdit = hasEditRights(user.role);
+  const jeDirigent = String(user.role || "").trim().toLowerCase() === 'dirigent';
   
-  if (isVedení) {
-    document.getElementById('btn-nav-admin').style.display = 'flex';
+  const adminNavBtn = document.getElementById('btn-nav-admin');
+  if (adminNavBtn) {
+    adminNavBtn.style.display = canEdit ? 'flex' : 'none';
   }
 
   const cachedData = localStorage.getItem("bolech_data_cache");
@@ -272,11 +281,11 @@ function initApp() {
     appData = JSON.parse(cachedData); 
     renderEvents(); 
     vykresliNoty(appData.noty || [], user.section, jeDirigent);
-    if (isVedení) vykresliAdminNoty();
+    if (canEdit) vykresliAdminNoty();
   } else if (appData && appData.akce && appData.akce.length > 0) {
     renderEvents();
     vykresliNoty(appData.noty || [], user.section, jeDirigent);
-    if (isVedení) vykresliAdminNoty();
+    if (canEdit) vykresliAdminNoty();
   }
 
   runGoogleScript("getInitialData").then(d => { 
@@ -285,7 +294,7 @@ function initApp() {
       localStorage.setItem("bolech_data_cache", JSON.stringify(appData));
       renderEvents(); 
       vykresliNoty(appData.noty || [], user.section, jeDirigent);
-      if (isVedení) vykresliAdminNoty();
+      if (canEdit) vykresliAdminNoty();
     }
   });
 }
@@ -299,22 +308,15 @@ function parseDate(dateStr) {
 
 function escapeHtml(str) { return String(str||'').replace(/[&<>'"]/g, tag => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[tag])); }
 
-// Bezpečný převod formátování (Markdown + auto links)
 function formatRichText(raw) {
   if (!raw) return "";
   let text = escapeHtml(raw);
 
-  // **tučně**
   text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  // *kurzíva*
   text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
-  // __podtržení__
   text = text.replace(/__(.*?)__/g, '<u>$1</u>');
-
-  // Klikací webové odkazy
   text = text.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
 
-  // Odrážky na začátku řádku (- nebo •)
   const lines = text.split('\n');
   const formattedLines = lines.map(line => {
     const trimmed = line.trim();
@@ -327,7 +329,6 @@ function formatRichText(raw) {
   return formattedLines.join('<br>');
 }
 
-// Obsluha kliknutí na tlačítka lišty (obalení označeného textu)
 function insertFormatTag(prefix, suffix = prefix) {
   const textarea = document.getElementById('f_poznamka');
   if (!textarea) return;
@@ -377,13 +378,22 @@ function generovatIdAkce(typ) {
   return prefix + String(max + 1).padStart(3, '0');
 }
 
+// Zabezpečené filtrování: Interní informace uvidí POUZE vedení a pomocníci výboru
 function isEventVisibleForUser(akce) {
   const typ = String(akce.typ || "").trim();
-  const userSecL = String(user.section || "").toLowerCase();
+  const jeInfo = typ.includes("Oznámení") || typ.includes("Informace");
+  const cilovaSkupina = String(akce.cilovaSkupina || "vsichni").trim().toLowerCase();
   const userRole = String(user.role || "").trim().toLowerCase();
-  
-  if (typ.includes("Oznámení") || typ.includes("Informace")) return true; 
-  if (userRole !== "" && userRole !== "-") return true; 
+
+  // Kontrola interních zpráv pro vedení a výbor
+  if (cilovaSkupina === "vedeni") {
+    return isCommitteeMember(userRole);
+  }
+
+  if (jeInfo) return true; 
+  if (hasEditRights(userRole)) return true; 
+
+  const userSecL = String(user.section || "").toLowerCase();
   if (typ === "Zkouška smyčců") return SMYCKE_SECTIONS.some(s => userSecL.includes(s));
   if (typ === "Zkouška dechů") return DECHOVE_SECTIONS.some(s => userSecL.includes(s));
   return true; 
@@ -426,9 +436,6 @@ function getHexPoints(cx, cy, r = 19.5) {
   return pts.join(" ");
 }
 
-// =====================================================
-// ŘÍZENÍ OTOČENÍ KARET
-// =====================================================
 let aktivniOtocenaKartaId = null;
 
 function flipCard(cardId) {
@@ -457,9 +464,6 @@ function zavritOtocenouKartu() {
   document.querySelectorAll('.card-flip-container.active-focus').forEach(c => c.classList.remove('active-focus'));
 }
 
-// =====================================================
-// ROBUSTNÍ REGEX PARSER POZNÁMKY, PROGRAMU A HARMONOGRAMU
-// =====================================================
 function parsovatPoznamku(rawNote) {
   let text = String(rawNote || '').trim();
   if (!text) return { mainNote: '', progData: '', schedData: '' };
@@ -597,7 +601,7 @@ function formatProgramHtml(pData) {
 }
 
 // =====================================================
-// VYKRESLENÍ AKCÍ (CHYTRÉ ŘAZENÍ: BUDOUCÍ VS. HISTORIE)
+// VYKRESLENÍ AKCÍ
 // =====================================================
 function renderEvents() {
   zavritOtocenouKartu();
@@ -607,11 +611,9 @@ function renderEvents() {
   const archCont = document.getElementById("archiveContainer"); 
   archCont.innerHTML = "";
   
-  const userRole = String(user.role || "").trim().toLowerCase();
-  const povoleneRole = ['admin', 'dirigent', 'vedení', 'vedeni'];
-  const isVedení = povoleneRole.includes(userRole);
+  const canEdit = hasEditRights(user.role);
   
-  if (isVedení) {
+  if (canEdit) {
     cont.innerHTML += `
       <div class="admin-actions" style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;">
         <div style="display:flex; gap:8px;">
@@ -620,14 +622,13 @@ function renderEvents() {
           <button class="btn" style="background:var(--primary-light); flex:1; padding:10px 4px; font-size:13px;" onclick="openGuestManager()">👥 Hosté</button>
         </div>
         <button class="btn" style="background:var(--surface); color:var(--text); border:1px solid var(--border); padding:9px; font-size:13.5px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="openMailBroadcastModal()">
-          ✉️️ Napsat zprávu orchestru / vedení
+          ✉ Napsat zprávu orchestru / vedení
         </button>
       </div>`;
   }
 
   const vsechnyViditelne = (appData.akce || []).filter(a => isEventVisibleForUser(a));
 
-  // Nastavení hranice na dnešní půlnoc (akce z dneška zůstává aktivní celý den)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayTs = today.getTime();
@@ -637,43 +638,40 @@ function renderEvents() {
     .filter(a => (a.typ === 'Oznámení' || a.typ === 'Informace'))
     .sort((a, b) => parseDate(b.datum) - parseDate(a.datum));
 
-  // 2. Hudební akce (zkoušky, koncerty, generálky)
+  // 2. Hudební akce
   const hudebniAkce = vsechnyViditelne.filter(a => !a.typ.includes('Oznámení') && !a.typ.includes('Informace'));
 
-  // Nadcházející akce (dnes a v budoucnu) -> ŘAZENÍ VZESTUPNĚ (nejbližší první!)
   const nadchazejiciAkce = hudebniAkce
     .filter(a => parseDate(a.datum) >= todayTs)
     .sort((a, b) => parseDate(a.datum) - parseDate(b.datum));
 
-  // Proběhlé akce (historie) -> ŘAZENÍ SESTUPNĚ (naposledy proběhlá nahoře)
   const probehleAkce = hudebniAkce
     .filter(a => parseDate(a.datum) < todayTs)
     .sort((a, b) => parseDate(b.datum) - parseDate(a.datum));
 
-  // Archivovaná textová oznámení
   const archivOznameni = vsechnyViditelne
     .filter(a => a.typ === 'Oznámení (Archiv)' || a.typ === 'Informace (Infoarchiv)' || a.typ === 'Informace (Historie)')
     .sort((a, b) => parseDate(b.datum) - parseDate(a.datum));
 
-  // --- VYKRESLENÍ ZÁLOŽKY „AKCE“ ---
-  aktivniOznameni.forEach(a => cont.innerHTML += generateOznameniHtml(a, isVedení));
+  // Záložka „Akce“
+  aktivniOznameni.forEach(a => cont.innerHTML += generateOznameniHtml(a, canEdit));
   
   if (nadchazejiciAkce.length === 0 && aktivniOznameni.length === 0) {
     cont.innerHTML += `<div style="text-align:center; padding:40px; color:var(--text-muted);">Žádné nadcházející akce nejsou naplánovány.</div>`;
   } else {
-    nadchazejiciAkce.forEach(a => cont.innerHTML += generateAkceHtml(a, isVedení));
+    nadchazejiciAkce.forEach(a => cont.innerHTML += generateAkceHtml(a, canEdit));
   }
 
-  // --- VYKRESLENÍ ZÁLOŽKY „HISTORIE“ ---
+  // Záložka „Historie“
   if (probehleAkce.length === 0 && archivOznameni.length === 0) {
     archCont.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted);">Historie je prázdná.</div>`;
   } else {
-    probehleAkce.forEach(a => archCont.innerHTML += generateAkceHtml(a, isVedení));
-    archivOznameni.forEach(a => archCont.innerHTML += generateOznameniHtml(a, isVedení, true));
+    probehleAkce.forEach(a => archCont.innerHTML += generateAkceHtml(a, canEdit));
+    archivOznameni.forEach(a => archCont.innerHTML += generateOznameniHtml(a, canEdit, true));
   }
 }
 
-function generateAkceHtml(akce, isVedení) {
+function generateAkceHtml(akce, canEdit) {
   const myVote = (appData.ucast||[]).find(u => String(u.akceId) === String(akce.id) && u.jmeno === user.name);
   let barClass = 'bar-tutti';
   if(akce.typ === 'Koncert') barClass = 'bar-koncert';
@@ -681,7 +679,7 @@ function generateAkceHtml(akce, isVedení) {
   else if(akce.typ === 'Zkouška smyčců') barClass = 'bar-zkouska-smycce';
   else if(akce.typ === 'Zkouška dechů') barClass = 'bar-zkouska-dechy';
   
-  const editBtn = isVedení ? `
+  const editBtn = canEdit ? `
     <button type="button" class="edit-btn" onclick="event.preventDefault(); event.stopPropagation(); checkAndOpenAkceForm('${escapeHtml(akce.id)}');" title="Upravit akci">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
@@ -703,7 +701,7 @@ function generateAkceHtml(akce, isVedení) {
           
           <div class="card-top-bar ${barClass}">
             <span>${akce.typ}</span>
-            <span>🗓️️ ${akce.datum}</span>
+            <span>🗓 ${akce.datum}</span>
           </div>
 
           <div class="card-body" style="padding-bottom: 0;">
@@ -737,7 +735,7 @@ function generateAkceHtml(akce, isVedení) {
           </div>
         </div>
 
-        <!-- ZADNÍ STRANA KARTY: VÝHRADNĚ PROGRAM -->
+        <!-- ZADNÍ STRANA KARTY: PROGRAM -->
         <div class="card-back card-clickable-area" onclick="flipCard('${cardFlipperId}')" title="Klepnutím otočíte zpět na přehled">
           <div class="card-top-bar ${barClass}">
             <span>PROGRAM KONCERTU</span>
@@ -751,9 +749,12 @@ function generateAkceHtml(akce, isVedení) {
     </div>`;
 }
 
-function generateOznameniHtml(akce, isVedení, isArchiv = false) {
-  const editBtn = isVedení ? `
-    <button type="button" class="edit-btn" onclick="event.preventDefault(); event.stopPropagation(); checkAndOpenAkceForm('${escapeHtml(akce.id)}');" title="Upravit oznámení">
+// VYKRESLENÍ INFORMACE: ROZLIŠENÍ VEŘEJNÉ VS. INTERNÍ (VÝBOR)
+function generateOznameniHtml(akce, canEdit, isArchiv = false) {
+  const isInternal = String(akce.cilovaSkupina || "").toLowerCase() === 'vedeni';
+
+  const editBtn = canEdit ? `
+    <button type="button" class="edit-btn" onclick="event.preventDefault(); event.stopPropagation(); checkAndOpenAkceForm('${escapeHtml(akce.id)}');" title="Upravit informaci">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
       </svg>
@@ -761,7 +762,7 @@ function generateOznameniHtml(akce, isVedení, isArchiv = false) {
   ` : "";
   
   let akceBtn = "";
-  if (isVedení) {
+  if (canEdit) {
     if (!isArchiv) {
       akceBtn = `<button class="btn" style="background:transparent; color:var(--text-muted); border:1px solid var(--border); padding:8px; margin-top:16px; font-size:14px;" onclick="archivovatOznameni('${akce.id}')">📜 Přesunout do historie</button>`;
     } else {
@@ -770,10 +771,21 @@ function generateOznameniHtml(akce, isVedení, isArchiv = false) {
   }
 
   const parsed = parsovatPoznamku(akce.poznamka);
+
+  const cardClass = isInternal ? "card card-oznameni card-info-vedeni" : "card card-oznameni card-info-vsichni";
+  const barClass = isInternal ? "card-top-bar bar-info-vedeni" : "card-top-bar bar-oznameni";
+  const badgeTitle = isInternal ? "🔒 Interní pro vedení a výbor" : "💡 Informace pro orchestr";
   
+  const targetBadge = isInternal
+    ? `<div class="info-visibility-badge badge-internal">🔒 Vidí POUZE: Dirigent, vedení a pomocníci výboru</div>`
+    : `<div class="info-visibility-badge badge-public">🌐 Vidí: Všichni aktivní členové i hosté</div>`;
+
   return `
-    <div class="card card-oznameni">
-      <div class="card-top-bar bar-oznameni"><span>💡 Informace</span><span>🗓️ ${akce.datum}</span></div>
+    <div class="${cardClass}">
+      <div class="${barClass}">
+        <span>${badgeTitle}</span>
+        <span>🗓️ ${akce.datum}</span>
+      </div>
       <div class="card-body" style="padding-top:12px;">
         <div class="card-title-row" style="margin-bottom:4px;">
           <div class="card-title" style="font-size:20px; flex:1;">${escapeHtml(akce.nazev)}</div>
@@ -782,14 +794,12 @@ function generateOznameniHtml(akce, isVedení, isArchiv = false) {
         ${parsed.mainNote ? `<div class="oznameni-text formatted-note" style="margin-top:12px;">${formatRichText(parsed.mainNote)}</div>` : ''}
         ${formatHarmonogramHtml(parsed.schedData)}
         ${formatProgramHtml(parsed.progData)}
+        ${targetBadge}
         ${akceBtn}
       </div>
     </div>`;
 }
 
-// =====================================================
-// PŘEHLED PŘIHLÁŠENÝCH (DIRIGENT VŽDY NAHOŘE)
-// =====================================================
 function generateRosterHtml(akceId) {
   const potvrdili = (appData.ucast || []).filter(u => String(u.akceId) === String(akceId) && u.stav === 'Ano');
   
@@ -822,7 +832,6 @@ function generateRosterHtml(akceId) {
       </button>
   `;
 
-  // 1. Dirigent má výsadní místo na úplném vrcholu
   if (dirigentJmeno) {
     html += `
       <div class="roster-section" style="border-left: 3px solid #f59e0b; padding-left: 8px; margin-bottom: 10px; background: rgba(245, 158, 11, 0.08); border-radius: 4px;">
@@ -832,7 +841,6 @@ function generateRosterHtml(akceId) {
     `;
   }
 
-  // 2. Standardní nástrojové sekce
   PARTITURA_SECTIONS.forEach(s => { 
     if (grouped[s]) html += `<div class="roster-section"><div class="roster-section-title">${s}</div><div class="roster-members">${grouped[s].join(', ')}</div></div>`; 
   });
@@ -848,9 +856,6 @@ function toggleRoster(id) {
   else { content.style.display = 'block'; arrow.innerText = '▲'; }
 }
 
-// =========================================================================
-// ŠABLONA PÓDIA (PŘIDÁN DIRIGENTSKÝ PULT DOLE UPROSTŘED)
-// =========================================================================
 function getOrchestraSvgHtml(prefix = "stage") {
   return `
   <div class="stage-wrapper">
@@ -865,7 +870,6 @@ function getOrchestraSvgHtml(prefix = "stage") {
       <rect x="6" y="106" width="648" height="74" rx="8" fill="var(--sec-bg)"/>
       <rect x="4" y="182" width="652" height="188" rx="10" fill="var(--sec-bg)"/>
 
-      <!-- Dirigentský stupínek dole uprostřed -->
       <rect x="306" y="300" width="48" height="50" rx="6" fill="rgba(245, 158, 11, 0.12)" stroke="rgba(245, 158, 11, 0.4)" stroke-dasharray="2,2"/>
       <text x="330" y="362" class="sec-label" style="fill:#d97706; font-weight:bold;">Dirigent</text>
 
@@ -914,7 +918,6 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
   let celkemHraje = 0;
   let dirigentPrihlasen = null;
 
-  // Ověření, zda dirigent potvrdil účast
   ucastAkce.forEach(u => {
     if (u.stav === "Ano") {
       const clen = (appData.clenove || []).find(c => c.celeJmeno === u.jmeno || c.jmeno === u.jmeno);
@@ -946,7 +949,6 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
     }
 
     let eligiblePlayers = (appData.clenove || []).filter(c => {
-      // Dirigent se nepočítá do běžných nástrojových sekcí
       if (isDirigentPerson(c.celeJmeno, c.sekce, c.role)) return false;
       return c.sekce === sec && isMemberEligibleForAkce(c, datumAkce);
     });
@@ -1008,12 +1010,10 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
     dynamicLabelsGroup.appendChild(l);
   }
 
-  // 1. Dirigent (stojí na pultu X = 330, Y = 325)
   if (dirigentPrihlasen) {
     renderHexSpot(330, 325, { celeJmeno: dirigentPrihlasen }, false, "Dirigent", true);
   }
 
-  // 2. Smyčce
   ["1. Housle", "2. Housle", "Violy", "Violoncella"].forEach(sec => {
     const list = attendingBySec[sec] || [];
     const cfg = ORCHESTRA_LAYOUT_CFG[sec];
@@ -1032,7 +1032,6 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
     });
   });
 
-  // 3. Kontrabasy + Baskytara
   const cbList = attendingBySec["Kontrabasy"] || [];
   const bassList = attendingBySec["Baskytara"] || [];
   const hasBass = bassList.length > 0;
@@ -1050,7 +1049,6 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
     renderHexSpot(bassX, 218, bassList[0], false, "Baskytara");
   }
 
-  // 4. Dřeva a doprovod
   const baseWoodwinds = [
     { sec: "Flétny", label: "Flétny" },
     { sec: "Hoboje", label: "Hoboje" },
@@ -1079,7 +1077,6 @@ function bindOrchestraSvgData(prefix, akceId, cfgKM = null, cfgLimits = {}, cfgR
     });
   });
 
-  // 5. Žestě a bicí
   const hornList = attendingBySec["Lesní rohy"] || [];
   hornList.forEach((p, idx) => {
     const offset = (idx - (hornList.length - 1) / 2) * 36;
@@ -1140,9 +1137,6 @@ function openStageModalForAkce(akceId) {
   bindOrchestraSvgData("view", akceId);
 }
 
-// =========================================================================
-// MODÁL: SPRÁVA OBSAZENÍ ORCHESTRU (NEJBLIŽŠÍ AKCE PRVNÍ + HISTORIE + SBALENÝ VÝBĚR)
-// =========================================================================
 function openOrchestrModal() {
   const vsechnyAkce = (appData.akce || []).filter(a => !a.typ.includes("Oznámení") && !a.typ.includes("Informace"));
   if (vsechnyAkce.length === 0) {
@@ -1154,12 +1148,10 @@ function openOrchestrModal() {
   today.setHours(0, 0, 0, 0);
   const todayTs = today.getTime();
 
-  // Nadcházející akce (dnes a v budoucnu) -> vzestupně (nejbližší nahoře)
   const nadchazejiciAkce = vsechnyAkce
     .filter(a => parseDate(a.datum) >= todayTs)
     .sort((a, b) => parseDate(a.datum) - parseDate(b.datum));
 
-  // Starší akce (historie) -> sestupně (naposledy proběhlá nahoře)
   const probehleAkce = vsechnyAkce
     .filter(a => parseDate(a.datum) < todayTs)
     .sort((a, b) => parseDate(b.datum) - parseDate(a.datum));
@@ -1322,7 +1314,6 @@ function renderRosterSelectionInputs() {
   let html = "";
   let anyForm = false;
 
-  // 1. Výběr baskytary z kontrabasistů
   const bassLimitInput = document.querySelector(`.sec-limit-input[data-sec="Baskytara"]`);
   const bassCapacity = bassLimitInput ? parseInt(bassLimitInput.value, 10) : 0;
   
@@ -1352,7 +1343,6 @@ function renderRosterSelectionInputs() {
     html += `</div></div>`;
   }
 
-  // 2. Standardní výběr hráčů v sekcích s redukovanou kapacitou
   Object.keys(ORCHESTRA_LAYOUT_CFG).forEach(sec => {
     if (sec === "Baskytara") return;
 
@@ -1470,7 +1460,7 @@ function saveOrchestrSettings() {
   const payload = { 
     akceId: akceId,
     km: km, 
-    limits: limits,
+    limits: limits, 
     roster: roster
   };
 
@@ -1501,12 +1491,11 @@ async function checkAndOpenAkceForm(akceId = null) {
     return;
   }
 
-  // Zjistíme na serveru stav zámku
   const res = await runGoogleScript("lockAkce", { akceId: akceId, user: user.name });
 
   if (res && res.locked) {
-    alert(`⚠️ Tuto akci právě upravuje ${res.editor} (od ${res.time}).\n\nFormulář se otevře pouze pro čtení, aby nedošlo k přepsání změn.`);
-    openAkceForm(akceId, true); // Pouze pro čtení (read-only)
+    alert(`⚠️ Tuto položku právě upravuje ${res.editor} (od ${res.time}).\n\nFormulář se otevře pouze pro čtení, aby nedošlo k přepsání změn.`);
+    openAkceForm(akceId, true);
   } else {
     window.aktualneZamknutaAkceId = akceId;
     openAkceForm(akceId, false);
@@ -1522,6 +1511,7 @@ function closeAndUnlockAkceModal() {
   if (modal) modal.remove();
 }
 
+// FORMULÁŘ PRO AKCI / INFORMACI (VČETNĚ VOLBY CÍLOVÉ SKUPINY)
 function openAkceForm(param = null, isReadOnly = false) {
   let akce = null;
   if (param !== null && typeof param === 'string') {
@@ -1536,6 +1526,7 @@ function openAkceForm(param = null, isReadOnly = false) {
   const formDateValue = formatDateForInput(akce?.datum || '');
   
   const parsed = parsovatPoznamku(akce?.poznamka || '');
+  const cilovaSkupinaValue = String(akce?.cilovaSkupina || 'vsichni').toLowerCase();
   
   let programLines = [];
   if (parsed.progData) {
@@ -1584,7 +1575,7 @@ function openAkceForm(param = null, isReadOnly = false) {
         ` : ''}
         
         <form id="editAkceForm" onsubmit="submitAkceForm(event, '${isEdit ? escapeHtml(akce.id) : ''}')"> 
-          <label>Typ:</label>
+          <label>Typ položky:</label>
           <select id="f_typ" class="modal-input" onchange="toggleAkceFields()" ${selectDisabledAttr}>
             <option value="Tutti zkouška" ${akce?.typ==='Tutti zkouška'?'selected':''}>Tutti zkouška</option>
             <option value="Zkouška smyčců" ${akce?.typ==='Zkouška smyčců'?'selected':''}>Zkouška smyčců</option>
@@ -1595,7 +1586,19 @@ function openAkceForm(param = null, isReadOnly = false) {
             <option value="Informace (Historie)" ${(akce?.typ==='Informace (Historie)' || akce?.typ==='Informace (Infoarchiv)' || akce?.typ==='Oznámení (Archiv)') ? 'selected' : ''}>Informace (Historie)</option>
           </select>
 
-          <label>Název / Nadpis oznámení:</label>
+          <!-- VÝBĚR CÍLOVÉ SKUPINY PRO INFORMACE -->
+          <div id="row_cilovaSkupina" style="display:none; margin-bottom:14px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px;">
+            <label style="font-weight:700; display:block; margin-bottom:6px; font-size:13px; color:var(--text);">Komu je informace určena:</label>
+            <select id="f_cilovaSkupina" class="modal-input" style="margin-bottom:4px; font-size:14px;" ${roAttr}>
+              <option value="vsichni" ${cilovaSkupinaValue!=='vedeni' ? 'selected' : ''}>🌐 Celý orchestr (veřejná informace)</option>
+              <option value="vedeni" ${cilovaSkupinaValue==='vedeni' ? 'selected' : ''}>🔒 Pouze vedení a výbor (interní informace)</option>
+            </select>
+            <small style="color:var(--text-muted); font-size:12px; display:block; line-height:1.3;">
+              Interní informace uvidí pouze dirigent, vedení a pomocníci výboru. Běžným muzikantům se nezobrazí.
+            </small>
+          </div>
+
+          <label>Název / Nadpis položky:</label>
           <input type="text" id="f_nazev" value="${escapeHtml(akce?.nazev||'')}" required class="modal-input" ${roAttr}>
 
           <div style="display:flex; gap:12px;">
@@ -1788,6 +1791,10 @@ function toggleAkceFields() {
   const jeOznameni = typ.includes('Oznámení') || typ.includes('Informace');
   const jeZkouska = typ.includes('zkouška') || typ.includes('Zkouška');
   
+  // Zobrazení volby cílové skupiny pro informace
+  const rowCil = document.getElementById('row_cilovaSkupina');
+  if (rowCil) rowCil.style.display = jeOznameni ? 'block' : 'none';
+
   document.getElementById('row_misto').style.display = jeOznameni ? 'none' : 'block';
   document.getElementById('col_casOd').style.display = jeOznameni ? 'none' : 'block';
   document.getElementById('row_casy').style.display = (jeZkouska || jeOznameni) ? 'none' : 'flex';
@@ -1804,6 +1811,9 @@ function submitAkceForm(e, akceId) {
   const jeOznameni = typ.includes('Oznámení') || typ.includes('Informace');
   const jeZkouska = typ.includes('zkouška') || typ.includes('Zkouška');
   const finalId = akceId || generovatIdAkce(typ);
+
+  const cilovaSkupinaEl = document.getElementById('f_cilovaSkupina');
+  const finalCilovaSkupina = (jeOznameni && cilovaSkupinaEl) ? cilovaSkupinaEl.value : 'vsichni';
 
   let rawNoteInput = document.getElementById('f_poznamka').value;
   let finalPoznamka = rawNoteInput
@@ -1842,7 +1852,10 @@ function submitAkceForm(e, akceId) {
   }
 
   const payload = {
-    id: finalId, typ: typ, nazev: document.getElementById('f_nazev').value, 
+    id: finalId, 
+    typ: typ, 
+    cilovaSkupina: finalCilovaSkupina,
+    nazev: document.getElementById('f_nazev').value, 
     datum: formatDateForSave(document.getElementById('f_datum').value), 
     misto: jeOznameni ? "" : document.getElementById('f_misto').value,
     casOd: jeOznameni ? "" : document.getElementById('f_casOd').value,
@@ -2025,7 +2038,7 @@ function getBroadcastEmails(targetGroup) {
     if (!email || !email.includes("@")) return;
 
     const role = String(c.role || "").trim().toLowerCase();
-    const isLeadership = ['admin', 'dirigent', 'vedení', 'vedeni'].includes(role);
+    const isLeadership = hasEditRights(role);
     const sekce = String(c.sekce || "").toLowerCase();
     const isHost = role === 'host';
 
@@ -2259,7 +2272,7 @@ function confirmLogout() {
 }
 
 // =========================================================================
-// NOTOVÝ ARCHIV PRO HRÁČE (PŘEPOSLÁNÍ SOBĚ)
+// NOTOVÝ ARCHIV PRO HRÁČE
 // =========================================================================
 function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
   const kontejner = document.getElementById('notyContainer');
@@ -2267,9 +2280,7 @@ function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
   
   if (!kontejner) return;
 
-  const userRole = String(user.role || "").trim().toLowerCase();
-  const isVedení = ['admin', 'dirigent', 'vedení', 'vedeni'].includes(userRole);
-
+  const canEdit = hasEditRights(user.role);
   const efektivniNastroj = (nastrojUzivatele === "Baskytara") ? "Kontrabasy" : nastrojUzivatele;
 
   if (infoText) {
@@ -2277,7 +2288,7 @@ function vykresliNoty(dataNoty, nastrojUzivatele, jeDirigent = false) {
   }
 
   let htmlDropdown = '';
-  if (isVedení) {
+  if (canEdit) {
     htmlDropdown = `
       <div style="margin-bottom: 20px; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
         <label style="font-size: 13px; font-weight: bold; display: block; margin-bottom: 8px; color: var(--text);">👀 Náhled partů (pouze pro vedení):</label>
