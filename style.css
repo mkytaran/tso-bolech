@@ -208,39 +208,38 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary-light); 
 
 /* 1. BĚŽNÉ OZNÁMENÍ / INFORMACE PRO CELÝ ORCHESTR */
 .bar-oznameni { 
-  background: #0284c7; 
-  color: #ffffff; 
-  border-bottom: 3px solid #0369a1; 
+  background: #0284c7 !important; 
+  color: #ffffff !important; 
+  border-bottom: 2px solid #0369a1 !important; 
 }
 .dark-mode .bar-oznameni { 
-  background: #0369a1; 
-  color: #f0f9ff; 
-  border-bottom: 3px solid #075985; 
+  background: #0369a1 !important; 
+  color: #f0f9ff !important; 
+  border-bottom: 2px solid #075985 !important; 
 }
 
 .card-oznameni { 
   background: var(--surface); 
 }
 .card-info-vsichni { 
-  border-left: 4px solid #0284c7; 
+  box-shadow: inset 2px 0 0 #0284c7, var(--shadow) !important; /* Tenká linka bez zubu */
 }
 
 /* 2. INTERNÍ INFORMACE PRO VEDENÍ A VÝBOR */
 .card-info-vedeni { 
-  border-left: 4px solid #b45309 !important; /* Jantarový výstražný proužek */
+  box-shadow: inset 2px 0 0 #d97706, var(--shadow) !important; /* Tenká linka přesně v rádiusu karty bez zubu */
   background: var(--surface);
 }
 
 .bar-info-vedeni { 
-  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%) !important; 
-  color: #fde68a !important; /* Zlatavý text */
-  border-bottom: 3px solid #1e1b4b;
-  letter-spacing: 0.3px;
+  background: var(--warning-bg) !important; 
+  color: var(--warning-text) !important; 
+  border-bottom: 2px solid #d97706 !important; 
 }
 .dark-mode .bar-info-vedeni { 
-  background: linear-gradient(135deg, #141236 0%, #221f57 100%) !important; 
-  color: #fef08a !important; 
-  border-bottom: 3px solid #0f0e26; 
+  background: rgba(217, 119, 6, 0.22) !important; 
+  color: #fde68a !important; 
+  border-bottom: 2px solid #92400e !important; 
 }
 
 /* 3. ŠTÍTKY CÍLOVÉ SKUPINY UVNITŘ KARET */

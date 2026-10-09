@@ -701,7 +701,7 @@ function generateAkceHtml(akce, canEdit) {
           
           <div class="card-top-bar ${barClass}">
             <span>${akce.typ}</span>
-            <span>🗓 ${akce.datum}</span>
+            <span>${akce.datum}</span>
           </div>
 
           <div class="card-body" style="padding-bottom: 0;">
@@ -774,17 +774,13 @@ function generateOznameniHtml(akce, canEdit, isArchiv = false) {
 
   const cardClass = isInternal ? "card card-oznameni card-info-vedeni" : "card card-oznameni card-info-vsichni";
   const barClass = isInternal ? "card-top-bar bar-info-vedeni" : "card-top-bar bar-oznameni";
-  const badgeTitle = isInternal ? "🔒 Interní pro vedení a výbor" : "💡 Informace pro orchestr";
-  
-  const targetBadge = isInternal
-    ? `<div class="info-visibility-badge badge-internal">🔒 Vidí POUZE: Dirigent, vedení a pomocníci výboru</div>`
-    : `<div class="info-visibility-badge badge-public">🌐 Vidí: Všichni aktivní členové i hosté</div>`;
+  const badgeTitle = isInternal ? "🔒 Interní info" : "💡 Informace";
 
   return `
     <div class="${cardClass}">
       <div class="${barClass}">
         <span>${badgeTitle}</span>
-        <span>🗓️ ${akce.datum}</span>
+        <span>${akce.datum}</span>
       </div>
       <div class="card-body" style="padding-top:12px;">
         <div class="card-title-row" style="margin-bottom:4px;">
@@ -794,7 +790,6 @@ function generateOznameniHtml(akce, canEdit, isArchiv = false) {
         ${parsed.mainNote ? `<div class="oznameni-text formatted-note" style="margin-top:12px;">${formatRichText(parsed.mainNote)}</div>` : ''}
         ${formatHarmonogramHtml(parsed.schedData)}
         ${formatProgramHtml(parsed.progData)}
-        ${targetBadge}
         ${akceBtn}
       </div>
     </div>`;
