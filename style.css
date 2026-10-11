@@ -227,18 +227,18 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary-light); 
 
 /* 2. INTERNÍ INFORMACE PRO VEDENÍ A VÝBOR */
 .card-info-vedeni { 
-  box-shadow: inset 2px 0 0 #d97706, var(--shadow) !important; /* Tenká linka přesně v rádiusu karty bez zubu */
+  box-shadow: inset 2px 0 0 #d97706, var(--shadow) !important; /* Levý proužek */
   background: var(--surface);
 }
 
 .bar-info-vedeni { 
-  background: var(--warning-bg) !important; 
-  color: var(--warning-text) !important; 
-  border-bottom: 2px solid #d97706 !important; 
+  background: #d97706 !important; /* Stejná barva jako proužek */
+  color: #ffffff !important; 
+  border-bottom: 2px solid #b45309 !important; 
 }
 .dark-mode .bar-info-vedeni { 
-  background: rgba(217, 119, 6, 0.22) !important; 
-  color: #fde68a !important; 
+  background: #b45309 !important; 
+  color: #ffffff !important; 
   border-bottom: 2px solid #92400e !important; 
 }
 
