@@ -979,7 +979,7 @@ body.card-flipped-active .card:not(.card-flip-container) {
 
 /* Formátovaný text v kartách */
 .formatted-note {
-  line-height: 1.5;
+  line-height: 1.45; /* Příjemnější, kompaktnější řádkování */
   word-break: break-word;
 }
 
@@ -989,9 +989,23 @@ body.card-flipped-active .card:not(.card-flip-container) {
   word-break: break-all;
 }
 
+/* Kompaktní seznam s přesným lícováním */
 .formatted-note .list-item {
-  display: block;
-  padding-left: 14px;
-  text-indent: -14px;
-  margin-bottom: 3px;
+  display: flex;
+  align-items: flex-start;
+  margin-top: 3px;
+  margin-bottom: 3px; /* Jemný, přirozený rozestup mezi body */
+  line-height: 1.35;  /* Úsporné řádkování uvnitř bodu */
+}
+
+.formatted-note .list-bullet {
+  flex-shrink: 0;
+  width: 16px;        /* Pevný prostor pro puntík */
+  text-align: left;
+  user-select: none;
+  color: var(--text-muted);
+}
+
+.formatted-note .list-content {
+  flex: 1;            /* Text začíná přesně za puntíkem */
 }

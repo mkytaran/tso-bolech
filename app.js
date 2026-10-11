@@ -308,25 +308,39 @@ function parseDate(dateStr) {
 
 function escapeHtml(str) { return String(str||'').replace(/[&<>'"]/g, tag => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[tag])); }
 
+// Bezpečný převod formátování (Markdown + auto links)
 function formatRichText(raw) {
   if (!raw) return "";
   let text = escapeHtml(raw);
 
+  // **tučně**
   text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  // *kurzíva*
   text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  // __podtržení__
   text = text.replace(/__(.*?)__/g, '<u>$1</u>');
+
+  // Klikací webové odkazy
   text = text.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
 
+  // Odrážky na začátku řádku (- nebo •)
   const lines = text.split('\n');
-  const formattedLines = lines.map(line => {
-    const trimmed = line.trim();
-    if (trimmed.startsWith('- ') || trimmed.startsWith('• ')) {
-      return `<span class="list-item">• ${trimmed.substring(2)}</span>`;
-    }
-    return line;
-  });
+  let result = '';
 
-  return formattedLines.join('<br>');
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (trimmed.startsWith('- ') || trimmed.startsWith('• ')) {
+      const itemContent = trimmed.substring(2);
+      result += `<div class="list-item"><span class="list-bullet">•</span><span class="list-content">${itemContent}</span></div>`;
+    } else {
+      result += lines[i];
+      if (i < lines.length - 1) {
+        result += '<br>';
+      }
+    }
+  }
+
+  return result;
 }
 
 function insertFormatTag(prefix, suffix = prefix) {
